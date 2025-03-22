@@ -187,7 +187,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     <div className="py-4 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-          <div className={`flex-1 w-full md:w-auto grid grid-cols-1 ${type === 'round-trip' ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-4`}>
+          <div className={`flex-1 w-full md:w-auto grid grid-cols-1 ${type === 'round-trip' ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-6`}>
             {/* From Location */}
             <div className="relative">
               <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -248,11 +248,13 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
             {/* Date Selection */}
             {type === 'round-trip' ? (
-              <DateRangePicker
-                dateRange={formData.dateRange}
-                onDateRangeChange={(dateRange) => setFormData(prev => ({ ...prev, dateRange }))}
-                placeholder="Select dates"
-              />
+              <div className="col-span-2">
+                <DateRangePicker
+                  dateRange={formData.dateRange}
+                  onDateRangeChange={(dateRange) => setFormData(prev => ({ ...prev, dateRange }))}
+                  placeholder="Select dates"
+                />
+              </div>
             ) : (
               <DatePicker
                 date={formData.departureDate}

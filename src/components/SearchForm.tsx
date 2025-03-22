@@ -173,7 +173,7 @@ const SearchForm = () => {
           </button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Pickup Location */}
           <div className="relative">
             <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
