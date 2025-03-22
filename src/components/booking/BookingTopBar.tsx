@@ -41,7 +41,7 @@ const parseDateFromUrl = (dateStr: string): Date | undefined => {
 interface BookingTopBarProps {
   from: string;
   to: string;
-  type: '1' | '2';
+  type: string;
   date: string;
   returnDate?: string;
   passengers: string;
@@ -58,48 +58,47 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   currentStep = 1 
 }) => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const location = useLocation();
+  const isRoundTrip = type === '2';
+
+  // Initialize form data with parsed dates
+  const initialFormData = {
     from,
     to,
     type,
-    departureDate: undefined as Date | undefined,
-    dateRange: undefined as DateRange | undefined,
+    departureDate: !isRoundTrip ? parseDateFromUrl(date) : undefined,
+    dateRange: isRoundTrip ? {
+      from: parseDateFromUrl(date),
+      to: returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined
+    } : undefined,
     passengers: parseInt(passengers, 10)
-  });
+  };
 
+  const [formData, setFormData] = useState(initialFormData);
   const [displayPassengers, setDisplayPassengers] = useState(parseInt(passengers, 10));
   const [hasChanges, setHasChanges] = useState(false);
-  const [initialFormData, setInitialFormData] = useState(formData);
-  const [savedFormData, setSavedFormData] = useState(formData);
+  const [savedFormData, setSavedFormData] = useState(initialFormData);
 
   // Initialize values and sync with URL parameters
   useEffect(() => {
     const departureDate = parseDateFromUrl(date);
-    const returnDateParsed = returnDate ? parseDateFromUrl(returnDate) : undefined;
+    const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
     
-    // Debug logging
-    console.log('URL Parameters:', { type, date, returnDate });
-    console.log('Parsed Dates:', { departureDate, returnDateParsed });
-
-    const initialData = {
+    const newFormData = {
       from,
       to,
       type,
-      departureDate: type === '1' ? departureDate : undefined,
-      dateRange: type === '2' && departureDate ? {
+      departureDate: !isRoundTrip ? departureDate : undefined,
+      dateRange: isRoundTrip ? {
         from: departureDate,
         to: returnDateParsed
       } : undefined,
       passengers: parseInt(passengers, 10)
     };
 
-    // Debug logging
-    console.log('Initial Form Data:', initialData);
-    
-    setFormData(initialData);
+    setFormData(newFormData);
+    setSavedFormData(newFormData);
     setDisplayPassengers(parseInt(passengers, 10));
-    setInitialFormData(initialData);
-    setSavedFormData(initialData);
     setPickupValue(from, false);
     setDropoffValue(to, false);
   }, [from, to, type, date, returnDate, passengers]);
@@ -109,14 +108,6 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     const hasFormChanges = JSON.stringify(formData) !== JSON.stringify(savedFormData);
     setHasChanges(hasFormChanges);
   }, [formData, savedFormData]);
-
-  // Reset to saved data when changing steps without saving
-  useEffect(() => {
-    setFormData(savedFormData);
-    setDisplayPassengers(parseInt(savedFormData.passengers.toString(), 10));
-    setPickupValue(savedFormData.from, false);
-    setDropoffValue(savedFormData.to, false);
-  }, [currentStep]);
 
   const {
     ready: pickupReady,
@@ -183,34 +174,20 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
     const encodedFrom = encodeURIComponent(formData.from.toLowerCase().replace(/\s+/g, '-'));
     const encodedTo = encodeURIComponent(formData.to.toLowerCase().replace(/\s+/g, '-'));
-    const tripType = formData.type;
     
-    const departureDate = formData.type === '2' ? formData.dateRange?.from : formData.departureDate;
-    const formattedDepartureDate = departureDate ? formatDateForUrl(departureDate) : '';
+    const departureDate = isRoundTrip ? formData.dateRange?.from : formData.departureDate;
+    const formattedDepartureDate = departureDate ? formatDateForUrl(departureDate) : date;
     
-    // Always include returnDate parameter (use '0' for one-way trips)
-    const returnDateParam = formData.type === '2' && formData.dateRange?.to
+    const returnDateParam = isRoundTrip && formData.dateRange?.to
       ? formatDateForUrl(formData.dateRange.to)
-      : '0';
+      : returnDate || '0';
     
-    const path = `/transfer/${encodedFrom}/${encodedTo}/${tripType}/${formattedDepartureDate}/${returnDateParam}/${formData.passengers}/form`;
+    // Preserve the current route structure (home/transfer vs transfer)
+    const baseRoute = location.pathname.startsWith('/home') ? '/home/transfer' : '/transfer';
+    const path = `${baseRoute}/${encodedFrom}/${encodedTo}/${type}/${formattedDepartureDate}/${returnDateParam}/${formData.passengers}/form`;
 
-    // Debug logging
-    console.log('Updating Route:', {
-      path,
-      formData,
-      dates: {
-        departure: formattedDepartureDate,
-        return: returnDateParam
-      }
-    });
-
-    // Always navigate to step 1 when updating route
     navigate(path);
-
-    // Save the current form data as the new saved state
     setSavedFormData(formData);
-    setDisplayPassengers(formData.passengers);
     setHasChanges(false);
   };
 
@@ -218,7 +195,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     <div className="py-4 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-          <div className={`flex-1 w-full md:w-auto grid grid-cols-1 ${type === '2' ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-6`}>
+          <div className={`flex-1 w-full md:w-auto grid grid-cols-1 ${isRoundTrip ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-6`}>
             {/* From Location */}
             <div className="relative">
               <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -278,7 +255,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
             </div>
 
             {/* Date Selection */}
-            {type === '2' ? (
+            {isRoundTrip ? (
               <div className="col-span-2">
                 <DateRangePicker
                   dateRange={formData.dateRange}
