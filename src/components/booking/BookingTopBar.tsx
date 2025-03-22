@@ -14,26 +14,42 @@ const formatDateForUrl = (date: Date) => {
   return `${year}${month}${day}`;
 };
 
+const isValidDate = (year: number, month: number, day: number): boolean => {
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && 
+         date.getMonth() === month - 1 && 
+         date.getDate() === day;
+};
+
 const parseDateFromUrl = (dateStr: string): Date | undefined => {
-  if (!dateStr || dateStr === '0' || dateStr.length !== 6) return undefined;
+  if (!dateStr || dateStr === '0' || dateStr.length !== 6) {
+    console.log('[DEBUG] Invalid date string:', dateStr);
+    return undefined;
+  }
   
   try {
     const year = parseInt(`20${dateStr.slice(0, 2)}`);
-    const month = parseInt(dateStr.slice(2, 4)) - 1; // JS months are 0-based
+    const month = parseInt(dateStr.slice(2, 4));
     const day = parseInt(dateStr.slice(4, 6));
     
-    // Create date at noon to avoid timezone issues
-    const date = new Date(year, month, day, 12, 0, 0, 0);
+    // Validate date components
+    if (!isValidDate(year, month, day)) {
+      console.log('[DEBUG] Invalid date components:', { year, month, day });
+      return undefined;
+    }
     
-    // Validate the date is valid
+    // Create date at noon to avoid timezone issues
+    const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+    
+    // Final validation
     if (isNaN(date.getTime())) {
-      console.error('Invalid date from URL:', { dateStr, parsed: { year, month, day } });
+      console.log('[DEBUG] Invalid date timestamp');
       return undefined;
     }
     
     return date;
   } catch (error) {
-    console.error('Error parsing date:', { dateStr, error });
+    console.error('[DEBUG] Error parsing date:', { dateStr, error });
     return undefined;
   }
 };
@@ -61,16 +77,28 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   const location = useLocation();
   const isRoundTrip = type === '2';
 
-  // Initialize form data with parsed dates
+  // Parse dates first
+  const departureDate = parseDateFromUrl(date);
+  const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
+
+  console.log('[DEBUG] Date params:', {
+    date,
+    returnDate,
+    parsedDeparture: departureDate,
+    parsedReturn: returnDateParsed,
+    isRoundTrip
+  });
+
+  // Initialize form data based on trip type
   const initialFormData = {
     from,
     to,
     type,
-    departureDate: !isRoundTrip ? parseDateFromUrl(date) : undefined,
+    departureDate: !isRoundTrip ? departureDate : undefined,
     dateRange: isRoundTrip ? {
-      from: parseDateFromUrl(date),
-      to: returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined
-    } : undefined,
+      from: departureDate,
+      to: returnDateParsed
+    } as DateRange | undefined : undefined,
     passengers: parseInt(passengers, 10)
   };
 
@@ -81,9 +109,12 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
   // Initialize values and sync with URL parameters
   useEffect(() => {
-    const departureDate = parseDateFromUrl(date);
-    const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
-    
+    console.log('[DEBUG] Initializing form data:', {
+      departureDate,
+      returnDateParsed,
+      isRoundTrip
+    });
+
     const newFormData = {
       from,
       to,
@@ -92,7 +123,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       dateRange: isRoundTrip ? {
         from: departureDate,
         to: returnDateParsed
-      } : undefined,
+      } as DateRange | undefined : undefined,
       passengers: parseInt(passengers, 10)
     };
 
@@ -175,6 +206,12 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     const encodedFrom = encodeURIComponent(formData.from.toLowerCase().replace(/\s+/g, '-'));
     const encodedTo = encodeURIComponent(formData.to.toLowerCase().replace(/\s+/g, '-'));
     
+    // For round trips, ensure both dates are present
+    if (isRoundTrip && (!formData.dateRange?.from || !formData.dateRange?.to)) {
+      alert('Please select both departure and return dates for round trips.');
+      return;
+    }
+
     const departureDate = isRoundTrip ? formData.dateRange?.from : formData.departureDate;
     const formattedDepartureDate = departureDate ? formatDateForUrl(departureDate) : date;
     
