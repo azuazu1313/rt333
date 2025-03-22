@@ -15,10 +15,27 @@ const formatDateForUrl = (date: Date) => {
 
 const parseDateFromUrl = (dateStr: string): Date | undefined => {
   if (!dateStr || dateStr.length !== 6) return undefined;
-  const year = parseInt('20' + dateStr.slice(0, 2));
-  const month = parseInt(dateStr.slice(2, 4)) - 1;
-  const day = parseInt(dateStr.slice(4, 6));
-  return new Date(year, month, day);
+  
+  try {
+    const year = parseInt(`20${dateStr.slice(0, 2)}`);
+    const month = parseInt(dateStr.slice(2, 4)) - 1; // JS months are 0-based
+    const day = parseInt(dateStr.slice(4, 6));
+    
+    const date = new Date(year, month, day);
+    
+    // Validate the date is valid
+    if (isNaN(date.getTime())) {
+      return undefined;
+    }
+    
+    // Set to noon to avoid timezone issues
+    date.setHours(12, 0, 0, 0);
+    
+    return date;
+  } catch (error) {
+    console.error('Error parsing date:', error);
+    return undefined;
+  }
 };
 
 const SearchForm = () => {
@@ -48,11 +65,13 @@ const SearchForm = () => {
         const departureDate = parseDateFromUrl(date);
         const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
         
+        console.log('Parsed dates:', { departureDate, returnDateParsed });
+        
         setFormData({
           pickup: decodeURIComponent(from.replace(/-/g, ' ')),
           dropoff: decodeURIComponent(to.replace(/-/g, ' ')),
           departureDate: isRoundTrip ? undefined : departureDate,
-          dateRange: isRoundTrip && departureDate ? {
+          dateRange: isRoundTrip ? {
             from: departureDate,
             to: returnDateParsed
           } : undefined
