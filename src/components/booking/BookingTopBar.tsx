@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, Users, Plus, Minus } from 'lucide-react';
+import { MapPin, Users, Plus, Minus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { DatePicker } from '../ui/date-picker';
+import { DateRangePicker } from '../ui/date-range-picker';
+import { DateRange } from 'react-day-picker';
 
 interface BookingTopBarProps {
   from: string;
@@ -14,21 +17,19 @@ interface BookingTopBarProps {
   currentStep?: number;
 }
 
-const formatDateForUrl = (dateStr: string) => {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
+const formatDateForUrl = (date: Date) => {
   const year = date.getFullYear().toString().slice(-2);
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const day = date.getDate().toString().padStart(2, '0');
   return `${year}${month}${day}`;
 };
 
-const formatDateForInput = (dateStr: string) => {
-  if (!dateStr || dateStr.length !== 6) return '';
-  const year = '20' + dateStr.slice(0, 2);
-  const month = dateStr.slice(2, 4);
-  const day = dateStr.slice(4, 6);
-  return `${year}-${month}-${day}`;
+const parseDateFromUrl = (dateStr: string): Date | undefined => {
+  if (!dateStr || dateStr.length !== 6) return undefined;
+  const year = parseInt('20' + dateStr.slice(0, 2));
+  const month = parseInt(dateStr.slice(2, 4)) - 1;
+  const day = parseInt(dateStr.slice(4, 6));
+  return new Date(year, month, day);
 };
 
 const BookingTopBar: React.FC<BookingTopBarProps> = ({ 
@@ -45,8 +46,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     from,
     to,
     type,
-    date: formatDateForInput(date),
-    returnDate: returnDate && returnDate !== '0' ? formatDateForInput(returnDate) : '',
+    departureDate: undefined as Date | undefined,
+    dateRange: undefined as DateRange | undefined,
     passengers: parseInt(passengers, 10)
   });
 
@@ -57,14 +58,21 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
   // Initialize values and sync with URL parameters
   useEffect(() => {
+    const departureDate = parseDateFromUrl(date);
+    const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
+    
     const initialData = {
       from,
       to,
       type,
-      date: formatDateForInput(date),
-      returnDate: returnDate && returnDate !== '0' ? formatDateForInput(returnDate) : '',
+      departureDate: type === 'one-way' ? departureDate : undefined,
+      dateRange: type === 'round-trip' && departureDate ? {
+        from: departureDate,
+        to: returnDateParsed
+      } : undefined,
       passengers: parseInt(passengers, 10)
     };
+    
     setFormData(initialData);
     setDisplayPassengers(parseInt(passengers, 10));
     setInitialFormData(initialData);
@@ -147,50 +155,6 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     }
   };
 
-  const handlePickupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setPickupValue(value);
-    setFormData(prev => ({ ...prev, from: value }));
-  };
-
-  const handleDropoffChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setDropoffValue(value);
-    setFormData(prev => ({ ...prev, to: value }));
-  };
-
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    
-    if (name === 'date') {
-      // When departure date changes, check if return date is before it
-      const departureDate = new Date(value);
-      const returnDate = new Date(formData.returnDate);
-      
-      if (formData.returnDate && returnDate < departureDate) {
-        // Reset return date if it's before the new departure date
-        setFormData(prev => ({
-          ...prev,
-          date: value,
-          returnDate: ''
-        }));
-      } else {
-        setFormData(prev => ({ ...prev, date: value }));
-      }
-    } else if (name === 'returnDate') {
-      // When return date changes, validate it's after departure date
-      const departureDate = new Date(formData.date);
-      const returnDate = new Date(value);
-      
-      if (returnDate < departureDate) {
-        // Reset return date if it's before departure date
-        setFormData(prev => ({ ...prev, returnDate: '' }));
-      } else {
-        setFormData(prev => ({ ...prev, returnDate: value }));
-      }
-    }
-  };
-
   const handleUpdateRoute = () => {
     if (!hasChanges) return;
 
@@ -198,12 +162,14 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     const encodedTo = encodeURIComponent(formData.to.toLowerCase().replace(/\s+/g, '-'));
     const tripType = formData.type === 'round-trip' ? '2' : '1';
     
-    const formattedDepartureDate = formatDateForUrl(formData.date);
+    const departureDate = formData.type === 'round-trip' ? formData.dateRange?.from : formData.departureDate;
+    const formattedDepartureDate = departureDate ? formatDateForUrl(departureDate) : '';
+    
     let path = `/transfer/${encodedFrom}/${encodedTo}/${tripType}/${formattedDepartureDate}`;
     
     // Always include returnDate parameter (use '0' for one-way trips)
-    const returnDateParam = formData.type === 'round-trip' && formData.returnDate 
-      ? formatDateForUrl(formData.returnDate)
+    const returnDateParam = formData.type === 'round-trip' && formData.dateRange?.to
+      ? formatDateForUrl(formData.dateRange.to)
       : '0';
     
     path += `/${returnDateParam}/${formData.passengers}/form`;
@@ -228,7 +194,10 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
               <input
                 type="text"
                 value={pickupValue}
-                onChange={handlePickupChange}
+                onChange={(e) => {
+                  setPickupValue(e.target.value);
+                  setFormData(prev => ({ ...prev, from: e.target.value }));
+                }}
                 disabled={!pickupReady}
                 className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white disabled:bg-gray-50 disabled:opacity-75"
                 placeholder="From"
@@ -254,7 +223,10 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
               <input
                 type="text"
                 value={dropoffValue}
-                onChange={handleDropoffChange}
+                onChange={(e) => {
+                  setDropoffValue(e.target.value);
+                  setFormData(prev => ({ ...prev, to: e.target.value }));
+                }}
                 disabled={!dropoffReady}
                 className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white disabled:bg-gray-50 disabled:opacity-75"
                 placeholder="To"
@@ -274,41 +246,19 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
               )}
             </div>
 
-            {/* Departure Date */}
-            <div className="relative">
-              <Calendar className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleDateChange}
-                className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white disabled:bg-gray-50 disabled:opacity-75"
-                style={{
-                  colorScheme: 'light',
-                  WebkitAppearance: 'none',
-                  MozAppearance: 'none'
-                }}
+            {/* Date Selection */}
+            {type === 'round-trip' ? (
+              <DateRangePicker
+                dateRange={formData.dateRange}
+                onDateRangeChange={(dateRange) => setFormData(prev => ({ ...prev, dateRange }))}
+                placeholder="Select dates"
               />
-            </div>
-
-            {/* Return Date - Only shown for round trips */}
-            {type === 'round-trip' && (
-              <div className="relative">
-                <Calendar className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <input
-                  type="date"
-                  name="returnDate"
-                  value={formData.returnDate}
-                  onChange={handleDateChange}
-                  min={formData.date}
-                  className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
-                  style={{
-                    colorScheme: 'light',
-                    WebkitAppearance: 'none',
-                    MozAppearance: 'none'
-                  }}
-                />
-              </div>
+            ) : (
+              <DatePicker
+                date={formData.departureDate}
+                onDateChange={(date) => setFormData(prev => ({ ...prev, departureDate: date }))}
+                placeholder="Select date"
+              />
             )}
 
             {/* Passengers */}

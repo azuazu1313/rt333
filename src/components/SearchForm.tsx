@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, Users, ArrowRight, Minus, Plus } from 'lucide-react';
+import { MapPin, Users, ArrowRight, Minus, Plus } from 'lucide-react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
+import { DatePicker } from './ui/date-picker';
+import { DateRangePicker } from './ui/date-range-picker';
+import { DateRange } from 'react-day-picker';
 
-const formatDateForUrl = (dateStr: string) => {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
+const formatDateForUrl = (date: Date) => {
   const year = date.getFullYear().toString().slice(-2);
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const day = date.getDate().toString().padStart(2, '0');
   return `${year}${month}${day}`;
 };
 
-const parseDateFromUrl = (dateStr: string) => {
-  if (!dateStr || dateStr.length !== 6) return '';
-  const year = '20' + dateStr.slice(0, 2);
-  const month = dateStr.slice(2, 4);
-  const day = dateStr.slice(4, 6);
-  return `${year}-${month}-${day}`;
+const parseDateFromUrl = (dateStr: string): Date | undefined => {
+  if (!dateStr || dateStr.length !== 6) return undefined;
+  const year = parseInt('20' + dateStr.slice(0, 2));
+  const month = parseInt(dateStr.slice(2, 4)) - 1;
+  const day = parseInt(dateStr.slice(4, 6));
+  return new Date(year, month, day);
 };
 
 const SearchForm = () => {
@@ -29,8 +30,8 @@ const SearchForm = () => {
   const [formData, setFormData] = useState({
     pickup: '',
     dropoff: '',
-    departureDate: '',
-    returnDate: ''
+    departureDate: undefined as Date | undefined,
+    dateRange: undefined as DateRange | undefined
   });
 
   // Initialize form data from URL if coming from booking flow
@@ -40,14 +41,23 @@ const SearchForm = () => {
       const { from, to, type, date, returnDate, passengers: passengerCount } = params;
       
       if (from && to && type && date) {
-        setIsReturn(type === '2');
+        const isRoundTrip = type === '2';
+        setIsReturn(isRoundTrip);
         setPassengers(Math.max(1, parseInt(passengerCount || '1', 10)));
+        
+        const departureDate = parseDateFromUrl(date);
+        const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
+        
         setFormData({
           pickup: decodeURIComponent(from.replace(/-/g, ' ')),
           dropoff: decodeURIComponent(to.replace(/-/g, ' ')),
-          departureDate: parseDateFromUrl(date),
-          returnDate: returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : ''
+          departureDate: isRoundTrip ? undefined : departureDate,
+          dateRange: isRoundTrip && departureDate ? {
+            from: departureDate,
+            to: returnDateParsed
+          } : undefined
         });
+        
         setPickupValue(decodeURIComponent(from.replace(/-/g, ' ')), false);
         setDropoffValue(decodeURIComponent(to.replace(/-/g, ' ')), false);
       }
@@ -112,12 +122,12 @@ const SearchForm = () => {
     const pickup = pickupValue || formData.pickup;
     const dropoff = dropoffValue || formData.dropoff;
     
-    if (!pickup || !dropoff || !formData.departureDate) {
+    if (!pickup || !dropoff || (!formData.departureDate && !formData.dateRange?.from)) {
       alert('Please fill in all required fields');
       return;
     }
 
-    if (isReturn && !formData.returnDate) {
+    if (isReturn && !formData.dateRange?.to) {
       alert('Please select a return date for round trips');
       return;
     }
@@ -125,60 +135,20 @@ const SearchForm = () => {
     const encodedPickup = encodeURIComponent(pickup.toLowerCase().replace(/\s+/g, '-'));
     const encodedDropoff = encodeURIComponent(dropoff.toLowerCase().replace(/\s+/g, '-'));
     const type = isReturn ? '2' : '1';
-    const formattedDepartureDate = formatDateForUrl(formData.departureDate);
+    
+    const departureDate = isReturn ? formData.dateRange?.from : formData.departureDate;
+    const formattedDepartureDate = departureDate ? formatDateForUrl(departureDate) : '';
     
     let path = `/transfer/${encodedPickup}/${encodedDropoff}/${type}/${formattedDepartureDate}`;
     
     // Always include returnDate parameter (use '0' for one-way trips)
-    const returnDateParam = isReturn && formData.returnDate 
-      ? formatDateForUrl(formData.returnDate)
+    const returnDateParam = isReturn && formData.dateRange?.to
+      ? formatDateForUrl(formData.dateRange.to)
       : '0';
     
     path += `/${returnDateParam}/${passengers}/form`;
     
     navigate(path);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    if (name === 'pickup') {
-      setPickupValue(value);
-    } else if (name === 'dropoff') {
-      setDropoffValue(value);
-    }
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    
-    if (name === 'departureDate') {
-      // When departure date changes, check if return date is before it
-      const departureDate = new Date(value);
-      const returnDate = new Date(formData.returnDate);
-      
-      if (formData.returnDate && returnDate < departureDate) {
-        // Reset return date if it's before the new departure date
-        setFormData(prev => ({
-          ...prev,
-          departureDate: value,
-          returnDate: ''
-        }));
-      } else {
-        setFormData(prev => ({ ...prev, departureDate: value }));
-      }
-    } else if (name === 'returnDate') {
-      // When return date changes, validate it's after departure date
-      const departureDate = new Date(formData.departureDate);
-      const returnDate = new Date(value);
-      
-      if (returnDate < departureDate) {
-        // Reset return date if it's before departure date
-        setFormData(prev => ({ ...prev, returnDate: '' }));
-      } else {
-        setFormData(prev => ({ ...prev, returnDate: value }));
-      }
-    }
   };
 
   return (
@@ -210,9 +180,8 @@ const SearchForm = () => {
             <input
               type="text"
               placeholder="Pickup location"
-              name="pickup"
               value={pickupValue}
-              onChange={handleInputChange}
+              onChange={(e) => setPickupValue(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
             {pickupStatus === "OK" && (
@@ -236,9 +205,8 @@ const SearchForm = () => {
             <input
               type="text"
               placeholder="Dropoff location"
-              name="dropoff"
               value={dropoffValue}
-              onChange={handleInputChange}
+              onChange={(e) => setDropoffValue(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
             {dropoffStatus === "OK" && (
@@ -256,43 +224,20 @@ const SearchForm = () => {
             )}
           </div>
 
-          {/* Departure Date */}
-          <div className="relative">
-            <Calendar className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-            <input
-              type="date"
-              name="departureDate"
-              value={formData.departureDate}
-              onChange={handleDateChange}
-              className="w-full pl-10 pr-4 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none"
-              style={{
-                colorScheme: 'light',
-                WebkitAppearance: 'none',
-                MozAppearance: 'none'
-              }}
+          {/* Date Selection */}
+          {isReturn ? (
+            <DateRangePicker
+              dateRange={formData.dateRange}
+              onDateRangeChange={(dateRange) => setFormData(prev => ({ ...prev, dateRange }))}
+              placeholder="Select departure & return dates"
             />
-          </div>
-
-          {/* Return Date */}
-          <div className="relative">
-            <Calendar className={`absolute left-3 top-3 h-5 w-5 ${isReturn ? 'text-gray-400' : 'text-gray-300'}`} />
-            <input
-              type="date"
-              name="returnDate"
-              value={formData.returnDate}
-              onChange={handleDateChange}
-              disabled={!isReturn}
-              min={formData.departureDate}
-              className={`w-full pl-10 pr-4 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none ${
-                !isReturn ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''
-              }`}
-              style={{
-                colorScheme: 'light',
-                WebkitAppearance: 'none',
-                MozAppearance: 'none'
-              }}
+          ) : (
+            <DatePicker
+              date={formData.departureDate}
+              onDateChange={(date) => setFormData(prev => ({ ...prev, departureDate: date }))}
+              placeholder="Select departure date"
             />
-          </div>
+          )}
 
           {/* Passengers */}
           <div className="relative flex items-center">
