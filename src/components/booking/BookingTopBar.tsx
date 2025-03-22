@@ -7,16 +7,6 @@ import { DatePicker } from '../ui/date-picker';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 
-interface BookingTopBarProps {
-  from: string;
-  to: string;
-  type: 'one-way' | 'round-trip';
-  date: string;
-  returnDate?: string;
-  passengers: string;
-  currentStep?: number;
-}
-
 const formatDateForUrl = (date: Date) => {
   const year = date.getFullYear().toString().slice(-2);
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -26,11 +16,38 @@ const formatDateForUrl = (date: Date) => {
 
 const parseDateFromUrl = (dateStr: string): Date | undefined => {
   if (!dateStr || dateStr.length !== 6) return undefined;
-  const year = parseInt('20' + dateStr.slice(0, 2));
-  const month = parseInt(dateStr.slice(2, 4)) - 1;
-  const day = parseInt(dateStr.slice(4, 6));
-  return new Date(year, month, day);
+  
+  try {
+    const year = parseInt(`20${dateStr.slice(0, 2)}`);
+    const month = parseInt(dateStr.slice(2, 4)) - 1; // JS months are 0-based
+    const day = parseInt(dateStr.slice(4, 6));
+    
+    const date = new Date(year, month, day);
+    
+    // Validate the date is valid
+    if (isNaN(date.getTime())) {
+      return undefined;
+    }
+    
+    // Set to noon to avoid timezone issues
+    date.setHours(12, 0, 0, 0);
+    
+    return date;
+  } catch (error) {
+    console.error('Error parsing date:', error);
+    return undefined;
+  }
 };
+
+interface BookingTopBarProps {
+  from: string;
+  to: string;
+  type: 'one-way' | 'round-trip';
+  date: string;
+  returnDate?: string;
+  passengers: string;
+  currentStep?: number;
+}
 
 const BookingTopBar: React.FC<BookingTopBarProps> = ({ 
   from, 
