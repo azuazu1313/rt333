@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for date input across browsers */
+input[type="date"] {
+  min-height: 42px; /* Set a fixed height that matches other inputs */
+  line-height: 42px; /* Match the height for text alignment */
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  background: transparent;
+  bottom: 0;
+  color: transparent;
+  cursor: pointer;
+  height: auto;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: auto;
+}
+
+input[type="date"]::-webkit-inner-spin-button,
+input[type="date"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+input[type="date"]::-webkit-datetime-edit {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* Ensure placeholder text is vertically centered */
+input[type="date"]::-webkit-datetime-edit-text,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  padding: 0;
+  min-height: 42px;
+  line-height: 42px;
+  display: flex;
+  align-items: center;
+}
