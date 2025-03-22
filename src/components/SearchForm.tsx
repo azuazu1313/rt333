@@ -158,14 +158,12 @@ const SearchForm = () => {
     const departureDate = isReturn ? formData.dateRange?.from : formData.departureDate;
     const formattedDepartureDate = departureDate ? formatDateForUrl(departureDate) : '';
     
-    let path = `/transfer/${encodedPickup}/${encodedDropoff}/${type}/${formattedDepartureDate}`;
-    
     // Always include returnDate parameter (use '0' for one-way trips)
     const returnDateParam = isReturn && formData.dateRange?.to
       ? formatDateForUrl(formData.dateRange.to)
       : '0';
     
-    path += `/${returnDateParam}/${passengers}/form`;
+    const path = `/transfer/${encodedPickup}/${encodedDropoff}/${type}/${formattedDepartureDate}/${returnDateParam}/${passengers}/form`;
     
     navigate(path);
   };

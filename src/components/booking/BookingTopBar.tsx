@@ -182,14 +182,12 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     const departureDate = formData.type === 'round-trip' ? formData.dateRange?.from : formData.departureDate;
     const formattedDepartureDate = departureDate ? formatDateForUrl(departureDate) : '';
     
-    let path = `/transfer/${encodedFrom}/${encodedTo}/${tripType}/${formattedDepartureDate}`;
-    
     // Always include returnDate parameter (use '0' for one-way trips)
     const returnDateParam = formData.type === 'round-trip' && formData.dateRange?.to
       ? formatDateForUrl(formData.dateRange.to)
       : '0';
     
-    path += `/${returnDateParam}/${formData.passengers}/form`;
+    const path = `/transfer/${encodedFrom}/${encodedTo}/${tripType}/${formattedDepartureDate}/${returnDateParam}/${formData.passengers}/form`;
 
     // Always navigate to step 1 when updating route
     navigate(path);
