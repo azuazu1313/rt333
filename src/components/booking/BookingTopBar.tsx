@@ -14,13 +14,6 @@ const formatDateForUrl = (date: Date) => {
   return `${year}${month}${day}`;
 };
 
-const isValidDate = (year: number, month: number, day: number): boolean => {
-  const date = new Date(year, month - 1, day);
-  return date.getFullYear() === year && 
-         date.getMonth() === month - 1 && 
-         date.getDate() === day;
-};
-
 const parseDateFromUrl = (dateStr: string): Date | undefined => {
   if (!dateStr || dateStr === '0' || dateStr.length !== 6) {
     console.log('[DEBUG] Invalid date string:', dateStr);
@@ -31,12 +24,6 @@ const parseDateFromUrl = (dateStr: string): Date | undefined => {
     const year = parseInt(`20${dateStr.slice(0, 2)}`);
     const month = parseInt(dateStr.slice(2, 4));
     const day = parseInt(dateStr.slice(4, 6));
-    
-    // Validate date components
-    if (!isValidDate(year, month, day)) {
-      console.log('[DEBUG] Invalid date components:', { year, month, day });
-      return undefined;
-    }
     
     // Create date at noon to avoid timezone issues
     const date = new Date(year, month - 1, day, 12, 0, 0, 0);
@@ -81,14 +68,6 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   const departureDate = parseDateFromUrl(date);
   const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
 
-  console.log('[DEBUG] Date params:', {
-    date,
-    returnDate,
-    parsedDeparture: departureDate,
-    parsedReturn: returnDateParsed,
-    isRoundTrip
-  });
-
   // Initialize form data based on trip type
   const initialFormData = {
     from,
@@ -109,12 +88,6 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
   // Initialize values and sync with URL parameters
   useEffect(() => {
-    console.log('[DEBUG] Initializing form data:', {
-      departureDate,
-      returnDateParsed,
-      isRoundTrip
-    });
-
     const newFormData = {
       from,
       to,
@@ -132,7 +105,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     setDisplayPassengers(parseInt(passengers, 10));
     setPickupValue(from, false);
     setDropoffValue(to, false);
-  }, [from, to, type, date, returnDate, passengers]);
+  }, [from, to, type, date, returnDate, passengers, isRoundTrip, departureDate, returnDateParsed]);
 
   // Check for changes against saved data
   useEffect(() => {
