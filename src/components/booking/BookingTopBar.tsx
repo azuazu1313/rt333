@@ -68,23 +68,21 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   const departureDate = parseDateFromUrl(date);
   const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
 
-  // Initialize form data based on trip type
-  const initialFormData = {
+  const [formData, setFormData] = useState({
     from,
     to,
     type,
-    departureDate: !isRoundTrip ? departureDate : undefined,
+    departureDate: departureDate,
     dateRange: isRoundTrip ? {
       from: departureDate,
       to: returnDateParsed
     } as DateRange | undefined : undefined,
     passengers: parseInt(passengers, 10)
-  };
+  });
 
-  const [formData, setFormData] = useState(initialFormData);
   const [displayPassengers, setDisplayPassengers] = useState(parseInt(passengers, 10));
   const [hasChanges, setHasChanges] = useState(false);
-  const [savedFormData, setSavedFormData] = useState(initialFormData);
+  const [savedFormData, setSavedFormData] = useState(formData);
 
   // Initialize values and sync with URL parameters
   useEffect(() => {
@@ -92,7 +90,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       from,
       to,
       type,
-      departureDate: !isRoundTrip ? departureDate : undefined,
+      departureDate: departureDate,
       dateRange: isRoundTrip ? {
         from: departureDate,
         to: returnDateParsed
@@ -179,22 +177,24 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     const encodedFrom = encodeURIComponent(formData.from.toLowerCase().replace(/\s+/g, '-'));
     const encodedTo = encodeURIComponent(formData.to.toLowerCase().replace(/\s+/g, '-'));
     
-    // For round trips, ensure both dates are present
-    if (isRoundTrip && (!formData.dateRange?.from || !formData.dateRange?.to)) {
-      alert('Please select both departure and return dates for round trips.');
-      return;
-    }
+    let formattedDepartureDate;
+    let formattedReturnDate = '0';
 
-    const departureDate = isRoundTrip ? formData.dateRange?.from : formData.departureDate;
-    const formattedDepartureDate = departureDate ? formatDateForUrl(departureDate) : date;
+    if (isRoundTrip && formData.dateRange) {
+      if (!formData.dateRange.from || !formData.dateRange.to) {
+        alert('Please select both departure and return dates for round trips.');
+        return;
+      }
+      formattedDepartureDate = formatDateForUrl(formData.dateRange.from);
+      formattedReturnDate = formatDateForUrl(formData.dateRange.to);
+    } else if (!isRoundTrip && formData.departureDate) {
+      formattedDepartureDate = formatDateForUrl(formData.departureDate);
+    } else {
+      formattedDepartureDate = date;
+    }
     
-    const returnDateParam = isRoundTrip && formData.dateRange?.to
-      ? formatDateForUrl(formData.dateRange.to)
-      : returnDate || '0';
-    
-    // Preserve the current route structure (home/transfer vs transfer)
     const baseRoute = location.pathname.startsWith('/home') ? '/home/transfer' : '/transfer';
-    const path = `${baseRoute}/${encodedFrom}/${encodedTo}/${type}/${formattedDepartureDate}/${returnDateParam}/${formData.passengers}/form`;
+    const path = `${baseRoute}/${encodedFrom}/${encodedTo}/${type}/${formattedDepartureDate}/${formattedReturnDate}/${formData.passengers}/form`;
 
     navigate(path);
     setSavedFormData(formData);
@@ -269,14 +269,26 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
               <div className="col-span-2">
                 <DateRangePicker
                   dateRange={formData.dateRange}
-                  onDateRangeChange={(dateRange) => setFormData(prev => ({ ...prev, dateRange }))}
+                  onDateRangeChange={(dateRange) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      dateRange,
+                      departureDate: undefined
+                    }));
+                  }}
                   placeholder="Select dates"
                 />
               </div>
             ) : (
               <DatePicker
                 date={formData.departureDate}
-                onDateChange={(date) => setFormData(prev => ({ ...prev, departureDate: date }))}
+                onDateChange={(date) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    departureDate: date,
+                    dateRange: undefined
+                  }));
+                }}
                 placeholder="Select date"
               />
             )}
