@@ -149,6 +149,38 @@ const SearchForm = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    if (name === 'departureDate') {
+      // When departure date changes, check if return date is before it
+      const departureDate = new Date(value);
+      const returnDate = new Date(formData.returnDate);
+      
+      if (formData.returnDate && returnDate < departureDate) {
+        // Reset return date if it's before the new departure date
+        setFormData(prev => ({
+          ...prev,
+          departureDate: value,
+          returnDate: ''
+        }));
+      } else {
+        setFormData(prev => ({ ...prev, departureDate: value }));
+      }
+    } else if (name === 'returnDate') {
+      // When return date changes, validate it's after departure date
+      const departureDate = new Date(formData.departureDate);
+      const returnDate = new Date(value);
+      
+      if (returnDate < departureDate) {
+        // Reset return date if it's before departure date
+        setFormData(prev => ({ ...prev, returnDate: '' }));
+      } else {
+        setFormData(prev => ({ ...prev, returnDate: value }));
+      }
+    }
+  };
+
   return (
     <div className="bg-white p-6 md:p-8 rounded-lg shadow-lg w-full">
       <div className="flex flex-col space-y-6">
@@ -210,8 +242,7 @@ const SearchForm = () => {
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
             {dropoffStatus === "OK" && (
-              <ul className="absolute z-10 w-full bg-white mt-1 rounded-m
-d shadow-lg max-h-60 overflow-auto">
+              <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
                 {dropoffSuggestions.map((suggestion) => (
                   <li
                     key={suggestion.place_id}
@@ -232,7 +263,7 @@ d shadow-lg max-h-60 overflow-auto">
               type="date"
               name="departureDate"
               value={formData.departureDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, departureDate: e.target.value }))}
+              onChange={handleDateChange}
               className="w-full pl-10 pr-4 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none"
               style={{
                 colorScheme: 'light',
@@ -249,8 +280,9 @@ d shadow-lg max-h-60 overflow-auto">
               type="date"
               name="returnDate"
               value={formData.returnDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, returnDate: e.target.value }))}
+              onChange={handleDateChange}
               disabled={!isReturn}
+              min={formData.departureDate}
               className={`w-full pl-10 pr-4 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 appearance-none ${
                 !isReturn ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''
               }`}

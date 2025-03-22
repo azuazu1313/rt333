@@ -161,7 +161,34 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'date') {
+      // When departure date changes, check if return date is before it
+      const departureDate = new Date(value);
+      const returnDate = new Date(formData.returnDate);
+      
+      if (formData.returnDate && returnDate < departureDate) {
+        // Reset return date if it's before the new departure date
+        setFormData(prev => ({
+          ...prev,
+          date: value,
+          returnDate: ''
+        }));
+      } else {
+        setFormData(prev => ({ ...prev, date: value }));
+      }
+    } else if (name === 'returnDate') {
+      // When return date changes, validate it's after departure date
+      const departureDate = new Date(formData.date);
+      const returnDate = new Date(value);
+      
+      if (returnDate < departureDate) {
+        // Reset return date if it's before departure date
+        setFormData(prev => ({ ...prev, returnDate: '' }));
+      } else {
+        setFormData(prev => ({ ...prev, returnDate: value }));
+      }
+    }
   };
 
   const handleUpdateRoute = () => {
@@ -273,6 +300,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                   name="returnDate"
                   value={formData.returnDate}
                   onChange={handleDateChange}
+                  min={formData.date}
                   className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
                   style={{
                     colorScheme: 'light',
@@ -287,8 +315,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
             <div className="relative">
               <Users className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <div className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg bg-white flex justify-between items-center">
-                <span className="text-gray-700">
-                  {displayPassengers} 
+                <span className="text-gray-700 text-[12px]">
+                  {displayPassengers} {' '}
                   Passenger{displayPassengers !== 1 ? 's' : ''}
                 </span>
                 <div className="flex items-center space-x-2">
