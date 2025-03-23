@@ -59,6 +59,7 @@ const VehicleSelection = () => {
           onClose={() => setModalVehicle(null)}
           onSelect={() => setSelectedVehicle(modalVehicle)}
           vehicle={modalVehicle}
+          isSelected={selectedVehicle.id === modalVehicle.id}
         />
       )}
     </BookingLayout>
