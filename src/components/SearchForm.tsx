@@ -176,7 +176,17 @@ const SearchForm = () => {
             className={`flex-1 py-2 text-center rounded-lg transition-colors ${
               isReturn ? 'bg-blue-600 text-white' : 'text-gray-700'
             }`}
-            onClick={() => setIsReturn(true)}
+            onClick={() => {
+              setIsReturn(true);
+              // Clear single date when switching to round trip
+              if (!isReturn) {
+                setFormData(prev => ({
+                  ...prev,
+                  departureDate: undefined,
+                  dateRange: undefined
+                }));
+              }
+            }}
           >
             Round Trip
           </button>
@@ -184,7 +194,17 @@ const SearchForm = () => {
             className={`flex-1 py-2 text-center rounded-lg transition-colors ${
               !isReturn ? 'bg-blue-600 text-white' : 'text-gray-700'
             }`}
-            onClick={() => setIsReturn(false)}
+            onClick={() => {
+              setIsReturn(false);
+              // Clear date range when switching to one way
+              if (isReturn) {
+                setFormData(prev => ({
+                  ...prev,
+                  departureDate: undefined,
+                  dateRange: undefined
+                }));
+              }
+            }}
           >
             One Way
           </button>
@@ -245,13 +265,21 @@ const SearchForm = () => {
           {isReturn ? (
             <DateRangePicker
               dateRange={formData.dateRange}
-              onDateRangeChange={(dateRange) => setFormData(prev => ({ ...prev, dateRange }))}
+              onDateRangeChange={(dateRange) => setFormData(prev => ({
+                ...prev,
+                dateRange,
+                departureDate: undefined
+              }))}
               placeholder="Select departure & return dates"
             />
           ) : (
             <DatePicker
               date={formData.departureDate}
-              onDateChange={(date) => setFormData(prev => ({ ...prev, departureDate: date }))}
+              onDateChange={(date) => setFormData(prev => ({
+                ...prev,
+                departureDate: date,
+                dateRange: undefined
+              }))}
               placeholder="Select departure date"
             />
           )}

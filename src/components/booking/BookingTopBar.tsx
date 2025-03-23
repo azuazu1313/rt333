@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapPin, Users, Plus, Minus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
-import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { DatePicker } from '../ui/date-picker';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
@@ -22,11 +22,11 @@ const parseDateFromUrl = (dateStr: string): Date | undefined => {
   
   try {
     const year = parseInt(`20${dateStr.slice(0, 2)}`);
-    const month = parseInt(dateStr.slice(2, 4));
+    const month = parseInt(dateStr.slice(2, 4)) - 1;
     const day = parseInt(dateStr.slice(4, 6));
     
     // Create date at noon to avoid timezone issues
-    const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+    const date = new Date(year, month, day, 12, 0, 0, 0);
     
     // Final validation
     if (isNaN(date.getTime())) {
@@ -72,7 +72,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     from,
     to,
     type,
-    departureDate: departureDate,
+    departureDate: isRoundTrip ? undefined : departureDate,
     dateRange: isRoundTrip ? {
       from: departureDate,
       to: returnDateParsed
@@ -82,34 +82,31 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
   const [displayPassengers, setDisplayPassengers] = useState(parseInt(passengers, 10));
   const [hasChanges, setHasChanges] = useState(false);
-  const [savedFormData, setSavedFormData] = useState(formData);
 
-  // Initialize values and sync with URL parameters
+  // Initialize values and sync with URL parameters only once on mount or when URL params change
   useEffect(() => {
-    const newFormData = {
-      from,
-      to,
-      type,
-      departureDate: departureDate,
-      dateRange: isRoundTrip ? {
-        from: departureDate,
-        to: returnDateParsed
-      } as DateRange | undefined : undefined,
-      passengers: parseInt(passengers, 10)
-    };
-
-    setFormData(newFormData);
-    setSavedFormData(newFormData);
-    setDisplayPassengers(parseInt(passengers, 10));
     setPickupValue(from, false);
     setDropoffValue(to, false);
-  }, [from, to, type, date, returnDate, passengers, isRoundTrip, departureDate, returnDateParsed]);
+  }, [from, to]);
 
-  // Check for changes against saved data
+  // Check for changes against URL params
   useEffect(() => {
-    const hasFormChanges = JSON.stringify(formData) !== JSON.stringify(savedFormData);
+    const currentDateStr = formData.departureDate ? formatDateForUrl(formData.departureDate) : '';
+    const currentReturnDateStr = formData.dateRange?.to ? formatDateForUrl(formData.dateRange.to) : '0';
+    
+    const hasFormChanges = 
+      formData.from !== from ||
+      formData.to !== to ||
+      formData.passengers !== parseInt(passengers, 10) ||
+      (isRoundTrip && (
+        !formData.dateRange ||
+        currentDateStr !== date ||
+        currentReturnDateStr !== returnDate
+      )) ||
+      (!isRoundTrip && currentDateStr !== date);
+
     setHasChanges(hasFormChanges);
-  }, [formData, savedFormData]);
+  }, [formData, from, to, date, returnDate, passengers, isRoundTrip]);
 
   const {
     ready: pickupReady,
@@ -197,8 +194,6 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     const path = `${baseRoute}/${encodedFrom}/${encodedTo}/${type}/${formattedDepartureDate}/${formattedReturnDate}/${formData.passengers}/form`;
 
     navigate(path);
-    setSavedFormData(formData);
-    setHasChanges(false);
   };
 
   return (
