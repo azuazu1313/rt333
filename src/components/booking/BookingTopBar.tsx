@@ -230,23 +230,30 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col space-y-6">
           {/* Trip Type Toggle */}
-          <div className="flex bg-gray-100 p-1 rounded-lg w-64">
-            <button
-              className={`flex-1 py-2 text-center rounded-lg transition-colors ${
-                isRoundTrip ? 'bg-blue-600 text-white' : 'text-gray-700'
+          <div className="relative w-64 h-10 bg-gray-100 rounded-lg p-1">
+            <div 
+              className={`absolute inset-y-1 w-[calc(50%-4px)] bg-blue-600 rounded-md transition-all duration-300 ${
+                isRoundTrip ? 'left-1' : 'left-[calc(50%+3px)]'
               }`}
-              onClick={() => handleTripTypeChange(true)}
-            >
-              Round Trip
-            </button>
-            <button
-              className={`flex-1 py-2 text-center rounded-lg transition-colors ${
-                !isRoundTrip ? 'bg-blue-600 text-white' : 'text-gray-700'
-              }`}
-              onClick={() => handleTripTypeChange(false)}
-            >
-              One Way
-            </button>
+            />
+            <div className="relative flex h-full">
+              <button
+                className={`flex-1 rounded-md transition-colors z-10 ${
+                  isRoundTrip ? 'text-white' : 'text-gray-700'
+                }`}
+                onClick={() => handleTripTypeChange(true)}
+              >
+                Round Trip
+              </button>
+              <button
+                className={`flex-1 rounded-md transition-colors z-10 ${
+                  !isRoundTrip ? 'text-white' : 'text-gray-700'
+                }`}
+                onClick={() => handleTripTypeChange(false)}
+              >
+                One Way
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
@@ -390,3 +397,5 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 };
 
 export default BookingTopBar;
+
+export default BookingTopBar
