@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Users, ArrowRight, Minus, Plus } from 'lucide-react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { DatePicker } from './ui/date-picker';
@@ -41,6 +41,18 @@ const SearchForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
+
+  // Store original values for comparison and restoration
+  const originalValuesRef = useRef({
+    isReturn: true,
+    pickup: '',
+    dropoff: '',
+    departureDate: undefined as Date | undefined,
+    dateRange: undefined as DateRange | undefined,
+    passengers: 1
+  });
+
+  // Current form state
   const [isReturn, setIsReturn] = useState(true);
   const [passengers, setPassengers] = useState(1);
   const [formData, setFormData] = useState({
@@ -49,6 +61,9 @@ const SearchForm = () => {
     departureDate: undefined as Date | undefined,
     dateRange: undefined as DateRange | undefined
   });
+
+  // Flag to track if user has made changes that differ from original values
+  const [hasChanges, setHasChanges] = useState(false);
 
   // Initialize form data from URL if coming from booking flow
   useEffect(() => {
@@ -65,10 +80,7 @@ const SearchForm = () => {
         const departureDate = parseDateFromUrl(date);
         const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
         
-        console.log('SearchForm - Parsed dates:', { departureDate, returnDateParsed });
-        console.log('SearchForm - Trip type:', type, 'isReturn should be:', isRoundTrip);
-        
-        setFormData({
+        const newFormData = {
           pickup: decodeURIComponent(from.replace(/-/g, ' ')),
           dropoff: decodeURIComponent(to.replace(/-/g, ' ')),
           departureDate: isRoundTrip ? undefined : departureDate,
@@ -76,10 +88,37 @@ const SearchForm = () => {
             from: departureDate,
             to: returnDateParsed
           } : undefined
-        });
+        };
+
+        setFormData(newFormData);
+
+        // Store original values for comparison
+        originalValuesRef.current = {
+          isReturn: isRoundTrip,
+          pickup: newFormData.pickup,
+          dropoff: newFormData.dropoff,
+          departureDate: newFormData.departureDate,
+          dateRange: newFormData.dateRange,
+          passengers: Math.max(1, parseInt(passengerCount || '1', 10))
+        };
       }
     }
   }, [location.pathname, params]);
+
+  // Check for changes whenever form state updates
+  useEffect(() => {
+    const original = originalValuesRef.current;
+    
+    const hasFormChanges = 
+      isReturn !== original.isReturn ||
+      formData.pickup !== original.pickup ||
+      formData.dropoff !== original.dropoff ||
+      passengers !== original.passengers ||
+      (isReturn && JSON.stringify(formData.dateRange) !== JSON.stringify(original.dateRange)) ||
+      (!isReturn && formData.departureDate !== original.departureDate);
+
+    setHasChanges(hasFormChanges);
+  }, [isReturn, formData, passengers]);
 
   const handlePickupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, pickup: e.target.value }));
@@ -91,6 +130,41 @@ const SearchForm = () => {
 
   const handlePassengerChange = (increment: boolean) => {
     setPassengers(prev => Math.max(1, Math.min(100, increment ? prev + 1 : prev - 1)));
+  };
+
+  const handleTripTypeChange = (oneWay: boolean) => {
+    const newIsReturn = !oneWay;
+    setIsReturn(newIsReturn);
+    
+    if (newIsReturn) {
+      // If switching back to round trip and no changes were saved,
+      // restore the original round trip state
+      if (!hasChanges) {
+        setFormData(prev => ({
+          ...prev,
+          departureDate: undefined,
+          dateRange: originalValuesRef.current.dateRange
+        }));
+      } else {
+        // If there were changes, convert the current departure date to a date range
+        setFormData(prev => ({
+          ...prev,
+          departureDate: undefined,
+          dateRange: prev.departureDate ? {
+            from: prev.departureDate,
+            to: undefined
+          } : undefined
+        }));
+      }
+    } else {
+      // If switching to one way
+      setFormData(prev => ({
+        ...prev,
+        // Use the departure date from the date range if it exists
+        departureDate: prev.dateRange?.from || prev.departureDate,
+        dateRange: undefined
+      }));
+    }
   };
 
   const handleSubmit = () => {
@@ -121,9 +195,20 @@ const SearchForm = () => {
       ? formatDateForUrl(formData.dateRange.to)
       : '0';
     
-    console.log('SearchForm - Submitting with type:', type, '(isReturn:', isReturn, ')');
-    
     const path = `/transfer/${encodedPickup}/${encodedDropoff}/${type}/${formattedDepartureDate}/${returnDateParam}/${passengers}/form`;
+    
+    // Update original values to match the new state
+    originalValuesRef.current = {
+      isReturn,
+      pickup: formData.pickup,
+      dropoff: formData.dropoff,
+      departureDate: formData.departureDate,
+      dateRange: formData.dateRange,
+      passengers
+    };
+
+    // Reset changes flag since we're saving the current state
+    setHasChanges(false);
     
     navigate(path);
   };
@@ -136,17 +221,7 @@ const SearchForm = () => {
             className={`flex-1 py-2 text-center rounded-lg transition-colors ${
               isReturn ? 'bg-blue-600 text-white' : 'text-gray-700'
             }`}
-            onClick={() => {
-              setIsReturn(true);
-              // Clear single date when switching to round trip
-              if (!isReturn) {
-                setFormData(prev => ({
-                  ...prev,
-                  departureDate: undefined,
-                  dateRange: undefined
-                }));
-              }
-            }}
+            onClick={() => handleTripTypeChange(false)}
           >
             Round Trip
           </button>
@@ -154,17 +229,7 @@ const SearchForm = () => {
             className={`flex-1 py-2 text-center rounded-lg transition-colors ${
               !isReturn ? 'bg-blue-600 text-white' : 'text-gray-700'
             }`}
-            onClick={() => {
-              setIsReturn(false);
-              // Clear date range when switching to one way
-              if (isReturn) {
-                setFormData(prev => ({
-                  ...prev,
-                  departureDate: undefined,
-                  dateRange: undefined
-                }));
-              }
-            }}
+            onClick={() => handleTripTypeChange(true)}
           >
             One Way
           </button>
@@ -248,10 +313,15 @@ const SearchForm = () => {
         </div>
 
         <button 
-          className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+          className={`w-full py-3 rounded-md transition-all duration-300 flex items-center justify-center space-x-2 ${
+            hasChanges 
+              ? 'bg-blue-600 text-white hover:bg-blue-700' 
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          }`}
           onClick={handleSubmit}
+          disabled={!hasChanges}
         >
-          <span>See Prices</span>
+          <span>Update Route</span>
           <ArrowRight className="h-5 w-5" />
         </button>
       </div>
