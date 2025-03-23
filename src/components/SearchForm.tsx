@@ -62,9 +62,6 @@ const SearchForm = () => {
     dateRange: undefined as DateRange | undefined
   });
 
-  // Flag to track if user has made changes that differ from original values
-  const [hasChanges, setHasChanges] = useState(false);
-
   // Initialize form data from URL if coming from booking flow
   useEffect(() => {
     // Check if we're on the pre-filled home route
@@ -105,21 +102,6 @@ const SearchForm = () => {
     }
   }, [location.pathname, params]);
 
-  // Check for changes whenever form state updates
-  useEffect(() => {
-    const original = originalValuesRef.current;
-    
-    const hasFormChanges = 
-      isReturn !== original.isReturn ||
-      formData.pickup !== original.pickup ||
-      formData.dropoff !== original.dropoff ||
-      passengers !== original.passengers ||
-      (isReturn && JSON.stringify(formData.dateRange) !== JSON.stringify(original.dateRange)) ||
-      (!isReturn && formData.departureDate !== original.departureDate);
-
-    setHasChanges(hasFormChanges);
-  }, [isReturn, formData, passengers]);
-
   const handlePickupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, pickup: e.target.value }));
   };
@@ -134,28 +116,31 @@ const SearchForm = () => {
 
   const handleTripTypeChange = (oneWay: boolean) => {
     const newIsReturn = !oneWay;
+    
+    // If we're toggling back to the original trip type without saving changes,
+    // restore the original values
+    if (newIsReturn === originalValuesRef.current.isReturn) {
+      setIsReturn(newIsReturn);
+      setFormData({
+        ...formData,
+        departureDate: originalValuesRef.current.departureDate,
+        dateRange: originalValuesRef.current.dateRange
+      });
+      return;
+    }
+    
     setIsReturn(newIsReturn);
     
     if (newIsReturn) {
-      // If switching back to round trip and no changes were saved,
-      // restore the original round trip state
-      if (!hasChanges) {
-        setFormData(prev => ({
-          ...prev,
-          departureDate: undefined,
-          dateRange: originalValuesRef.current.dateRange
-        }));
-      } else {
-        // If there were changes, convert the current departure date to a date range
-        setFormData(prev => ({
-          ...prev,
-          departureDate: undefined,
-          dateRange: prev.departureDate ? {
-            from: prev.departureDate,
-            to: undefined
-          } : undefined
-        }));
-      }
+      // If switching to round trip
+      setFormData(prev => ({
+        ...prev,
+        departureDate: undefined,
+        dateRange: prev.departureDate ? {
+          from: prev.departureDate,
+          to: undefined
+        } : undefined
+      }));
     } else {
       // If switching to one way
       setFormData(prev => ({
@@ -206,9 +191,6 @@ const SearchForm = () => {
       dateRange: formData.dateRange,
       passengers
     };
-
-    // Reset changes flag since we're saving the current state
-    setHasChanges(false);
     
     navigate(path);
   };
@@ -313,15 +295,10 @@ const SearchForm = () => {
         </div>
 
         <button 
-          className={`w-full py-3 rounded-md transition-all duration-300 flex items-center justify-center space-x-2 ${
-            hasChanges 
-              ? 'bg-blue-600 text-white hover:bg-blue-700' 
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-          }`}
+          className="w-full py-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 flex items-center justify-center space-x-2" 
           onClick={handleSubmit}
-          disabled={!hasChanges}
         >
-          <span>Update Route</span>
+          <span>See Prices</span>
           <ArrowRight className="h-5 w-5" />
         </button>
       </div>

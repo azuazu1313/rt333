@@ -87,7 +87,15 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     type,
     date,
     returnDate: returnDate || '0',
-    passengers: parseInt(passengers, 10)
+    passengers: parseInt(passengers, 10),
+    isOneWay: isOneWayFromProps,
+    departureDate,
+    dateRange: isOneWayFromProps 
+      ? undefined 
+      : {
+          from: departureDate,
+          to: returnDateParsed
+        } as DateRange | undefined
   });
 
   // Form data state
@@ -209,17 +217,33 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
   const handleTripTypeChange = (oneWay: boolean) => {
     userInteractedRef.current = true;
+    const newIsOneWay = oneWay;
+    
+    // If toggling back to original state without saving, restore original values
+    if (newIsOneWay === originalValuesRef.current.isOneWay && !hasChanges) {
+      setIsOneWay(newIsOneWay);
+      setFormData(prev => ({
+        ...prev,
+        type: newIsOneWay ? '1' : '2',
+        departureDate: originalValuesRef.current.departureDate,
+        dateRange: originalValuesRef.current.dateRange
+      }));
+      return;
+    }
+    
     setIsOneWay(oneWay);
     
-    setFormData(prev => {
-      if (oneWay) {
+    if (oneWay) {
+      setFormData(prev => {
         return {
           ...prev,
           type: '1',
           departureDate: prev.dateRange?.from || prev.departureDate,
           dateRange: undefined
         };
-      } else {
+      });
+    } else {
+      setFormData(prev => {
         return {
           ...prev,
           type: '2',
@@ -229,8 +253,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
             to: prev.dateRange?.to || undefined
           }
         };
-      }
-    });
+      });
+    }
   };
 
   const handleUpdateRoute = () => {
@@ -269,7 +293,10 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       type: newType,
       date: formattedDepartureDate,
       returnDate: formattedReturnDate,
-      passengers: formData.passengers
+      passengers: formData.passengers,
+      isOneWay: isOneWay,
+      departureDate: isOneWay ? formData.departureDate : undefined,
+      dateRange: !isOneWay ? formData.dateRange : undefined
     };
 
     // Reset change detection before navigation
