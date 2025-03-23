@@ -44,6 +44,20 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
   const [isSlotted, setIsSlotted] = useState(false);
   // Track exact position for smooth transitions
   const [slotPosition, setSlotPosition] = useState(0);
+  // Track if modal is open
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Add event listener for custom modal state changes
+  useEffect(() => {
+    const handleModalStateChange = (event: CustomEvent) => {
+      setIsModalOpen(event.detail.isOpen);
+    };
+
+    window.addEventListener('modalStateChange' as any, handleModalStateChange);
+    return () => {
+      window.removeEventListener('modalStateChange' as any, handleModalStateChange);
+    };
+  }, []);
 
   // Add a class to the body to indicate this is a booking page
   useEffect(() => {
@@ -65,8 +79,6 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
       
       chatWidgets.forEach(widget => {
         if (widget && widget.style) {
-          // If we're on the transfer page, keep original position
-          // Otherwise, move it down by 65px
           widget.style.bottom = isTransferPage ? '16px' : '81px';
           widget.style.zIndex = '45';
           widget.setAttribute('data-modified-by-booking', 'true');
@@ -74,10 +86,7 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
       });
     };
     
-    // Run initially
     positionChatWidget();
-    
-    // And set up an interval to keep checking (in case widget loads later)
     const interval = setInterval(positionChatWidget, 500);
     
     return () => {
@@ -86,7 +95,6 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
       document.documentElement.classList.remove('booking-page');
       clearInterval(interval);
       
-      // Reset widget position on unmount
       const chatWidgets = document.querySelectorAll('[data-modified-by-booking="true"]');
       chatWidgets.forEach(widget => {
         if (widget instanceof HTMLElement) {
@@ -107,10 +115,7 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
       }
     };
 
-    // Initial position calculation
     updatePositions();
-    
-    // Recalculate on resize
     window.addEventListener('resize', updatePositions);
     return () => window.removeEventListener('resize', updatePositions);
   }, []);
@@ -240,7 +245,9 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
         {/* Floating/Docked Price Bar */}
         <div 
           ref={priceBarRef}
-          className={`${isSlotted ? 'absolute' : 'fixed'} left-0 right-0 px-4 sm:px-6 lg:px-8 z-[999] price-bar-container`}
+          className={`${isSlotted ? 'absolute' : 'fixed'} left-0 right-0 px-4 sm:px-6 lg:px-8 price-bar-container ${
+            isModalOpen ? 'z-[10]' : 'z-[1]'
+          }`}
           style={{
             top: isSlotted ? slotPosition : 'auto',
             bottom: isSlotted ? 'auto' : '16px'
