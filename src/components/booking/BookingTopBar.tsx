@@ -259,21 +259,137 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       {/* Main Content */}
       <div className="py-4 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-8">
-            <div className="flex-1 w-full grid grid-cols-1 gap-4">
-              {/* From Location */}
+          {/* Mobile Layout */}
+          <div className="flex flex-col space-y-4 md:hidden">
+            <div className="relative">
+              <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="From"
+                value={pickupValue}
+                onChange={(e) => setPickupValue(e.target.value)}
+                className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
+              {pickupStatus === "OK" && (
+                <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
+                  {pickupSuggestions.map((suggestion) => (
+                    <li
+                      key={suggestion.place_id}
+                      onClick={() => handlePickupSelect(suggestion)}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                    >
+                      {suggestion.description}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="relative">
+              <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="To"
+                value={dropoffValue}
+                onChange={(e) => setDropoffValue(e.target.value)}
+                className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
+              {dropoffStatus === "OK" && (
+                <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
+                  {dropoffSuggestions.map((suggestion) => (
+                    <li
+                      key={suggestion.place_id}
+                      onClick={() => handleDropoffSelect(suggestion)}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                    >
+                      {suggestion.description}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {isRoundTrip ? (
+              <DateRangePicker
+                dateRange={formData.dateRange}
+                onDateRangeChange={(dateRange) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    dateRange,
+                    departureDate: undefined
+                  }));
+                }}
+                placeholder="Select dates"
+              />
+            ) : (
+              <DatePicker
+                date={formData.departureDate}
+                onDateChange={(date) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    departureDate: date,
+                    dateRange: undefined
+                  }));
+                }}
+                placeholder="Select date"
+              />
+            )}
+
+            <div className="relative">
+              <Users className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <div className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg bg-white flex justify-between items-center">
+                <span className="text-gray-700 text-[12px]">
+                  {displayPassengers} {' '}
+                  Passenger{displayPassengers !== 1 ? 's' : ''}
+                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handlePassengerChange(false)}
+                    className={`p-1 rounded-full transition-colors ${
+                      formData.passengers > 1 ? 'text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-gray-300'
+                    }`}
+                    disabled={formData.passengers <= 1}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handlePassengerChange(true)}
+                    className={`p-1 rounded-full transition-colors ${
+                      formData.passengers < 100 ? 'text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-gray-300'
+                    }`}
+                    disabled={formData.passengers >= 100}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <motion.button
+              whileTap={{ scale: hasChanges ? 0.95 : 1 }}
+              onClick={handleUpdateRoute}
+              className={`w-full py-2 rounded-lg transition-all duration-300 ${
+                hasChanges 
+                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+              disabled={!hasChanges}
+            >
+              Update Route
+            </motion.button>
+          </div>
+
+          {/* Desktop Layout */}
+          <div className="hidden md:flex items-center gap-4">
+            <div className="flex-1 grid grid-cols-4 gap-4">
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
-                  value={pickupValue}
-                  onChange={(e) => {
-                    setPickupValue(e.target.value);
-                    setFormData(prev => ({ ...prev, from: e.target.value }));
-                  }}
-                  disabled={!pickupReady}
-                  className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white disabled:bg-gray-50 disabled:opacity-75"
                   placeholder="From"
+                  value={pickupValue}
+                  onChange={(e) => setPickupValue(e.target.value)}
+                  className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
                 {pickupStatus === "OK" && (
                   <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
@@ -290,19 +406,14 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                 )}
               </div>
 
-              {/* To Location */}
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
-                  value={dropoffValue}
-                  onChange={(e) => {
-                    setDropoffValue(e.target.value);
-                    setFormData(prev => ({ ...prev, to: e.target.value }));
-                  }}
-                  disabled={!dropoffReady}
-                  className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white disabled:bg-gray-50 disabled:opacity-75"
                   placeholder="To"
+                  value={dropoffValue}
+                  onChange={(e) => setDropoffValue(e.target.value)}
+                  className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
                 {dropoffStatus === "OK" && (
                   <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
@@ -319,21 +430,18 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                 )}
               </div>
 
-              {/* Date Selection */}
               {isRoundTrip ? (
-                <div className="w-full">
-                  <DateRangePicker
-                    dateRange={formData.dateRange}
-                    onDateRangeChange={(dateRange) => {
-                      setFormData(prev => ({
-                        ...prev,
-                        dateRange,
-                        departureDate: undefined
-                      }));
-                    }}
-                    placeholder="Select dates"
-                  />
-                </div>
+                <DateRangePicker
+                  dateRange={formData.dateRange}
+                  onDateRangeChange={(dateRange) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      dateRange,
+                      departureDate: undefined
+                    }));
+                  }}
+                  placeholder="Select dates"
+                />
               ) : (
                 <DatePicker
                   date={formData.departureDate}
@@ -348,7 +456,6 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                 />
               )}
 
-              {/* Passengers */}
               <div className="relative">
                 <Users className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <div className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg bg-white flex justify-between items-center">
@@ -383,7 +490,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
             <motion.button
               whileTap={{ scale: hasChanges ? 0.95 : 1 }}
               onClick={handleUpdateRoute}
-              className={`w-full md:w-auto px-6 py-2 rounded-lg transition-all duration-300 min-w-[120px] ${
+              className={`px-6 py-2 rounded-lg transition-all duration-300 min-w-[120px] ${
                 hasChanges 
                   ? 'bg-blue-600 text-white hover:bg-blue-700' 
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
