@@ -8,6 +8,10 @@ import { DateRangePicker } from '../ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 
 const formatDateForUrl = (date: Date) => {
+  if (!date || isNaN(date.getTime())) {
+    console.error('Invalid date provided to formatDateForUrl:', date);
+    return '';
+  }
   const year = date.getFullYear().toString().slice(-2);
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const day = date.getDate().toString().padStart(2, '0');
@@ -30,9 +34,15 @@ const parseDateFromUrl = (dateStr: string): Date | undefined => {
     
     // Final validation
     if (isNaN(date.getTime())) {
-      console.log('[DEBUG] Invalid date timestamp');
+      console.error('[DEBUG] Invalid date timestamp');
       return undefined;
     }
+    
+    console.log('[DEBUG] Successfully parsed date:', {
+      input: dateStr,
+      parsed: date.toISOString(),
+      components: { year, month, day }
+    });
     
     return date;
   } catch (error) {
@@ -63,16 +73,17 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Parse dates first
+  // Parse dates first with validation
   const departureDate = parseDateFromUrl(date);
   const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
 
   // Initialize isRoundTrip based on type parameter
-  const [isRoundTrip, setIsRoundTrip] = useState(type === '2');
-  const [displayPassengers, setDisplayPassengers] = useState(parseInt(passengers, 10));
+  const [isRoundTrip, setIsRoundTrip] = useState(() => type === '2');
+  const [displayPassengers, setDisplayPassengers] = useState(() => parseInt(passengers, 10));
   const [hasChanges, setHasChanges] = useState(false);
 
-  const [formData, setFormData] = useState({
+  // Initialize form data based on URL parameters
+  const [formData, setFormData] = useState(() => ({
     from,
     to,
     type,
@@ -82,17 +93,25 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       to: returnDateParsed
     } as DateRange | undefined : undefined,
     passengers: parseInt(passengers, 10)
-  });
+  }));
 
-  // Initialize values and sync with URL parameters
+  // Reset form data when URL parameters change
   useEffect(() => {
-    setPickupValue(from, false);
-    setDropoffValue(to, false);
+    console.log('[DEBUG] URL parameters changed:', {
+      from,
+      to,
+      type,
+      date,
+      returnDate,
+      passengers,
+      departureDate,
+      returnDateParsed
+    });
+
     setIsRoundTrip(type === '2');
+    setDisplayPassengers(parseInt(passengers, 10));
     
-    // Update form data when URL params change
-    setFormData(prev => ({
-      ...prev,
+    setFormData({
       from,
       to,
       type,
@@ -102,8 +121,12 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
         to: returnDateParsed
       } : undefined,
       passengers: parseInt(passengers, 10)
-    }));
-  }, [from, to, type, departureDate, returnDateParsed, passengers]);
+    });
+
+    // Initialize location inputs
+    setPickupValue(from, false);
+    setDropoffValue(to, false);
+  }, [from, to, type, date, returnDate, passengers, departureDate, returnDateParsed]);
 
   // Check for changes against URL params
   useEffect(() => {
@@ -122,6 +145,26 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
         currentReturnDateStr !== returnDate
       )) ||
       (!isRoundTrip && currentDateStr !== date);
+
+    console.log('[DEBUG] Change detection:', {
+      hasFormChanges,
+      current: {
+        from: formData.from,
+        to: formData.to,
+        type: currentType,
+        date: currentDateStr,
+        returnDate: currentReturnDateStr,
+        passengers: formData.passengers
+      },
+      url: {
+        from,
+        to,
+        type,
+        date,
+        returnDate,
+        passengers
+      }
+    });
 
     setHasChanges(hasFormChanges);
   }, [formData, from, to, date, returnDate, passengers, type, isRoundTrip]);
@@ -188,15 +231,24 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
   const handleTripTypeChange = (roundTrip: boolean) => {
     setIsRoundTrip(roundTrip);
-    setFormData(prev => ({
-      ...prev,
-      type: roundTrip ? '2' : '1',
-      departureDate: roundTrip ? undefined : prev.dateRange?.from || prev.departureDate,
-      dateRange: roundTrip ? {
-        from: prev.departureDate || prev.dateRange?.from,
-        to: prev.dateRange?.to
-      } : undefined
-    }));
+    setFormData(prev => {
+      const newFormData = {
+        ...prev,
+        type: roundTrip ? '2' : '1',
+        departureDate: roundTrip ? undefined : prev.dateRange?.from || prev.departureDate,
+        dateRange: roundTrip ? {
+          from: prev.departureDate || prev.dateRange?.from,
+          to: prev.dateRange?.to
+        } : undefined
+      };
+
+      console.log('[DEBUG] Trip type change:', {
+        roundTrip,
+        newFormData
+      });
+
+      return newFormData;
+    });
   };
 
   const handleUpdateRoute = () => {
@@ -224,6 +276,16 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     const baseRoute = location.pathname.startsWith('/home') ? '/home/transfer' : '/transfer';
     const newType = isRoundTrip ? '2' : '1';
     const path = `${baseRoute}/${encodedFrom}/${encodedTo}/${newType}/${formattedDepartureDate}/${formattedReturnDate}/${formData.passengers}/form`;
+
+    console.log('[DEBUG] Updating route:', {
+      path,
+      formData,
+      isRoundTrip,
+      dates: {
+        departure: formattedDepartureDate,
+        return: formattedReturnDate
+      }
+    });
 
     navigate(path);
   };
