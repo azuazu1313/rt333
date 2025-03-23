@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Users, ArrowRight, Minus, Plus } from 'lucide-react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
 import { DatePicker } from './ui/date-picker';
 import { DateRangePicker } from './ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
@@ -78,61 +77,16 @@ const SearchForm = () => {
             to: returnDateParsed
           } : undefined
         });
-        
-        setPickupValue(decodeURIComponent(from.replace(/-/g, ' ')), false);
-        setDropoffValue(decodeURIComponent(to.replace(/-/g, ' ')), false);
       }
     }
   }, [location.pathname, params]);
 
-  const {
-    ready: pickupReady,
-    value: pickupValue,
-    suggestions: { status: pickupStatus, data: pickupSuggestions },
-    setValue: setPickupValue,
-    clearSuggestions: clearPickupSuggestions,
-  } = usePlacesAutocomplete({
-    requestOptions: { componentRestrictions: { country: ['it', 'fr', 'es', 'de'] } },
-    debounce: 300,
-  });
-
-  const {
-    ready: dropoffReady,
-    value: dropoffValue,
-    suggestions: { status: dropoffStatus, data: dropoffSuggestions },
-    setValue: setDropoffValue,
-    clearSuggestions: clearDropoffSuggestions,
-  } = usePlacesAutocomplete({
-    requestOptions: { componentRestrictions: { country: ['it', 'fr', 'es', 'de'] } },
-    debounce: 300,
-  });
-
-  const handlePickupSelect = async (suggestion: google.maps.places.AutocompletePrediction) => {
-    setPickupValue(suggestion.description, false);
-    clearPickupSuggestions();
-    setFormData(prev => ({ ...prev, pickup: suggestion.description }));
-
-    try {
-      const results = await getGeocode({ address: suggestion.description });
-      const { lat, lng } = await getLatLng(results[0]);
-      console.log('Pickup coordinates:', { lat, lng });
-    } catch (error) {
-      console.error('Error getting coordinates:', error);
-    }
+  const handlePickupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, pickup: e.target.value }));
   };
 
-  const handleDropoffSelect = async (suggestion: google.maps.places.AutocompletePrediction) => {
-    setDropoffValue(suggestion.description, false);
-    clearDropoffSuggestions();
-    setFormData(prev => ({ ...prev, dropoff: suggestion.description }));
-
-    try {
-      const results = await getGeocode({ address: suggestion.description });
-      const { lat, lng } = await getLatLng(results[0]);
-      console.log('Dropoff coordinates:', { lat, lng });
-    } catch (error) {
-      console.error('Error getting coordinates:', error);
-    }
+  const handleDropoffChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, dropoff: e.target.value }));
   };
 
   const handlePassengerChange = (increment: boolean) => {
@@ -140,8 +94,8 @@ const SearchForm = () => {
   };
 
   const handleSubmit = () => {
-    const pickup = pickupValue || formData.pickup;
-    const dropoff = dropoffValue || formData.dropoff;
+    const pickup = formData.pickup;
+    const dropoff = formData.dropoff;
     
     if (!pickup || !dropoff || (!formData.departureDate && !formData.dateRange?.from)) {
       alert('Please fill in all required fields');
@@ -223,23 +177,10 @@ const SearchForm = () => {
             <input
               type="text"
               placeholder="Pickup location"
-              value={pickupValue}
-              onChange={(e) => setPickupValue(e.target.value)}
+              value={formData.pickup}
+              onChange={handlePickupChange}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
-            {pickupStatus === "OK" && (
-              <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
-                {pickupSuggestions.map((suggestion) => (
-                  <li
-                    key={suggestion.place_id}
-                    onClick={() => handlePickupSelect(suggestion)}
-                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                  >
-                    {suggestion.description}
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
 
           {/* Dropoff Location */}
@@ -248,23 +189,10 @@ const SearchForm = () => {
             <input
               type="text"
               placeholder="Dropoff location"
-              value={dropoffValue}
-              onChange={(e) => setDropoffValue(e.target.value)}
+              value={formData.dropoff}
+              onChange={handleDropoffChange}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
-            {dropoffStatus === "OK" && (
-              <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
-                {dropoffSuggestions.map((suggestion) => (
-                  <li
-                    key={suggestion.place_id}
-                    onClick={() => handleDropoffSelect(suggestion)}
-                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                  >
-                    {suggestion.description}
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
 
           {/* Date Selection */}

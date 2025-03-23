@@ -29,7 +29,6 @@ const parseDateFromUrl = (dateStr: string): Date | undefined => {
     const date = new Date(year, month, day, 12, 0, 0, 0);
     
     if (isNaN(date.getTime())) {
-      console.error('Error parsing date: Invalid date');
       return undefined;
     }
     
@@ -62,16 +61,16 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Flag to prevent re-initializing values after first setup
-  const initializedRef = useRef(false);
-  const didChangeDetectionRunRef = useRef(false);
+  // Flag to track component initialization
+  const isInitializedRef = useRef(false);
+  // Flag to track user interaction
+  const userInteractedRef = useRef(false);
 
   // Parse dates from URL strings
   const departureDate = parseDateFromUrl(date);
   const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
 
   // Determine if it's a one-way trip based on both type and returnDate
-  // One way if type='1' OR returnDate='0' or undefined
   const isOneWayFromProps = type === '1' || !returnDate || returnDate === '0';
   const [isOneWay, setIsOneWay] = useState(isOneWayFromProps);
   const [displayPassengers, setDisplayPassengers] = useState(parseInt(passengers, 10));
@@ -91,104 +90,73 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     passengers: parseInt(passengers, 10)
   });
 
-  // Form data that will be updated by user interactions
-  const [formData, setFormData] = useState(() => {
-    // Initialize form data based on whether it's one way or round trip
-    if (isOneWayFromProps) {
-      return {
-        from,
-        to,
-        type: '1', // Ensure type is set correctly for one way
-        departureDate: departureDate,
-        dateRange: undefined,
-        passengers: parseInt(passengers, 10)
-      };
-    } else {
-      return {
-        from,
-        to,
-        type: '2', // Ensure type is set correctly for round trip
-        departureDate: undefined,
-        dateRange: {
+  // Form data state
+  const [formData, setFormData] = useState({
+    from,
+    to,
+    type: isOneWayFromProps ? '1' : '2',
+    departureDate: isOneWayFromProps ? departureDate : undefined,
+    dateRange: isOneWayFromProps 
+      ? undefined 
+      : {
           from: departureDate,
           to: returnDateParsed
         } as DateRange | undefined,
-        passengers: parseInt(passengers, 10)
-      };
-    }
+    passengers: parseInt(passengers, 10)
   });
 
-  // Initialize component only once on mount
+  // Initialize component once
   useEffect(() => {
-    // Only initialize if not already done
-    if (!initializedRef.current) {
-      const isUrlOneWay = type === '1' || !returnDate || returnDate === '0';
-      console.log("Initializing BookingTopBar with type:", type, "returnDate:", returnDate);
-      console.log("Determined isOneWay:", isUrlOneWay);
-      
-      setIsOneWay(isUrlOneWay);
-      setDisplayPassengers(parseInt(passengers, 10));
-      
-      // Store original values for change detection
-      originalValuesRef.current = {
-        from,
-        to,
-        type,
-        date,
-        returnDate: returnDate || '0',
-        passengers: parseInt(passengers, 10)
-      };
-      
-      // Initialize location inputs
-      setPickupValue(from);
-      setDropoffValue(to);
-      
-      // Initialize form data based on trip type
-      if (isUrlOneWay) {
-        setFormData({
-          from,
-          to,
-          type: '1',
-          departureDate: departureDate,
-          dateRange: undefined,
-          passengers: parseInt(passengers, 10)
-        });
-      } else {
-        setFormData({
-          from,
-          to,
-          type: '2',
-          departureDate: undefined,
-          dateRange: {
-            from: departureDate,
-            to: returnDateParsed
-          } as DateRange | undefined,
-          passengers: parseInt(passengers, 10)
-        });
+    // Force hasChanges to false initially
+    setHasChanges(false);
+    isInitializedRef.current = true;
+
+    console.log("BookingTopBar initialized with:", {
+      type,
+      isOneWay: isOneWayFromProps,
+      from,
+      to,
+      date,
+      returnDate
+    });
+  }, [from, to, type, date, returnDate, passengers, isOneWayFromProps]);
+
+  // Setup effect for user interaction tracking
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      if (isInitializedRef.current && !userInteractedRef.current) {
+        console.log("User interaction detected");
+        userInteractedRef.current = true;
       }
-      
-      // Explicitly ensure hasChanges is false on initialization
-      setHasChanges(false);
-      
-      // Mark as initialized
-      initializedRef.current = true;
-    }
-  // Don't include form state dependencies to prevent re-initialization
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [from, to, type, date, returnDate, passengers]);
+    };
 
-  // Detect changes to enable/disable Update Route button
+    // These are the inputs that indicate user interaction
+    const formInputs = document.querySelectorAll('input, button');
+    formInputs.forEach(input => {
+      input.addEventListener('click', handleUserInteraction);
+      input.addEventListener('focus', handleUserInteraction);
+      input.addEventListener('input', handleUserInteraction);
+    });
+
+    return () => {
+      formInputs.forEach(input => {
+        input.removeEventListener('click', handleUserInteraction);
+        input.removeEventListener('focus', handleUserInteraction);
+        input.removeEventListener('input', handleUserInteraction);
+      });
+    };
+  }, []);
+
+  // Change detection effect
   useEffect(() => {
-    // Wait until initialization is complete
-    if (!initializedRef.current) return;
+    // Skip change detection on initial render
+    if (!isInitializedRef.current) {
+      return;
+    }
 
-    // Prevent unnecessary change detection runs before user interaction
-    if (!didChangeDetectionRunRef.current) {
-      // Mark that we've run change detection once
-      didChangeDetectionRunRef.current = true;
-      
-      // Initially the form should indicate no changes
-      setHasChanges(false);
+    // Only detect changes after user has interacted with the form
+    // This prevents auto-detection from kicking in too early
+    if (!userInteractedRef.current) {
       return;
     }
 
@@ -196,8 +164,9 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     const formDepartureDateStr = formData.departureDate ? formatDateForUrl(formData.departureDate) : '';
     const formReturnDateStr = formData.dateRange?.to ? formatDateForUrl(formData.dateRange.to) : '0';
     
-    // More precise comparison of values to detect actual changes
     const original = originalValuesRef.current;
+    
+    // Compare current values with original values
     const hasFormChanges = 
       pickupValue !== original.from ||
       dropoffValue !== original.to ||
@@ -208,15 +177,29 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
         (formatDateForUrl(formData.dateRange.from) !== original.date || 
          formReturnDateStr !== original.returnDate));
     
-    console.log('Change detection result:', hasFormChanges);
+    console.log('Change detection:', { 
+      hasChanges: hasFormChanges,
+      userInteracted: userInteractedRef.current,
+      originalType: original.type,
+      currentType: formType
+    });
     
-    // Only update state if there's an actual change to minimize re-renders
-    if (hasChanges !== hasFormChanges) {
-      setHasChanges(hasFormChanges);
-    }
-  }, [pickupValue, dropoffValue, formData, isOneWay, hasChanges]);
+    setHasChanges(hasFormChanges);
+  }, [formData, isOneWay, pickupValue, dropoffValue]);
+
+  // Update input handlers - mark as user interaction
+  const handlePickupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    userInteractedRef.current = true;
+    setPickupValue(e.target.value);
+  };
+
+  const handleDropoffChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    userInteractedRef.current = true;
+    setDropoffValue(e.target.value);
+  };
 
   const handlePassengerChange = (increment: boolean) => {
+    userInteractedRef.current = true;
     const newPassengers = increment ? formData.passengers + 1 : formData.passengers - 1;
     if (newPassengers >= 1 && newPassengers <= 100) {
       setFormData(prev => ({ ...prev, passengers: newPassengers }));
@@ -225,10 +208,10 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   };
 
   const handleTripTypeChange = (oneWay: boolean) => {
+    userInteractedRef.current = true;
     setIsOneWay(oneWay);
     
     setFormData(prev => {
-      // When switching to one way
       if (oneWay) {
         return {
           ...prev,
@@ -236,9 +219,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
           departureDate: prev.dateRange?.from || prev.departureDate,
           dateRange: undefined
         };
-      } 
-      // When switching to round trip
-      else {
+      } else {
         return {
           ...prev,
           type: '2',
@@ -278,11 +259,10 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     
     const baseRoute = location.pathname.startsWith('/home') ? '/home/transfer' : '/transfer';
     const newType = isOneWay ? '1' : '2';
-    console.log("Updating route with type:", newType, "isOneWay:", isOneWay);
     
     const path = `${baseRoute}/${encodedFrom}/${encodedTo}/${newType}/${formattedDepartureDate}/${formattedReturnDate}/${formData.passengers}/form`;
 
-    // Save the new values as original values to reset change detection
+    // Update original values to match the new route
     originalValuesRef.current = {
       from: pickupValue,
       to: dropoffValue,
@@ -294,6 +274,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
     // Reset change detection before navigation
     setHasChanges(false);
+    userInteractedRef.current = false;
     
     navigate(path);
   };
@@ -338,7 +319,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                 type="text"
                 placeholder="From"
                 value={pickupValue}
-                onChange={(e) => setPickupValue(e.target.value)}
+                onChange={handlePickupChange}
                 className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
@@ -349,7 +330,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                 type="text"
                 placeholder="To"
                 value={dropoffValue}
-                onChange={(e) => setDropoffValue(e.target.value)}
+                onChange={handleDropoffChange}
                 className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
@@ -358,6 +339,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
               <DatePicker
                 date={formData.departureDate}
                 onDateChange={(date) => {
+                  userInteractedRef.current = true;
                   setFormData(prev => ({
                     ...prev,
                     departureDate: date,
@@ -370,6 +352,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
               <DateRangePicker
                 dateRange={formData.dateRange}
                 onDateRangeChange={(dateRange) => {
+                  userInteractedRef.current = true;
                   setFormData(prev => ({
                     ...prev,
                     dateRange,
@@ -434,7 +417,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                   type="text"
                   placeholder="From"
                   value={pickupValue}
-                  onChange={(e) => setPickupValue(e.target.value)}
+                  onChange={handlePickupChange}
                   className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
               </div>
@@ -445,7 +428,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                   type="text"
                   placeholder="To"
                   value={dropoffValue}
-                  onChange={(e) => setDropoffValue(e.target.value)}
+                  onChange={handleDropoffChange}
                   className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
               </div>
@@ -454,6 +437,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                 <DatePicker
                   date={formData.departureDate}
                   onDateChange={(date) => {
+                    userInteractedRef.current = true;
                     setFormData(prev => ({
                       ...prev,
                       departureDate: date,
@@ -466,6 +450,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                 <DateRangePicker
                   dateRange={formData.dateRange}
                   onDateRangeChange={(dateRange) => {
+                    userInteractedRef.current = true;
                     setFormData(prev => ({
                       ...prev,
                       dateRange,
