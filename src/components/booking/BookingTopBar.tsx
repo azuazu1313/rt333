@@ -259,8 +259,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       {/* Main Content */}
       <div className="py-4 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-            <div className={`flex-1 w-full md:w-auto grid grid-cols-1 ${isRoundTrip ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-6`}>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-8">
+            <div className="flex-1 w-full grid grid-cols-1 gap-4">
               {/* From Location */}
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -321,7 +321,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
               {/* Date Selection */}
               {isRoundTrip ? (
-                <div className="col-span-2">
+                <div className="w-full">
                   <DateRangePicker
                     dateRange={formData.dateRange}
                     onDateRangeChange={(dateRange) => {
@@ -383,7 +383,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
             <motion.button
               whileTap={{ scale: hasChanges ? 0.95 : 1 }}
               onClick={handleUpdateRoute}
-              className={`px-6 py-2 rounded-lg transition-all duration-300 min-w-[120px] ${
+              className={`w-full md:w-auto px-6 py-2 rounded-lg transition-all duration-300 min-w-[120px] ${
                 hasChanges 
                   ? 'bg-blue-600 text-white hover:bg-blue-700' 
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
