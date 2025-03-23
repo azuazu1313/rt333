@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../Header';
@@ -29,6 +29,7 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
   showNewsletter = true
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { from, to, type, date, returnDate, passengers } = useParams();
   const { bookingState, setBookingState } = useBooking();
   
@@ -52,8 +53,7 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
     
     // Try to reposition the chat widget when this component mounts
     const positionChatWidget = () => {
-      if (window.innerWidth >= 768) return; // Only on mobile
-      
+      const isTransferPage = location.pathname.startsWith('/transfer');
       const chatWidgets = [
         document.getElementById('voiceflow-chat-widget-container'),
         document.querySelector('.vf-widget-container'),
@@ -65,7 +65,9 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
       
       chatWidgets.forEach(widget => {
         if (widget && widget.style) {
-          widget.style.bottom = '80px';
+          // If we're on the transfer page, keep original position
+          // Otherwise, move it down by 65px
+          widget.style.bottom = isTransferPage ? '16px' : '81px';
           widget.style.zIndex = '45';
           widget.setAttribute('data-modified-by-booking', 'true');
         }
@@ -83,8 +85,17 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
       document.body.removeAttribute('data-page-type');
       document.documentElement.classList.remove('booking-page');
       clearInterval(interval);
+      
+      // Reset widget position on unmount
+      const chatWidgets = document.querySelectorAll('[data-modified-by-booking="true"]');
+      chatWidgets.forEach(widget => {
+        if (widget instanceof HTMLElement) {
+          widget.style.bottom = '16px';
+          widget.removeAttribute('data-modified-by-booking');
+        }
+      });
     };
-  }, []);
+  }, [location.pathname]);
 
   // Calculate and update position on resize
   useEffect(() => {
