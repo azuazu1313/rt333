@@ -29,27 +29,28 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 md:p-0">
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4 md:p-0">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.2 }}
-          className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden relative"
+          className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden relative flex flex-col"
         >
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-white border-b p-4 md:p-6">
-            <h2 className="text-xl md:text-2xl font-bold pr-8">{vehicle.name}</h2>
+          <div className="sticky top-0 z-10 bg-white border-b p-4 md:p-6 flex items-center justify-between">
+            <h2 className="text-xl md:text-2xl font-bold">{vehicle.name}</h2>
             <button
               onClick={onClose}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 p-1"
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Close modal"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
 
           {/* Content - Scrollable Area */}
-          <div className="overflow-y-auto p-4 md:p-6">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               {/* Left Column */}
               <div>
