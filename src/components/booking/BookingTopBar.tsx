@@ -62,11 +62,15 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isRoundTrip, setIsRoundTrip] = useState(type === '2');
 
   // Parse dates first
   const departureDate = parseDateFromUrl(date);
   const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
+
+  // Initialize isRoundTrip based on type parameter
+  const [isRoundTrip, setIsRoundTrip] = useState(type === '2');
+  const [displayPassengers, setDisplayPassengers] = useState(parseInt(passengers, 10));
+  const [hasChanges, setHasChanges] = useState(false);
 
   const [formData, setFormData] = useState({
     from,
@@ -80,10 +84,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     passengers: parseInt(passengers, 10)
   });
 
-  const [displayPassengers, setDisplayPassengers] = useState(parseInt(passengers, 10));
-  const [hasChanges, setHasChanges] = useState(false);
-
-  // Initialize values and sync with URL parameters only once on mount or when URL params change
+  // Initialize values and sync with URL parameters
   useEffect(() => {
     setPickupValue(from, false);
     setDropoffValue(to, false);
@@ -98,9 +99,10 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       dateRange: isRoundTrip ? {
         from: departureDate,
         to: returnDateParsed
-      } : undefined
+      } : undefined,
+      passengers: parseInt(passengers, 10)
     }));
-  }, [from, to, type, isRoundTrip, departureDate, returnDateParsed]);
+  }, [from, to, type, isRoundTrip, departureDate, returnDateParsed, passengers]);
 
   // Check for changes against URL params
   useEffect(() => {
