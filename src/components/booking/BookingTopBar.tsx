@@ -35,6 +35,7 @@ const parseDateFromUrl = (dateStr: string): Date | undefined => {
     
     return date;
   } catch (error) {
+    console.error('Error parsing date:', error);
     return undefined;
   }
 };
@@ -61,65 +62,37 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Parse dates from URL strings
   const departureDate = parseDateFromUrl(date);
   const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
 
-  const [isRoundTrip, setIsRoundTrip] = useState(() => type === '2');
-  const [displayPassengers, setDisplayPassengers] = useState(() => parseInt(passengers, 10));
+  // Set initial state based on URL parameters
+  const [isRoundTrip, setIsRoundTrip] = useState(type === '2');
+  const [displayPassengers, setDisplayPassengers] = useState(parseInt(passengers, 10));
   const [hasChanges, setHasChanges] = useState(false);
-
-  const [formData, setFormData] = useState(() => ({
+  const [originalValues, setOriginalValues] = useState({
     from,
     to,
     type,
-    departureDate: type === '2' ? undefined : departureDate,
-    dateRange: type === '2' ? {
+    departureDate,
+    returnDateParsed,
+    passengers: parseInt(passengers, 10)
+  });
+
+  // Form data that will be updated by user interactions
+  const [formData, setFormData] = useState({
+    from,
+    to,
+    type: isRoundTrip ? '2' : '1',
+    departureDate: isRoundTrip ? undefined : departureDate,
+    dateRange: isRoundTrip ? {
       from: departureDate,
       to: returnDateParsed
     } as DateRange | undefined : undefined,
     passengers: parseInt(passengers, 10)
-  }));
+  });
 
-  useEffect(() => {
-    setIsRoundTrip(type === '2');
-    setDisplayPassengers(parseInt(passengers, 10));
-    
-    setFormData({
-      from,
-      to,
-      type,
-      departureDate: type === '2' ? undefined : departureDate,
-      dateRange: type === '2' ? {
-        from: departureDate,
-        to: returnDateParsed
-      } : undefined,
-      passengers: parseInt(passengers, 10)
-    });
-
-    setPickupValue(from, false);
-    setDropoffValue(to, false);
-  }, [from, to, type, date, returnDate, passengers, departureDate, returnDateParsed]);
-
-  useEffect(() => {
-    const currentDateStr = formData.departureDate ? formatDateForUrl(formData.departureDate) : '';
-    const currentReturnDateStr = formData.dateRange?.to ? formatDateForUrl(formData.dateRange.to) : '0';
-    const currentType = isRoundTrip ? '2' : '1';
-    
-    const hasFormChanges = 
-      formData.from !== from ||
-      formData.to !== to ||
-      formData.passengers !== parseInt(passengers, 10) ||
-      currentType !== type ||
-      (isRoundTrip && (
-        !formData.dateRange ||
-        currentDateStr !== date ||
-        currentReturnDateStr !== returnDate
-      )) ||
-      (!isRoundTrip && currentDateStr !== date);
-
-    setHasChanges(hasFormChanges);
-  }, [formData, from, to, date, returnDate, passengers, type, isRoundTrip]);
-
+  // Initialize Places autocomplete for locations
   const {
     ready: pickupReady,
     value: pickupValue,
@@ -144,6 +117,59 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     defaultValue: to
   });
 
+  // Update state when URL parameters change
+  useEffect(() => {
+    setIsRoundTrip(type === '2');
+    setDisplayPassengers(parseInt(passengers, 10));
+    
+    setFormData({
+      from,
+      to,
+      type: type === '2' ? '2' : '1',
+      departureDate: type === '2' ? undefined : departureDate,
+      dateRange: type === '2' ? {
+        from: departureDate,
+        to: returnDateParsed
+      } : undefined,
+      passengers: parseInt(passengers, 10)
+    });
+
+    setOriginalValues({
+      from,
+      to,
+      type,
+      departureDate,
+      returnDateParsed,
+      passengers: parseInt(passengers, 10)
+    });
+
+    setPickupValue(from, false);
+    setDropoffValue(to, false);
+    setHasChanges(false);
+  }, [from, to, type, date, returnDate, passengers, departureDate, returnDateParsed]);
+
+  // Check for changes to enable/disable the Update Route button
+  useEffect(() => {
+    const currentDateStr = formData.departureDate ? formatDateForUrl(formData.departureDate) : '';
+    const currentReturnDateStr = formData.dateRange?.to ? formatDateForUrl(formData.dateRange.to) : '0';
+    const currentType = isRoundTrip ? '2' : '1';
+    
+    const hasFormChanges = 
+      formData.from !== originalValues.from ||
+      formData.to !== originalValues.to ||
+      formData.passengers !== originalValues.passengers ||
+      currentType !== originalValues.type ||
+      (isRoundTrip && (
+        !formData.dateRange?.from ||
+        !formData.dateRange?.to ||
+        currentDateStr !== date ||
+        currentReturnDateStr !== (returnDate || '0')
+      )) ||
+      (!isRoundTrip && currentDateStr !== date);
+
+    setHasChanges(hasFormChanges);
+  }, [formData, isRoundTrip, originalValues, date, returnDate]);
+
   const handlePickupSelect = async (suggestion: google.maps.places.AutocompletePrediction) => {
     setPickupValue(suggestion.description, false);
     clearPickupSuggestions();
@@ -153,7 +179,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       const results = await getGeocode({ address: suggestion.description });
       await getLatLng(results[0]);
     } catch (error) {
-      // Handle error silently
+      console.error('Error getting coordinates:', error);
     }
   };
 
@@ -166,7 +192,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       const results = await getGeocode({ address: suggestion.description });
       await getLatLng(results[0]);
     } catch (error) {
-      // Handle error silently
+      console.error('Error getting coordinates:', error);
     }
   };
 
@@ -210,7 +236,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     } else if (!isRoundTrip && formData.departureDate) {
       formattedDepartureDate = formatDateForUrl(formData.departureDate);
     } else {
-      formattedDepartureDate = date;
+      alert('Please select a date for your trip.');
+      return;
     }
     
     const baseRoute = location.pathname.startsWith('/home') ? '/home/transfer' : '/transfer';
