@@ -76,8 +76,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     from,
     to,
     type,
-    departureDate: isRoundTrip ? undefined : departureDate,
-    dateRange: isRoundTrip ? {
+    departureDate: type === '2' ? undefined : departureDate,
+    dateRange: type === '2' ? {
       from: departureDate,
       to: returnDateParsed
     } as DateRange | undefined : undefined,
@@ -88,6 +88,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   useEffect(() => {
     setPickupValue(from, false);
     setDropoffValue(to, false);
+    setIsRoundTrip(type === '2');
     
     // Update form data when URL params change
     setFormData(prev => ({
@@ -95,14 +96,14 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       from,
       to,
       type,
-      departureDate: isRoundTrip ? undefined : departureDate,
-      dateRange: isRoundTrip ? {
+      departureDate: type === '2' ? undefined : departureDate,
+      dateRange: type === '2' ? {
         from: departureDate,
         to: returnDateParsed
       } : undefined,
       passengers: parseInt(passengers, 10)
     }));
-  }, [from, to, type, isRoundTrip, departureDate, returnDateParsed, passengers]);
+  }, [from, to, type, departureDate, returnDateParsed, passengers]);
 
   // Check for changes against URL params
   useEffect(() => {
