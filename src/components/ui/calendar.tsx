@@ -17,8 +17,9 @@ function Calendar({
   ...props
 }: CalendarProps) {
   const defaultClassNames = {
-    months: "relative flex flex-col sm:flex-row gap-4",
-    month: "w-full",
+    months: "relative flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+    month: "space-y-4 w-full",
+    caption: "flex justify-center pt-1 relative items-center",
     caption_label: "text-sm font-medium",
     nav: "space-x-1 flex items-center",
     nav_button: cn(
@@ -28,8 +29,8 @@ function Calendar({
     nav_button_previous: "absolute left-1",
     nav_button_next: "absolute right-1",
     table: "w-full border-collapse space-y-1",
-    head_row: "flex",
-    head_cell: "text-slate-500 rounded-md w-9 font-normal text-[0.8rem]",
+    head_row: "flex w-full",
+    head_cell: "text-slate-500 w-9 font-normal text-[0.8rem] text-center",
     row: "flex w-full mt-2",
     cell: cn(
       "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
@@ -41,15 +42,13 @@ function Calendar({
       buttonVariants({ variant: "ghost" }),
       "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
     ),
-    day_range_start: "day-range-start bg-black text-white hover:bg-black hover:text-white",
-    day_range_end: "day-range-end bg-black text-white hover:bg-black hover:text-white",
-    day_selected:
-      "bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
-    day_today: "text-black font-semibold",
+    day_range_start: "day-range-start bg-blue-600 text-white hover:bg-blue-600 hover:text-white focus:bg-blue-600 focus:text-white",
+    day_range_end: "day-range-end bg-blue-600 text-white hover:bg-blue-600 hover:text-white focus:bg-blue-600 focus:text-white",
+    day_selected: "bg-blue-600 text-white hover:bg-blue-600 hover:text-white focus:bg-blue-600 focus:text-white",
+    day_today: "text-blue-600 font-semibold",
     day_outside: "text-slate-500 opacity-50",
     day_disabled: "text-slate-500 opacity-50",
-    day_range_middle:
-      "aria-selected:bg-gray-100 aria-selected:text-black",
+    day_range_middle: "aria-selected:bg-blue-100 aria-selected:text-blue-900",
     day_hidden: "invisible",
     ...classNames,
   }
