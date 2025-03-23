@@ -64,7 +64,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   
   // Flag to prevent re-initializing values after first setup
   const initializedRef = useRef(false);
-  const isInitialRenderRef = useRef(true);
+  const didChangeDetectionRunRef = useRef(false);
 
   // Parse dates from URL strings
   const departureDate = parseDateFromUrl(date);
@@ -167,7 +167,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
         });
       }
       
-      // Explicitly set hasChanges to false on initialization
+      // Explicitly ensure hasChanges is false on initialization
       setHasChanges(false);
       
       // Mark as initialized
@@ -179,28 +179,36 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
   // Detect changes to enable/disable Update Route button
   useEffect(() => {
-    // Skip the initial render to prevent false "changes" detection
-    if (isInitialRenderRef.current) {
-      isInitialRenderRef.current = false;
+    // Wait until initialization is complete
+    if (!initializedRef.current) return;
+
+    // Prevent unnecessary change detection runs before user interaction
+    if (!didChangeDetectionRunRef.current) {
+      // Mark that we've run change detection once
+      didChangeDetectionRunRef.current = true;
+      
+      // Initially the form should indicate no changes
+      setHasChanges(false);
       return;
     }
-
-    if (!initializedRef.current) return;
 
     const formType = isOneWay ? '1' : '2';
     const formDepartureDateStr = formData.departureDate ? formatDateForUrl(formData.departureDate) : '';
     const formReturnDateStr = formData.dateRange?.to ? formatDateForUrl(formData.dateRange.to) : '0';
     
     // More precise comparison of values to detect actual changes
+    const original = originalValuesRef.current;
     const hasFormChanges = 
-      pickupValue !== originalValuesRef.current.from ||
-      dropoffValue !== originalValuesRef.current.to ||
-      formData.passengers !== originalValuesRef.current.passengers ||
-      formType !== originalValuesRef.current.type ||
-      (isOneWay && formDepartureDateStr && formDepartureDateStr !== originalValuesRef.current.date) ||
+      pickupValue !== original.from ||
+      dropoffValue !== original.to ||
+      formData.passengers !== original.passengers ||
+      formType !== original.type ||
+      (isOneWay && formDepartureDateStr && formDepartureDateStr !== original.date) ||
       (!isOneWay && formData.dateRange?.from && formData.dateRange?.to && 
-        (formatDateForUrl(formData.dateRange.from) !== originalValuesRef.current.date || 
-         formReturnDateStr !== originalValuesRef.current.returnDate));
+        (formatDateForUrl(formData.dateRange.from) !== original.date || 
+         formReturnDateStr !== original.returnDate));
+    
+    console.log('Change detection result:', hasFormChanges);
     
     // Only update state if there's an actual change to minimize re-renders
     if (hasChanges !== hasFormChanges) {
