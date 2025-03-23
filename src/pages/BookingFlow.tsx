@@ -23,7 +23,7 @@ const BookingFlow = () => {
     }
   };
 
-  return renderStep();
+  return <div id="booking-flow-container">{renderStep()}</div>;
 };
 
 export default BookingFlow;

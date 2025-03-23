@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../Header';
 import Sitemap from '../Sitemap';
 import Newsletter from '../Newsletter';
@@ -29,9 +30,117 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
 }) => {
   const navigate = useNavigate();
   const { from, to, type, date, returnDate, passengers } = useParams();
-  const { setBookingState } = useBooking();
+  const { bookingState, setBookingState } = useBooking();
+  
+  // Refs for scroll calculations
+  const priceBarRef = useRef<HTMLDivElement>(null);
+  const priceBarPlaceholderRef = useRef<HTMLDivElement>(null);
+  const newsletterRef = useRef<HTMLDivElement>(null);
+  const contentEndRef = useRef<HTMLDivElement>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
+  
+  const [isFloating, setIsFloating] = useState(true);
+  const [isSlotted, setIsSlotted] = useState(false);
+  // Track exact position for smooth transitions
+  const [slotPosition, setSlotPosition] = useState(0);
+
+  // Add a class to the body to indicate this is a booking page
+  useEffect(() => {
+    document.body.classList.add('booking-page');
+    document.body.setAttribute('data-page-type', 'booking');
+    document.documentElement.classList.add('booking-page');
+    
+    // Try to reposition the chat widget when this component mounts
+    const positionChatWidget = () => {
+      if (window.innerWidth >= 768) return; // Only on mobile
+      
+      const chatWidgets = [
+        document.getElementById('voiceflow-chat-widget-container'),
+        document.querySelector('.vf-widget-container'),
+        document.querySelector('[id^="voiceflow-chat"]'),
+        document.querySelector('button[aria-label*="chat"]'),
+        ...Array.from(document.querySelectorAll('div[style*="position: fixed"][style*="bottom: 20px"]')),
+        ...Array.from(document.querySelectorAll('div[style*="position: fixed"][style*="bottom: 16px"]'))
+      ].filter(Boolean);
+      
+      chatWidgets.forEach(widget => {
+        if (widget && widget.style) {
+          widget.style.bottom = '80px';
+          widget.style.zIndex = '45';
+          widget.setAttribute('data-modified-by-booking', 'true');
+        }
+      });
+    };
+    
+    // Run initially
+    positionChatWidget();
+    
+    // And set up an interval to keep checking (in case widget loads later)
+    const interval = setInterval(positionChatWidget, 500);
+    
+    return () => {
+      document.body.classList.remove('booking-page');
+      document.body.removeAttribute('data-page-type');
+      document.documentElement.classList.remove('booking-page');
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Calculate and update position on resize
+  useEffect(() => {
+    const updatePositions = () => {
+      if (priceBarPlaceholderRef.current) {
+        const rect = priceBarPlaceholderRef.current.getBoundingClientRect();
+        const scrollY = window.scrollY;
+        setSlotPosition(rect.top + scrollY);
+      }
+    };
+
+    // Initial position calculation
+    updatePositions();
+    
+    // Recalculate on resize
+    window.addEventListener('resize', updatePositions);
+    return () => window.removeEventListener('resize', updatePositions);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!priceBarRef.current || !priceBarPlaceholderRef.current) return;
+
+      // Update position in case layout has shifted
+      if (priceBarPlaceholderRef.current) {
+        const rect = priceBarPlaceholderRef.current.getBoundingClientRect();
+        const scrollY = window.scrollY;
+        setSlotPosition(rect.top + scrollY);
+      }
+
+      const placeholderRect = priceBarPlaceholderRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const scrollBuffer = 5; // Buffer pixels to make transition smoother
+      
+      // Check if the placeholder should be docked (when it's visible and near bottom of viewport)
+      const shouldDock = placeholderRect.top <= viewportHeight - placeholderRect.height - scrollBuffer;
+      
+      setIsFloating(!shouldDock);
+      setIsSlotted(shouldDock);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Initial check
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentStep]);
 
   const handleBack = () => {
+    // Scroll to top first
+    window.scrollTo(0, 0);
+    
     if (onBack) {
       onBack();
     } else if (currentStep === 1) {
@@ -47,6 +156,9 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
   };
 
   const handleNext = () => {
+    // Scroll to top first
+    window.scrollTo(0, 0);
+    
     if (onNext) {
       onNext();
     } else {
@@ -62,7 +174,7 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
     <div className="min-h-screen bg-[#f8fafc]">
       <Header />
       
-      <main className="pt-28 pb-32">
+      <main className="pt-28 pb-20 booking-flow" ref={mainContentRef}>
         {/* Content */}
         <div className="relative z-10">
           {/* Top Booking Bar */}
@@ -88,40 +200,67 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
           </div>
 
           {/* Main Content */}
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
             <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
               {children}
             </div>
           </div>
 
+          {/* Price Bar Placeholder - always present even if newsletter isn't shown */}
+          <div 
+            ref={priceBarPlaceholderRef}
+            className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 my-12"
+          >
+            {/* Empty placeholder with correct height */}
+            <div className={`h-[72px] rounded-full ${isSlotted ? 'opacity-0' : 'opacity-0'}`} />
+          </div>
+
           {/* Newsletter Section */}
           {showNewsletter && (
-            <div className="mt-16">
-              <Newsletter webhookUrl="https://hook.eu1.make.com/newsletter-signup" />
+            <div ref={newsletterRef} className="mt-0">
+              <Newsletter ref={newsletterRef} webhookUrl="https://hook.eu1.make.com/newsletter-signup" />
             </div>
           )}
+
+          {/* This div serves as a reference point for the end of content when newsletter isn't shown */}
+          <div ref={contentEndRef} className="h-8"></div>
         </div>
 
-        {/* Floating Bottom Bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between">
+        {/* Floating/Docked Price Bar - changed z-index to be lower than header */}
+        <div 
+          ref={priceBarRef}
+          className={`${isSlotted ? 'absolute' : 'fixed'} left-0 right-0 px-4 sm:px-6 lg:px-8 z-40 price-bar-container`}
+          style={{
+            top: isSlotted ? slotPosition : 'auto',
+            bottom: isSlotted ? 'auto' : '16px'
+          }}
+        >
+          <div 
+            className={`max-w-3xl mx-auto rounded-full ${
+              isFloating 
+                ? 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.2)]' 
+                : 'bg-white shadow-[0_4px_10px_rgba(0,0,0,0.1)]'
+            } price-bar`}
+          >
+            <div className="flex items-center justify-between px-4 py-3">
               <button
                 onClick={handleBack}
-                className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
 
-              <div className="flex items-center space-x-8">
+              <div className="flex items-center space-x-6">
                 <div className="text-right">
                   <div className="text-sm text-gray-600">Total Price</div>
-                  <div className="text-xl font-bold">€{totalPrice.toFixed(2)}</div>
+                  <div className="text-xl font-bold">
+                    €{totalPrice.toFixed(2)}
+                  </div>
                 </div>
 
                 <button
                   onClick={handleNext}
-                  className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-all duration-300"
+                  className="bg-blue-600 text-white text-[13px] md:text-sm px-4 md:px-6 py-2.5 rounded-full hover:bg-blue-700 transition-all duration-300"
                 >
                   {nextButtonText}
                 </button>

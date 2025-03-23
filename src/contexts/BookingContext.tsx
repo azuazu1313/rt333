@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { vehicles } from '../data/vehicles';
 
 interface BookingState {
   step: 1 | 2 | 3;
+  previousStep?: 1 | 2 | 3; // Added to track previous step for animations
   selectedVehicle: typeof vehicles[0];
   personalDetails: {
     title: 'mr' | 'ms';
@@ -18,6 +19,7 @@ interface BookingState {
     cardNumber?: string;
     expiryDate?: string;
     cvc?: string;
+    discountCode?: string;
   };
 }
 
@@ -53,6 +55,20 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       method: 'card'
     }
   });
+
+  // Track previous step for animation purposes
+  const previousStepRef = useRef<1 | 2 | 3>(1);
+  
+  useEffect(() => {
+    // When step changes, update the previousStep value
+    if (bookingState.step !== previousStepRef.current) {
+      setBookingState(prev => ({
+        ...prev,
+        previousStep: previousStepRef.current
+      }));
+      previousStepRef.current = bookingState.step;
+    }
+  }, [bookingState.step]);
 
   return (
     <BookingContext.Provider value={{ bookingState, setBookingState }}>

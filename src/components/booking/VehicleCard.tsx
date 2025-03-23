@@ -66,7 +66,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
             onClick={onLearnMore}
             className="flex items-center text-gray-500 hover:text-blue-600 transition-colors p-2 hover:bg-gray-100 rounded-lg group"
           >
-            <span className="mr-2 text-sm group-hover:text-blue-600">Learn more</span>
+            <span className="mr-2 text-[10px] md:text-sm group-hover:text-blue-600">Learn more</span>
             <Info className="w-5 h-5" />
           </button>
         </div>

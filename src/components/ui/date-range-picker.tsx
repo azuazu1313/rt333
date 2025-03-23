@@ -31,7 +31,7 @@ export function DateRangePicker({
           variant={"outline"}
           className={cn(
             "w-full justify-between bg-white hover:bg-white focus:ring-2 focus:ring-blue-600 h-[42px]",
-            !dateRange && "text-gray-500",
+            !dateRange?.from && "text-gray-500",
             className
           )}
         >
@@ -57,6 +57,7 @@ export function DateRangePicker({
           selected={dateRange}
           onSelect={onDateRangeChange}
           initialFocus
+          defaultMonth={dateRange?.from}
         />
       </PopoverContent>
     </Popover>

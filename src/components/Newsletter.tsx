@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 
 interface NewsletterProps {
   webhookUrl: string;
 }
 
-const Newsletter: React.FC<NewsletterProps> = ({ webhookUrl }) => {
+const Newsletter = forwardRef<HTMLDivElement, NewsletterProps>(({ webhookUrl }, ref) => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -35,7 +35,7 @@ const Newsletter: React.FC<NewsletterProps> = ({ webhookUrl }) => {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4">
+    <div ref={ref} className="max-w-md mx-auto px-4">
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h3 className="text-xl font-bold text-center mb-2">
           Subscribe to our Newsletter
@@ -80,6 +80,6 @@ const Newsletter: React.FC<NewsletterProps> = ({ webhookUrl }) => {
       </div>
     </div>
   );
-};
+});
 
 export default Newsletter;

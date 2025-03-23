@@ -193,6 +193,9 @@ const SearchForm = () => {
     };
     
     navigate(path);
+    
+    // Scroll to top after navigation
+    window.scrollTo(0, 0);
   };
 
   return (

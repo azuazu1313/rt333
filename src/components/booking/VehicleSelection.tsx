@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBooking } from '../../contexts/BookingContext';
 import BookingLayout from './BookingLayout';
 import VehicleCard from './VehicleCard';
@@ -10,7 +10,19 @@ const VehicleSelection = () => {
   const [selectedVehicle, setSelectedVehicle] = useState(vehicles[0]);
   const [modalVehicle, setModalVehicle] = useState<typeof vehicles[0] | null>(null);
 
+  // Set initial selected vehicle on component mount
+  useEffect(() => {
+    // If there's already a selected vehicle in context, use that
+    if (bookingState.selectedVehicle) {
+      setSelectedVehicle(bookingState.selectedVehicle);
+    }
+  }, [bookingState.selectedVehicle]);
+
   const handleNext = () => {
+    // Scroll to top
+    window.scrollTo(0, 0);
+    
+    // Update selected vehicle in context
     setBookingState(prev => ({
       ...prev,
       step: 2,

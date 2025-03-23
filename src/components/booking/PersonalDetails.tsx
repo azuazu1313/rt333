@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Info } from 'lucide-react';
 import { useBooking } from '../../contexts/BookingContext';
 import BookingLayout from './BookingLayout';
@@ -15,6 +15,13 @@ const PersonalDetails = () => {
     phone: '',
     selectedExtras: new Set<string>()
   });
+
+  // Initialize form with existing data from context if available
+  useEffect(() => {
+    if (bookingState.personalDetails) {
+      setFormData(bookingState.personalDetails);
+    }
+  }, [bookingState.personalDetails]);
 
   const handleExtraToggle = (extraId: string) => {
     const newExtras = new Set(formData.selectedExtras);
@@ -41,6 +48,10 @@ const PersonalDetails = () => {
   };
 
   const handleNext = () => {
+    // Scroll to top
+    window.scrollTo(0, 0);
+    
+    // Update context with personal details
     setBookingState(prev => ({
       ...prev,
       step: 3,

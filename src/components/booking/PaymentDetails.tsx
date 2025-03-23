@@ -34,6 +34,14 @@ const PaymentDetails = () => {
     return basePrice + extrasTotal;
   };
 
+  // Mock extras for the example
+  const extras = [
+    { id: 'child-seat', name: 'Child Seat (0-3 years)', price: 5.00 },
+    { id: 'infant-seat', name: 'Infant Seat (3-6 years)', price: 5.00 },
+    { id: 'extra-stop', name: 'Extra Stop', price: 10.00 },
+    { id: 'night-fee', name: 'Night Transfer Fee', price: 10.00 },
+  ];
+
   const priceDetails = [
     { label: bookingState.selectedVehicle?.name || 'Vehicle Transfer', price: bookingState.selectedVehicle?.price || 0 },
     { label: 'Night Transfer Fee', price: 10.00 },
@@ -54,7 +62,7 @@ const PaymentDetails = () => {
       totalPrice={total}
       onNext={handleBook}
       nextButtonText="Complete Booking"
-      showNewsletter={false}
+      showNewsletter={true}
     >
       <div className="max-w-3xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Payment Details</h1>
