@@ -29,37 +29,37 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 md:p-0">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.2 }}
-          className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 overflow-hidden"
+          className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden relative"
         >
           {/* Header */}
-          <div className="relative p-6 border-b">
-            <h2 className="text-2xl font-bold">{vehicle.name}</h2>
+          <div className="sticky top-0 z-10 bg-white border-b p-4 md:p-6">
+            <h2 className="text-xl md:text-2xl font-bold pr-8">{vehicle.name}</h2>
             <button
               onClick={onClose}
-              className="absolute right-6 top-6 text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 p-1"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Content */}
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Content - Scrollable Area */}
+          <div className="overflow-y-auto p-4 md:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               {/* Left Column */}
               <div>
                 <motion.img
-                  initial={{ x: -50, opacity: 0 }}
+                  initial={{ x: -20, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.2 }}
                   src={vehicle.image}
                   alt={vehicle.name}
-                  className="w-full h-auto"
+                  className="w-full h-auto rounded-lg"
                 />
               </div>
 
@@ -84,7 +84,7 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
             {/* Features */}
             <div className="mt-8">
               <h3 className="text-lg font-semibold mb-4">What's included?</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {vehicle.features.map((feature, index) => (
                   <motion.div
                     key={index}
@@ -106,11 +106,11 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="p-6 border-t bg-gray-50 flex justify-end space-x-4">
+          {/* Footer - Sticky Bottom */}
+          <div className="sticky bottom-0 bg-gray-50 border-t p-4 md:p-6 flex flex-col sm:flex-row justify-end gap-3">
             <button
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
+              className="w-full sm:w-auto px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-center"
             >
               Cancel
             </button>
@@ -119,7 +119,7 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
                 onSelect();
                 onClose();
               }}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center"
+              className="w-full sm:w-auto bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center"
             >
               <Check className="w-5 h-5 mr-2" />
               Choose this vehicle
