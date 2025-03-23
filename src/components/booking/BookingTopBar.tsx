@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapPin, Users, Plus, Minus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { DatePicker } from '../ui/date-picker';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
@@ -226,36 +226,39 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   };
 
   return (
-    <div className="py-4 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col space-y-6">
-          {/* Trip Type Toggle */}
-          <div className="relative w-64 h-10 bg-gray-100 rounded-lg p-1">
+    <div className="relative">
+      {/* Trip Type Toggle */}
+      <div className="absolute -top-10 left-6">
+        <div className="relative h-10 bg-white rounded-t-lg shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] overflow-hidden">
+          <div className="flex h-full">
+            <button
+              className={`w-32 relative z-10 transition-colors ${
+                isRoundTrip ? 'text-white' : 'text-gray-700 hover:text-gray-900'
+              }`}
+              onClick={() => handleTripTypeChange(true)}
+            >
+              Round Trip
+            </button>
+            <button
+              className={`w-32 relative z-10 transition-colors ${
+                !isRoundTrip ? 'text-white' : 'text-gray-700 hover:text-gray-900'
+              }`}
+              onClick={() => handleTripTypeChange(false)}
+            >
+              One Way
+            </button>
             <div 
-              className={`absolute inset-y-1 w-[calc(50%-4px)] bg-blue-600 rounded-md transition-all duration-300 ${
-                isRoundTrip ? 'left-1' : 'left-[calc(50%+3px)]'
+              className={`absolute inset-y-0 w-32 bg-blue-600 transition-transform duration-300 ${
+                isRoundTrip ? 'left-0' : 'left-32'
               }`}
             />
-            <div className="relative flex h-full">
-              <button
-                className={`flex-1 rounded-md transition-colors z-10 ${
-                  isRoundTrip ? 'text-white' : 'text-gray-700'
-                }`}
-                onClick={() => handleTripTypeChange(true)}
-              >
-                Round Trip
-              </button>
-              <button
-                className={`flex-1 rounded-md transition-colors z-10 ${
-                  !isRoundTrip ? 'text-white' : 'text-gray-700'
-                }`}
-                onClick={() => handleTripTypeChange(false)}
-              >
-                One Way
-              </button>
-            </div>
           </div>
+        </div>
+      </div>
 
+      {/* Main Content */}
+      <div className="py-4 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
             <div className={`flex-1 w-full md:w-auto grid grid-cols-1 ${isRoundTrip ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-6`}>
               {/* From Location */}
@@ -397,5 +400,3 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 };
 
 export default BookingTopBar;
-
-export default BookingTopBar

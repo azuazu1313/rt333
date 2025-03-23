@@ -62,7 +62,7 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
     <div className="min-h-screen bg-[#f8fafc]">
       <Header />
       
-      <main className="pt-20 pb-32">
+      <main className="pt-28 pb-32">
         {/* Content */}
         <div className="relative z-10">
           {/* Top Booking Bar */}

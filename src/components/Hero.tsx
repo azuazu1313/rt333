@@ -18,7 +18,7 @@ const Hero = () => {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 md:pt-32 pb-12 md:pb-16">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 md:pt-40 pb-12 md:pb-16">
         <div className="grid md:grid-cols-2 gap-8">
           <div className="text-white text-center md:text-right">
             <div className="md:absolute md:right-[50%] md:translate-x-[-2rem] md:top-[200px]">
