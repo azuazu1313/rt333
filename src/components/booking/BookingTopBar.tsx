@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Users, Plus, Minus } from 'lucide-react';
 import { motion } from 'framer-motion';
-import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { DatePicker } from '../ui/date-picker';
 import { DateRangePicker } from '../ui/date-range-picker';
@@ -30,6 +29,7 @@ const parseDateFromUrl = (dateStr: string): Date | undefined => {
     const date = new Date(year, month, day, 12, 0, 0, 0);
     
     if (isNaN(date.getTime())) {
+      console.error('Error parsing date: Invalid date');
       return undefined;
     }
     
@@ -61,21 +61,31 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Flag to prevent re-initializing values after first setup
+  const initializedRef = useRef(false);
+  const isInitialRenderRef = useRef(true);
 
   // Parse dates from URL strings
   const departureDate = parseDateFromUrl(date);
   const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
 
-  // Set initial state based on URL parameters
-  const [isRoundTrip, setIsRoundTrip] = useState(type === '2');
+  // Explicitly check if type is '1' for One Way (ensures proper toggle selection)
+  const [isOneWay, setIsOneWay] = useState(type === '1');
   const [displayPassengers, setDisplayPassengers] = useState(parseInt(passengers, 10));
   const [hasChanges, setHasChanges] = useState(false);
-  const [originalValues, setOriginalValues] = useState({
+  
+  // Input field states
+  const [pickupValue, setPickupValue] = useState(from);
+  const [dropoffValue, setDropoffValue] = useState(to);
+  
+  // Store original URL values for comparison
+  const originalValuesRef = useRef({
     from,
     to,
     type,
-    departureDate,
-    returnDateParsed,
+    date,
+    returnDate: returnDate || '0',
     passengers: parseInt(passengers, 10)
   });
 
@@ -83,118 +93,79 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   const [formData, setFormData] = useState({
     from,
     to,
-    type: isRoundTrip ? '2' : '1',
-    departureDate: isRoundTrip ? undefined : departureDate,
-    dateRange: isRoundTrip ? {
+    type,
+    departureDate: isOneWay ? departureDate : undefined,
+    dateRange: !isOneWay ? {
       from: departureDate,
       to: returnDateParsed
     } as DateRange | undefined : undefined,
     passengers: parseInt(passengers, 10)
   });
 
-  // Initialize Places autocomplete for locations
-  const {
-    ready: pickupReady,
-    value: pickupValue,
-    suggestions: { status: pickupStatus, data: pickupSuggestions },
-    setValue: setPickupValue,
-    clearSuggestions: clearPickupSuggestions,
-  } = usePlacesAutocomplete({
-    requestOptions: { componentRestrictions: { country: ['it', 'fr', 'es', 'de'] } },
-    debounce: 300,
-    defaultValue: from
-  });
-
-  const {
-    ready: dropoffReady,
-    value: dropoffValue,
-    suggestions: { status: dropoffStatus, data: dropoffSuggestions },
-    setValue: setDropoffValue,
-    clearSuggestions: clearDropoffSuggestions,
-  } = usePlacesAutocomplete({
-    requestOptions: { componentRestrictions: { country: ['it', 'fr', 'es', 'de'] } },
-    debounce: 300,
-    defaultValue: to
-  });
-
-  // Update state when URL parameters change
+  // Initialize component only once on mount
   useEffect(() => {
-    setIsRoundTrip(type === '2');
-    setDisplayPassengers(parseInt(passengers, 10));
-    
-    setFormData({
-      from,
-      to,
-      type: type === '2' ? '2' : '1',
-      departureDate: type === '2' ? undefined : departureDate,
-      dateRange: type === '2' ? {
-        from: departureDate,
-        to: returnDateParsed
-      } : undefined,
-      passengers: parseInt(passengers, 10)
-    });
+    // Only initialize if not already done
+    if (!initializedRef.current) {
+      console.log("Initializing BookingTopBar with type:", type, "isOneWay should be:", type === '1');
+      
+      const isUrlOneWay = type === '1';
+      setIsOneWay(isUrlOneWay);
+      setDisplayPassengers(parseInt(passengers, 10));
+      
+      // Store original values for change detection
+      originalValuesRef.current = {
+        from,
+        to,
+        type,
+        date,
+        returnDate: returnDate || '0',
+        passengers: parseInt(passengers, 10)
+      };
+      
+      // Initialize location inputs
+      setPickupValue(from);
+      setDropoffValue(to);
+      
+      // Explicitly set hasChanges to false on initialization
+      setHasChanges(false);
+      
+      // Mark as initialized
+      initializedRef.current = true;
+    }
+  // Don't include form state dependencies to prevent re-initialization
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from, to, type, date, returnDate, passengers]);
 
-    setOriginalValues({
-      from,
-      to,
-      type,
-      departureDate,
-      returnDateParsed,
-      passengers: parseInt(passengers, 10)
-    });
-
-    setPickupValue(from, false);
-    setDropoffValue(to, false);
-    setHasChanges(false);
-  }, [from, to, type, date, returnDate, passengers, departureDate, returnDateParsed]);
-
-  // Check for changes to enable/disable the Update Route button
+  // Detect changes to enable/disable Update Route button
   useEffect(() => {
-    const currentDateStr = formData.departureDate ? formatDateForUrl(formData.departureDate) : '';
-    const currentReturnDateStr = formData.dateRange?.to ? formatDateForUrl(formData.dateRange.to) : '0';
-    const currentType = isRoundTrip ? '2' : '1';
+    // Skip the initial render to prevent false "changes" detection
+    if (isInitialRenderRef.current) {
+      isInitialRenderRef.current = false;
+      return;
+    }
+
+    if (!initializedRef.current) return;
+
+    const formType = isOneWay ? '1' : '2';
+    const formDepartureDateStr = formData.departureDate ? formatDateForUrl(formData.departureDate) : '';
+    const formReturnDateStr = formData.dateRange?.to ? formatDateForUrl(formData.dateRange.to) : '0';
     
+    // More precise comparison of values to detect actual changes
     const hasFormChanges = 
-      formData.from !== originalValues.from ||
-      formData.to !== originalValues.to ||
-      formData.passengers !== originalValues.passengers ||
-      currentType !== originalValues.type ||
-      (isRoundTrip && (
-        !formData.dateRange?.from ||
-        !formData.dateRange?.to ||
-        currentDateStr !== date ||
-        currentReturnDateStr !== (returnDate || '0')
-      )) ||
-      (!isRoundTrip && currentDateStr !== date);
-
-    setHasChanges(hasFormChanges);
-  }, [formData, isRoundTrip, originalValues, date, returnDate]);
-
-  const handlePickupSelect = async (suggestion: google.maps.places.AutocompletePrediction) => {
-    setPickupValue(suggestion.description, false);
-    clearPickupSuggestions();
-    setFormData(prev => ({ ...prev, from: suggestion.description }));
-
-    try {
-      const results = await getGeocode({ address: suggestion.description });
-      await getLatLng(results[0]);
-    } catch (error) {
-      console.error('Error getting coordinates:', error);
+      pickupValue !== originalValuesRef.current.from ||
+      dropoffValue !== originalValuesRef.current.to ||
+      formData.passengers !== originalValuesRef.current.passengers ||
+      formType !== originalValuesRef.current.type ||
+      (isOneWay && formDepartureDateStr && formDepartureDateStr !== originalValuesRef.current.date) ||
+      (!isOneWay && formData.dateRange?.from && formData.dateRange?.to && 
+        (formatDateForUrl(formData.dateRange.from) !== originalValuesRef.current.date || 
+         formReturnDateStr !== originalValuesRef.current.returnDate));
+    
+    // Only update state if there's an actual change to minimize re-renders
+    if (hasChanges !== hasFormChanges) {
+      setHasChanges(hasFormChanges);
     }
-  };
-
-  const handleDropoffSelect = async (suggestion: google.maps.places.AutocompletePrediction) => {
-    setDropoffValue(suggestion.description, false);
-    clearDropoffSuggestions();
-    setFormData(prev => ({ ...prev, to: suggestion.description }));
-
-    try {
-      const results = await getGeocode({ address: suggestion.description });
-      await getLatLng(results[0]);
-    } catch (error) {
-      console.error('Error getting coordinates:', error);
-    }
-  };
+  }, [pickupValue, dropoffValue, formData, isOneWay, hasChanges]);
 
   const handlePassengerChange = (increment: boolean) => {
     const newPassengers = increment ? formData.passengers + 1 : formData.passengers - 1;
@@ -204,36 +175,52 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     }
   };
 
-  const handleTripTypeChange = (roundTrip: boolean) => {
-    setIsRoundTrip(roundTrip);
-    setFormData(prev => ({
-      ...prev,
-      type: roundTrip ? '2' : '1',
-      departureDate: roundTrip ? undefined : prev.dateRange?.from || prev.departureDate,
-      dateRange: roundTrip ? {
-        from: prev.departureDate || prev.dateRange?.from,
-        to: prev.dateRange?.to
-      } : undefined
-    }));
+  const handleTripTypeChange = (oneWay: boolean) => {
+    setIsOneWay(oneWay);
+    
+    setFormData(prev => {
+      // When switching to one way
+      if (oneWay) {
+        return {
+          ...prev,
+          type: '1',
+          departureDate: prev.dateRange?.from || prev.departureDate,
+          dateRange: undefined
+        };
+      } 
+      // When switching to round trip
+      else {
+        return {
+          ...prev,
+          type: '2',
+          departureDate: undefined,
+          dateRange: {
+            from: prev.departureDate || prev.dateRange?.from,
+            to: prev.dateRange?.to || undefined
+          }
+        };
+      }
+    });
   };
 
   const handleUpdateRoute = () => {
     if (!hasChanges) return;
 
-    const encodedFrom = encodeURIComponent(formData.from.toLowerCase().replace(/\s+/g, '-'));
-    const encodedTo = encodeURIComponent(formData.to.toLowerCase().replace(/\s+/g, '-'));
+    // Get values from current state
+    const encodedFrom = encodeURIComponent(pickupValue.toLowerCase().replace(/\s+/g, '-'));
+    const encodedTo = encodeURIComponent(dropoffValue.toLowerCase().replace(/\s+/g, '-'));
     
     let formattedDepartureDate;
     let formattedReturnDate = '0';
 
-    if (isRoundTrip && formData.dateRange) {
+    if (!isOneWay && formData.dateRange) {
       if (!formData.dateRange.from || !formData.dateRange.to) {
         alert('Please select both departure and return dates for round trips.');
         return;
       }
       formattedDepartureDate = formatDateForUrl(formData.dateRange.from);
       formattedReturnDate = formatDateForUrl(formData.dateRange.to);
-    } else if (!isRoundTrip && formData.departureDate) {
+    } else if (isOneWay && formData.departureDate) {
       formattedDepartureDate = formatDateForUrl(formData.departureDate);
     } else {
       alert('Please select a date for your trip.');
@@ -241,9 +228,22 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     }
     
     const baseRoute = location.pathname.startsWith('/home') ? '/home/transfer' : '/transfer';
-    const newType = isRoundTrip ? '2' : '1';
+    const newType = isOneWay ? '1' : '2';
     const path = `${baseRoute}/${encodedFrom}/${encodedTo}/${newType}/${formattedDepartureDate}/${formattedReturnDate}/${formData.passengers}/form`;
 
+    // Save the new values as original values to reset change detection
+    originalValuesRef.current = {
+      from: pickupValue,
+      to: dropoffValue,
+      type: newType,
+      date: formattedDepartureDate,
+      returnDate: formattedReturnDate,
+      passengers: formData.passengers
+    };
+
+    // Reset change detection before navigation
+    setHasChanges(false);
+    
     navigate(path);
   };
 
@@ -254,23 +254,23 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
           <div className="flex h-full">
             <button
               className={`w-32 relative z-10 transition-colors ${
-                isRoundTrip ? 'text-white' : 'text-gray-700 hover:text-gray-900'
+                !isOneWay ? 'text-white' : 'text-gray-700 hover:text-gray-900'
               }`}
-              onClick={() => handleTripTypeChange(true)}
+              onClick={() => handleTripTypeChange(false)}
             >
               Round Trip
             </button>
             <button
               className={`w-32 relative z-10 transition-colors ${
-                !isRoundTrip ? 'text-white' : 'text-gray-700 hover:text-gray-900'
+                isOneWay ? 'text-white' : 'text-gray-700 hover:text-gray-900'
               }`}
-              onClick={() => handleTripTypeChange(false)}
+              onClick={() => handleTripTypeChange(true)}
             >
               One Way
             </button>
             <div 
               className={`absolute inset-y-0 w-32 bg-blue-600 transition-transform duration-300 ${
-                isRoundTrip ? 'left-0' : 'left-32'
+                isOneWay ? 'left-32' : 'left-0'
               }`}
             />
           </div>
@@ -279,6 +279,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
       <div className="py-4 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
+          {/* Mobile View */}
           <div className="flex flex-col space-y-4 md:hidden">
             <div className="relative">
               <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -289,19 +290,6 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                 onChange={(e) => setPickupValue(e.target.value)}
                 className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
-              {pickupStatus === "OK" && (
-                <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
-                  {pickupSuggestions.map((suggestion) => (
-                    <li
-                      key={suggestion.place_id}
-                      onClick={() => handlePickupSelect(suggestion)}
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                    >
-                      {suggestion.description}
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
 
             <div className="relative">
@@ -313,34 +301,9 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                 onChange={(e) => setDropoffValue(e.target.value)}
                 className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
-              {dropoffStatus === "OK" && (
-                <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
-                  {dropoffSuggestions.map((suggestion) => (
-                    <li
-                      key={suggestion.place_id}
-                      onClick={() => handleDropoffSelect(suggestion)}
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                    >
-                      {suggestion.description}
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
 
-            {isRoundTrip ? (
-              <DateRangePicker
-                dateRange={formData.dateRange}
-                onDateRangeChange={(dateRange) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    dateRange,
-                    departureDate: undefined
-                  }));
-                }}
-                placeholder="Select dates"
-              />
-            ) : (
+            {isOneWay ? (
               <DatePicker
                 date={formData.departureDate}
                 onDateChange={(date) => {
@@ -351,6 +314,19 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                   }));
                 }}
                 placeholder="Select date"
+              />
+            ) : (
+              <DateRangePicker
+                dateRange={formData.dateRange}
+                onDateRangeChange={(dateRange) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    dateRange,
+                    departureDate: undefined
+                  }));
+                }}
+                placeholder="Select dates"
+                className="w-full"
               />
             )}
 
@@ -398,6 +374,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
             </motion.button>
           </div>
 
+          {/* Desktop View */}
           <div className="hidden md:flex items-center gap-4">
             <div className="flex-1 grid grid-cols-4 gap-4">
               <div className="relative">
@@ -409,19 +386,6 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                   onChange={(e) => setPickupValue(e.target.value)}
                   className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
-                {pickupStatus === "OK" && (
-                  <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
-                    {pickupSuggestions.map((suggestion) => (
-                      <li
-                        key={suggestion.place_id}
-                        onClick={() => handlePickupSelect(suggestion)}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                      >
-                        {suggestion.description}
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
 
               <div className="relative">
@@ -433,34 +397,9 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                   onChange={(e) => setDropoffValue(e.target.value)}
                   className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
-                {dropoffStatus === "OK" && (
-                  <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
-                    {dropoffSuggestions.map((suggestion) => (
-                      <li
-                        key={suggestion.place_id}
-                        onClick={() => handleDropoffSelect(suggestion)}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                      >
-                        {suggestion.description}
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
 
-              {isRoundTrip ? (
-                <DateRangePicker
-                  dateRange={formData.dateRange}
-                  onDateRangeChange={(dateRange) => {
-                    setFormData(prev => ({
-                      ...prev,
-                      dateRange,
-                      departureDate: undefined
-                    }));
-                  }}
-                  placeholder="Select dates"
-                />
-              ) : (
+              {isOneWay ? (
                 <DatePicker
                   date={formData.departureDate}
                   onDateChange={(date) => {
@@ -471,6 +410,19 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                     }));
                   }}
                   placeholder="Select date"
+                />
+              ) : (
+                <DateRangePicker
+                  dateRange={formData.dateRange}
+                  onDateRangeChange={(dateRange) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      dateRange,
+                      departureDate: undefined
+                    }));
+                  }}
+                  placeholder="Select dates"
+                  className="col-span-1"
                 />
               )}
 

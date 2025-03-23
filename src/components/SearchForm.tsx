@@ -58,6 +58,7 @@ const SearchForm = () => {
       const { from, to, type, date, returnDate, passengers: passengerCount } = params;
       
       if (from && to && type && date) {
+        // Convert type to boolean flag - '1' means One Way (isReturn = false)
         const isRoundTrip = type === '2';
         setIsReturn(isRoundTrip);
         setPassengers(Math.max(1, parseInt(passengerCount || '1', 10)));
@@ -65,7 +66,8 @@ const SearchForm = () => {
         const departureDate = parseDateFromUrl(date);
         const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
         
-        console.log('Parsed dates:', { departureDate, returnDateParsed });
+        console.log('SearchForm - Parsed dates:', { departureDate, returnDateParsed });
+        console.log('SearchForm - Trip type:', type, 'isReturn should be:', isRoundTrip);
         
         setFormData({
           pickup: decodeURIComponent(from.replace(/-/g, ' ')),
@@ -153,6 +155,8 @@ const SearchForm = () => {
 
     const encodedPickup = encodeURIComponent(pickup.toLowerCase().replace(/\s+/g, '-'));
     const encodedDropoff = encodeURIComponent(dropoff.toLowerCase().replace(/\s+/g, '-'));
+    
+    // Important: Type is '1' for One Way, '2' for Round Trip 
     const type = isReturn ? '2' : '1';
     
     const departureDate = isReturn ? formData.dateRange?.from : formData.departureDate;
@@ -162,6 +166,8 @@ const SearchForm = () => {
     const returnDateParam = isReturn && formData.dateRange?.to
       ? formatDateForUrl(formData.dateRange.to)
       : '0';
+    
+    console.log('SearchForm - Submitting with type:', type, '(isReturn:', isReturn, ')');
     
     const path = `/transfer/${encodedPickup}/${encodedDropoff}/${type}/${formattedDepartureDate}/${returnDateParam}/${passengers}/form`;
     
