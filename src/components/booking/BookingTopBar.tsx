@@ -62,7 +62,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isRoundTrip = type === '2';
+  const [isRoundTrip, setIsRoundTrip] = useState(type === '2');
 
   // Parse dates first
   const departureDate = parseDateFromUrl(date);
@@ -87,17 +87,32 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   useEffect(() => {
     setPickupValue(from, false);
     setDropoffValue(to, false);
-  }, [from, to]);
+    
+    // Update form data when URL params change
+    setFormData(prev => ({
+      ...prev,
+      from,
+      to,
+      type,
+      departureDate: isRoundTrip ? undefined : departureDate,
+      dateRange: isRoundTrip ? {
+        from: departureDate,
+        to: returnDateParsed
+      } : undefined
+    }));
+  }, [from, to, type, isRoundTrip, departureDate, returnDateParsed]);
 
   // Check for changes against URL params
   useEffect(() => {
     const currentDateStr = formData.departureDate ? formatDateForUrl(formData.departureDate) : '';
     const currentReturnDateStr = formData.dateRange?.to ? formatDateForUrl(formData.dateRange.to) : '0';
+    const currentType = isRoundTrip ? '2' : '1';
     
     const hasFormChanges = 
       formData.from !== from ||
       formData.to !== to ||
       formData.passengers !== parseInt(passengers, 10) ||
+      currentType !== type ||
       (isRoundTrip && (
         !formData.dateRange ||
         currentDateStr !== date ||
@@ -106,7 +121,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       (!isRoundTrip && currentDateStr !== date);
 
     setHasChanges(hasFormChanges);
-  }, [formData, from, to, date, returnDate, passengers, isRoundTrip]);
+  }, [formData, from, to, date, returnDate, passengers, type, isRoundTrip]);
 
   const {
     ready: pickupReady,
@@ -168,6 +183,19 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     }
   };
 
+  const handleTripTypeChange = (roundTrip: boolean) => {
+    setIsRoundTrip(roundTrip);
+    setFormData(prev => ({
+      ...prev,
+      type: roundTrip ? '2' : '1',
+      departureDate: roundTrip ? undefined : prev.dateRange?.from || prev.departureDate,
+      dateRange: roundTrip ? {
+        from: prev.departureDate || prev.dateRange?.from,
+        to: prev.dateRange?.to
+      } : undefined
+    }));
+  };
+
   const handleUpdateRoute = () => {
     if (!hasChanges) return;
 
@@ -191,7 +219,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     }
     
     const baseRoute = location.pathname.startsWith('/home') ? '/home/transfer' : '/transfer';
-    const path = `${baseRoute}/${encodedFrom}/${encodedTo}/${type}/${formattedDepartureDate}/${formattedReturnDate}/${formData.passengers}/form`;
+    const newType = isRoundTrip ? '2' : '1';
+    const path = `${baseRoute}/${encodedFrom}/${encodedTo}/${newType}/${formattedDepartureDate}/${formattedReturnDate}/${formData.passengers}/form`;
 
     navigate(path);
   };
@@ -199,139 +228,161 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   return (
     <div className="py-4 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-          <div className={`flex-1 w-full md:w-auto grid grid-cols-1 ${isRoundTrip ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-6`}>
-            {/* From Location */}
-            <div className="relative">
-              <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                value={pickupValue}
-                onChange={(e) => {
-                  setPickupValue(e.target.value);
-                  setFormData(prev => ({ ...prev, from: e.target.value }));
-                }}
-                disabled={!pickupReady}
-                className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white disabled:bg-gray-50 disabled:opacity-75"
-                placeholder="From"
-              />
-              {pickupStatus === "OK" && (
-                <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
-                  {pickupSuggestions.map((suggestion) => (
-                    <li
-                      key={suggestion.place_id}
-                      onClick={() => handlePickupSelect(suggestion)}
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                    >
-                      {suggestion.description}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+        <div className="flex flex-col space-y-6">
+          {/* Trip Type Toggle */}
+          <div className="flex bg-gray-100 p-1 rounded-lg w-64">
+            <button
+              className={`flex-1 py-2 text-center rounded-lg transition-colors ${
+                isRoundTrip ? 'bg-blue-600 text-white' : 'text-gray-700'
+              }`}
+              onClick={() => handleTripTypeChange(true)}
+            >
+              Round Trip
+            </button>
+            <button
+              className={`flex-1 py-2 text-center rounded-lg transition-colors ${
+                !isRoundTrip ? 'bg-blue-600 text-white' : 'text-gray-700'
+              }`}
+              onClick={() => handleTripTypeChange(false)}
+            >
+              One Way
+            </button>
+          </div>
 
-            {/* To Location */}
-            <div className="relative">
-              <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                value={dropoffValue}
-                onChange={(e) => {
-                  setDropoffValue(e.target.value);
-                  setFormData(prev => ({ ...prev, to: e.target.value }));
-                }}
-                disabled={!dropoffReady}
-                className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white disabled:bg-gray-50 disabled:opacity-75"
-                placeholder="To"
-              />
-              {dropoffStatus === "OK" && (
-                <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
-                  {dropoffSuggestions.map((suggestion) => (
-                    <li
-                      key={suggestion.place_id}
-                      onClick={() => handleDropoffSelect(suggestion)}
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                    >
-                      {suggestion.description}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+            <div className={`flex-1 w-full md:w-auto grid grid-cols-1 ${isRoundTrip ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-6`}>
+              {/* From Location */}
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={pickupValue}
+                  onChange={(e) => {
+                    setPickupValue(e.target.value);
+                    setFormData(prev => ({ ...prev, from: e.target.value }));
+                  }}
+                  disabled={!pickupReady}
+                  className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white disabled:bg-gray-50 disabled:opacity-75"
+                  placeholder="From"
+                />
+                {pickupStatus === "OK" && (
+                  <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {pickupSuggestions.map((suggestion) => (
+                      <li
+                        key={suggestion.place_id}
+                        onClick={() => handlePickupSelect(suggestion)}
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                      >
+                        {suggestion.description}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
 
-            {/* Date Selection */}
-            {isRoundTrip ? (
-              <div className="col-span-2">
-                <DateRangePicker
-                  dateRange={formData.dateRange}
-                  onDateRangeChange={(dateRange) => {
+              {/* To Location */}
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={dropoffValue}
+                  onChange={(e) => {
+                    setDropoffValue(e.target.value);
+                    setFormData(prev => ({ ...prev, to: e.target.value }));
+                  }}
+                  disabled={!dropoffReady}
+                  className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white disabled:bg-gray-50 disabled:opacity-75"
+                  placeholder="To"
+                />
+                {dropoffStatus === "OK" && (
+                  <ul className="absolute z-10 w-full bg-white mt-1 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {dropoffSuggestions.map((suggestion) => (
+                      <li
+                        key={suggestion.place_id}
+                        onClick={() => handleDropoffSelect(suggestion)}
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                      >
+                        {suggestion.description}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Date Selection */}
+              {isRoundTrip ? (
+                <div className="col-span-2">
+                  <DateRangePicker
+                    dateRange={formData.dateRange}
+                    onDateRangeChange={(dateRange) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        dateRange,
+                        departureDate: undefined
+                      }));
+                    }}
+                    placeholder="Select dates"
+                  />
+                </div>
+              ) : (
+                <DatePicker
+                  date={formData.departureDate}
+                  onDateChange={(date) => {
                     setFormData(prev => ({
                       ...prev,
-                      dateRange,
-                      departureDate: undefined
+                      departureDate: date,
+                      dateRange: undefined
                     }));
                   }}
-                  placeholder="Select dates"
+                  placeholder="Select date"
                 />
-              </div>
-            ) : (
-              <DatePicker
-                date={formData.departureDate}
-                onDateChange={(date) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    departureDate: date,
-                    dateRange: undefined
-                  }));
-                }}
-                placeholder="Select date"
-              />
-            )}
+              )}
 
-            {/* Passengers */}
-            <div className="relative">
-              <Users className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <div className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg bg-white flex justify-between items-center">
-                <span className="text-gray-700 text-[12px]">
-                  {displayPassengers} {' '}
-                  Passenger{displayPassengers !== 1 ? 's' : ''}
-                </span>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handlePassengerChange(false)}
-                    className={`p-1 rounded-full transition-colors ${
-                      formData.passengers > 1 ? 'text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-gray-300'
-                    }`}
-                    disabled={formData.passengers <= 1}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handlePassengerChange(true)}
-                    className={`p-1 rounded-full transition-colors ${
-                      formData.passengers < 100 ? 'text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-gray-300'
-                    }`}
-                    disabled={formData.passengers >= 100}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
+              {/* Passengers */}
+              <div className="relative">
+                <Users className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <div className="w-full h-[42px] pl-10 pr-4 border border-gray-200 rounded-lg bg-white flex justify-between items-center">
+                  <span className="text-gray-700 text-[12px]">
+                    {displayPassengers} {' '}
+                    Passenger{displayPassengers !== 1 ? 's' : ''}
+                  </span>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handlePassengerChange(false)}
+                      className={`p-1 rounded-full transition-colors ${
+                        formData.passengers > 1 ? 'text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-gray-300'
+                      }`}
+                      disabled={formData.passengers <= 1}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handlePassengerChange(true)}
+                      className={`p-1 rounded-full transition-colors ${
+                        formData.passengers < 100 ? 'text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-gray-300'
+                      }`}
+                      disabled={formData.passengers >= 100}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <motion.button
-            whileTap={{ scale: hasChanges ? 0.95 : 1 }}
-            onClick={handleUpdateRoute}
-            className={`px-6 py-2 rounded-lg transition-all duration-300 min-w-[120px] ${
-              hasChanges 
-                ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
-            disabled={!hasChanges}
-          >
-            Update Route
-          </motion.button>
+            <motion.button
+              whileTap={{ scale: hasChanges ? 0.95 : 1 }}
+              onClick={handleUpdateRoute}
+              className={`px-6 py-2 rounded-lg transition-all duration-300 min-w-[120px] ${
+                hasChanges 
+                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+              disabled={!hasChanges}
+            >
+              Update Route
+            </motion.button>
+          </div>
         </div>
       </div>
     </div>
