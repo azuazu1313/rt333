@@ -410,7 +410,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
           {/* Desktop View */}
           <div className="hidden md:flex items-center gap-4">
-            <div className="flex-1 grid grid-cols-4 gap-4">
+            <div className="flex-1 grid grid-cols-[1fr_1fr_1.5fr_1fr] gap-4">
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <input
