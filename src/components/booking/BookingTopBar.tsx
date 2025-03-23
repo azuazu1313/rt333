@@ -70,8 +70,10 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   const departureDate = parseDateFromUrl(date);
   const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
 
-  // Explicitly check if type is '1' for One Way (ensures proper toggle selection)
-  const [isOneWay, setIsOneWay] = useState(type === '1');
+  // Determine if it's a one-way trip based on both type and returnDate
+  // One way if type='1' OR returnDate='0' or undefined
+  const isOneWayFromProps = type === '1' || !returnDate || returnDate === '0';
+  const [isOneWay, setIsOneWay] = useState(isOneWayFromProps);
   const [displayPassengers, setDisplayPassengers] = useState(parseInt(passengers, 10));
   const [hasChanges, setHasChanges] = useState(false);
   
@@ -90,25 +92,40 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   });
 
   // Form data that will be updated by user interactions
-  const [formData, setFormData] = useState({
-    from,
-    to,
-    type,
-    departureDate: isOneWay ? departureDate : undefined,
-    dateRange: !isOneWay ? {
-      from: departureDate,
-      to: returnDateParsed
-    } as DateRange | undefined : undefined,
-    passengers: parseInt(passengers, 10)
+  const [formData, setFormData] = useState(() => {
+    // Initialize form data based on whether it's one way or round trip
+    if (isOneWayFromProps) {
+      return {
+        from,
+        to,
+        type: '1', // Ensure type is set correctly for one way
+        departureDate: departureDate,
+        dateRange: undefined,
+        passengers: parseInt(passengers, 10)
+      };
+    } else {
+      return {
+        from,
+        to,
+        type: '2', // Ensure type is set correctly for round trip
+        departureDate: undefined,
+        dateRange: {
+          from: departureDate,
+          to: returnDateParsed
+        } as DateRange | undefined,
+        passengers: parseInt(passengers, 10)
+      };
+    }
   });
 
   // Initialize component only once on mount
   useEffect(() => {
     // Only initialize if not already done
     if (!initializedRef.current) {
-      console.log("Initializing BookingTopBar with type:", type, "isOneWay should be:", type === '1');
+      const isUrlOneWay = type === '1' || !returnDate || returnDate === '0';
+      console.log("Initializing BookingTopBar with type:", type, "returnDate:", returnDate);
+      console.log("Determined isOneWay:", isUrlOneWay);
       
-      const isUrlOneWay = type === '1';
       setIsOneWay(isUrlOneWay);
       setDisplayPassengers(parseInt(passengers, 10));
       
@@ -125,6 +142,30 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       // Initialize location inputs
       setPickupValue(from);
       setDropoffValue(to);
+      
+      // Initialize form data based on trip type
+      if (isUrlOneWay) {
+        setFormData({
+          from,
+          to,
+          type: '1',
+          departureDate: departureDate,
+          dateRange: undefined,
+          passengers: parseInt(passengers, 10)
+        });
+      } else {
+        setFormData({
+          from,
+          to,
+          type: '2',
+          departureDate: undefined,
+          dateRange: {
+            from: departureDate,
+            to: returnDateParsed
+          } as DateRange | undefined,
+          passengers: parseInt(passengers, 10)
+        });
+      }
       
       // Explicitly set hasChanges to false on initialization
       setHasChanges(false);
@@ -229,6 +270,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     
     const baseRoute = location.pathname.startsWith('/home') ? '/home/transfer' : '/transfer';
     const newType = isOneWay ? '1' : '2';
+    console.log("Updating route with type:", newType, "isOneWay:", isOneWay);
+    
     const path = `${baseRoute}/${encodedFrom}/${encodedTo}/${newType}/${formattedDepartureDate}/${formattedReturnDate}/${formData.passengers}/form`;
 
     // Save the new values as original values to reset change detection
