@@ -243,7 +243,7 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
         {/* Floating/Docked Price Bar */}
         <div 
           ref={priceBarRef}
-          className={`${isSlotted ? 'absolute' : 'fixed'} left-0 right-0 px-4 sm:px-6 lg:px-8 price-bar-container z-[999]`}
+          className={`${isSlotted ? 'absolute' : 'fixed'} left-0 right-0 px-4 sm:px-6 lg:px-8 price-bar-container z-[45]`}
           style={{
             top: isSlotted ? slotPosition : 'auto',
             bottom: isSlotted ? 'auto' : '16px'
