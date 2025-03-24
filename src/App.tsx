@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import About from './pages/About';
 import FAQ from './pages/FAQ';
@@ -14,13 +14,29 @@ import BlogsDestinations from './pages/BlogsDestinations';
 import BookingFlow from './pages/BookingFlow';
 import { BookingProvider } from './contexts/BookingContext';
 
+// Route observer component to handle page-specific classes
+const RouteObserver = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    const isBookingPage = location.pathname.startsWith('/transfer/');
+    document.documentElement.classList.toggle('booking-page', isBookingPage);
+    
+    return () => {
+      document.documentElement.classList.remove('booking-page');
+    };
+  }, [location]);
+
+  return null;
+};
+
 function App() {
   return (
     <BookingProvider>
       <BrowserRouter>
+        <RouteObserver />
         <Routes>
           <Route path="/" element={<Home />} />
-          {/* Add new route for pre-filled home search */}
           <Route path="/home/transfer/:from/:to/:type/:date/:returnDate/:passengers/form" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/faq" element={<FAQ />} />
@@ -32,8 +48,6 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/customer-signup" element={<CustomerSignup />} />
-          
-          {/* Single Booking Flow Route */}
           <Route 
             path="/transfer/:from/:to/:type/:date/:returnDate/:passengers/form" 
             element={<BookingFlow />} 

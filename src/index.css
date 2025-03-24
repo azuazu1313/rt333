@@ -77,3 +77,13 @@ input[type="date"]::-webkit-datetime-edit-year-field {
   align-items: center;
 }
 
+/* Chat widget positioning */
+:root:not(.booking-page) #voiceflow-chat-container,
+:root:not(.booking-page) .vf-widget-container,
+:root:not(.booking-page) [id^="voiceflow-chat"],
+:root:not(.booking-page) button[aria-label*="chat"],
+:root:not(.booking-page) div[style*="position: fixed"][style*="bottom: 20px"],
+:root:not(.booking-page) div[style*="position: fixed"][style*="bottom: 16px"] {
+  bottom: 81px !important;
+  z-index: 45;
+}
