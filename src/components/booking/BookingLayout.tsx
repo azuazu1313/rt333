@@ -44,13 +44,11 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
   const [isSlotted, setIsSlotted] = useState(false);
   // Track exact position for smooth transitions
   const [slotPosition, setSlotPosition] = useState(0);
-  // Track if modal is open
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Add event listener for custom modal state changes
   useEffect(() => {
     const handleModalStateChange = (event: CustomEvent) => {
-      setIsModalOpen(event.detail.isOpen);
+      // No longer needed since we're using z-index hierarchy
     };
 
     window.addEventListener('modalStateChange' as any, handleModalStateChange);
@@ -245,9 +243,7 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
         {/* Floating/Docked Price Bar */}
         <div 
           ref={priceBarRef}
-          className={`${isSlotted ? 'absolute' : 'fixed'} left-0 right-0 px-4 sm:px-6 lg:px-8 price-bar-container ${
-            isModalOpen ? 'z-[10]' : 'z-[1]'
-          }`}
+          className={`${isSlotted ? 'absolute' : 'fixed'} left-0 right-0 px-4 sm:px-6 lg:px-8 price-bar-container z-[999]`}
           style={{
             top: isSlotted ? slotPosition : 'auto',
             bottom: isSlotted ? 'auto' : '16px'

@@ -43,7 +43,7 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 z-[99999]"
+          className="fixed inset-0 bg-black bg-opacity-50 z-[9999]"
           onClick={onClose}
         />
         
@@ -53,7 +53,7 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[999999] overflow-hidden flex items-center justify-center"
+          className="fixed inset-0 z-[9999] overflow-hidden flex items-center justify-center"
           style={{
             // Add padding to avoid header and price bar
             paddingTop: 'calc(80px + 1rem)', // Header height + some spacing
