@@ -1,38 +1,12 @@
-// Rename file to CustomerSignup.tsx
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User } from 'lucide-react';
-
-const WEBHOOK_URL = 'https://hook.eu1.make.com/def456uvw789';
-
-interface OTPModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const OTPModal: React.FC<OTPModalProps> = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold mb-6 text-center">Verify Your Email</h2>
-        <p className="text-gray-600 mb-6 text-center">
-          We've sent a verification code to your email address. Please check your inbox and enter the code below.
-        </p>
-        <button
-          onClick={onClose}
-          className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-all duration-300"
-        >
-          Continue
-        </button>
-      </div>
-    </div>
-  );
-};
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 const CustomerSignup = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -41,27 +15,56 @@ const CustomerSignup = () => {
     password: '',
     confirmPassword: ''
   });
-
-  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    
+    // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match!");
+      setError("Passwords don't match!");
       return;
     }
 
+    // Validate password strength
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long!");
+      return;
+    }
+
+    setIsSubmitting(true);
+    
     try {
-      await fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      setShowOTPModal(true);
-    } catch (error) {
-      alert('Something went wrong. Please try again later.');
+      // Split name into first and last name
+      const nameParts = formData.name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      // Sign up user with Supabase
+      const { error } = await signUp(
+        formData.email, 
+        formData.password, 
+        {
+          first_name: firstName,
+          last_name: lastName,
+          phone: formData.phone || null,
+          profile_pic: null
+        }
+      );
+
+      if (error) {
+        throw error;
+      }
+
+      // Registration successful, navigate to login
+      navigate('/login', { state: { message: 'Registration successful! Please sign in to continue.' } });
+    } catch (error: any) {
+      console.error('Error during sign up:', error);
+      setError(error.message || 'An unexpected error occurred during registration.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -71,10 +74,6 @@ const CustomerSignup = () => {
       ...prev,
       [name]: value
     }));
-  };
-
-  const handleSignInClick = () => {
-    navigate('/login');
   };
 
   return (
@@ -100,6 +99,12 @@ const CustomerSignup = () => {
               <User className="w-12 h-12 text-blue-600" />
             </div>
             <h1 className="text-3xl font-bold text-center mb-8">Create Account</h1>
+            
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-md mb-6 text-sm">
+                {error}
+              </div>
+            )}
             
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
@@ -181,6 +186,7 @@ const CustomerSignup = () => {
                   className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters</p>
               </div>
 
               <div>
@@ -200,32 +206,35 @@ const CustomerSignup = () => {
 
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-all duration-300"
+                disabled={isSubmitting}
+                className={`w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-all duration-300 ${
+                  isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
               >
-                Sign Up
+                {isSubmitting ? 'Creating Account...' : 'Sign Up'}
               </button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-gray-600">
                 Already have an account?{' '}
-                <button
-                  onClick={handleSignInClick}
+                <Link
+                  to="/login"
                   className="text-blue-600 hover:text-blue-700 font-medium"
                 >
                   Sign In
-                </button>
+                </Link>
               </p>
             </div>
 
             {/* Back Link */}
             <div className="mt-8 text-center">
               <Link
-                to="/login"
+                to="/"
                 className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
+                Back to Home
               </Link>
             </div>
           </div>
@@ -241,11 +250,6 @@ const CustomerSignup = () => {
           </div>
         </div>
       </main>
-
-      <OTPModal 
-        isOpen={showOTPModal} 
-        onClose={() => setShowOTPModal(false)} 
-      />
     </div>
   );
 };

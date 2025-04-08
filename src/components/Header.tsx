@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Crown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Crown, User } from 'lucide-react';
 import { smoothScrollTo } from '../utils/smoothScroll';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
   isAboutPage?: boolean;
@@ -13,6 +14,8 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, signOut } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleCTAClick = () => {
     setIsMenuOpen(false); // Close menu when CTA is clicked
@@ -56,6 +59,31 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
       }
     }
   };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setShowUserMenu(false);
+      navigate('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (showUserMenu && !target.closest('#user-menu-button') && !target.closest('#user-menu')) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showUserMenu]);
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
@@ -137,12 +165,53 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
 
           <div className="flex items-center space-x-4">
             {!hideSignIn && (
-              <a 
-                href="/login"
-                className="hidden md:inline-flex border border-blue-600 text-blue-600 px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-blue-50 transition-all duration-300 box-border"
-              >
-                Sign In
-              </a>
+              user ? (
+                <div className="relative">
+                  <button
+                    id="user-menu-button"
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                  >
+                    <User className="h-5 w-5" />
+                  </button>
+                  
+                  {/* User Dropdown Menu */}
+                  {showUserMenu && (
+                    <div 
+                      id="user-menu"
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200"
+                    >
+                      <Link 
+                        to="/profile" 
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        Your Profile
+                      </Link>
+                      <Link 
+                        to="/bookings" 
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        Your Bookings
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <a 
+                  href="/login"
+                  className="hidden md:inline-flex border border-blue-600 text-blue-600 px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-blue-50 transition-all duration-300 box-border"
+                >
+                  Sign In
+                </a>
+              )
             )}
             <button 
               onClick={handleCTAClick}
@@ -224,19 +293,41 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                         </a>
                       </div>
                     ))}
+                    
+                    {user && (
+                      <div className="flex">
+                        <a
+                          href="/profile"
+                          className="relative py-2 text-gray-700 group"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <span>Your Profile</span>
+                          <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </nav>
 
                 {/* Bottom Actions */}
                 <div className="p-4 border-t space-y-3">
                   {!hideSignIn && (
-                    <a
-                      href="/login"
-                      onClick={() => setIsMenuOpen(false)}
-                      className="block w-full border border-blue-600 text-blue-600 px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-blue-50 transition-all duration-300 text-center box-border"
-                    >
-                      Sign In
-                    </a>
+                    user ? (
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full border border-blue-600 text-blue-600 px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-blue-50 transition-all duration-300 text-center box-border"
+                      >
+                        Sign Out
+                      </button>
+                    ) : (
+                      <a
+                        href="/login"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="block w-full border border-blue-600 text-blue-600 px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-blue-50 transition-all duration-300 text-center box-border"
+                      >
+                        Sign In
+                      </a>
+                    )
                   )}
                   <button 
                     onClick={handleCTAClick}

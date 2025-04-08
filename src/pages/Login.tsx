@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Car, User, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Car, User, ArrowRight, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
+
+type LocationState = {
+  message?: string;
+};
 
 const Login = () => {
   const [isDriver, setIsDriver] = useState(false);
@@ -10,12 +15,51 @@ const Login = () => {
     emailOrPhone: '',
     password: ''
   });
-  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { signIn, loading } = useAuth();
+
+  // Check for any message passed from CustomerSignup page
+  useEffect(() => {
+    const state = location.state as LocationState;
+    if (state?.message) {
+      setSuccessMessage(state.message);
+      
+      // Clear the location state to avoid showing the message after page refresh
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log('Login attempt:', formData);
+    setError(null);
+    
+    if (!formData.emailOrPhone || !formData.password) {
+      setError('Please enter both email and password');
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      const { error } = await signIn(formData.emailOrPhone, formData.password);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Successful login, redirect to home page
+      navigate('/');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setError(error.message || 'Failed to sign in. Please check your credentials.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,6 +73,17 @@ const Login = () => {
   const handlePartnerClick = () => {
     navigate('/partners#partner-form');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -66,64 +121,92 @@ const Login = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label htmlFor="emailOrPhone" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email or Phone
-                </label>
-                <input
-                  type="text"
-                  id="emailOrPhone"
-                  name="emailOrPhone"
-                  value={formData.emailOrPhone}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  required
-                />
+            {/* Success Message */}
+            {successMessage && (
+              <div className="bg-green-50 text-green-700 p-3 rounded-md mb-6 text-sm flex items-start">
+                <div className="flex-shrink-0 mt-0.5">
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-2">{successMessage}</div>
               </div>
+            )}
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  required
-                />
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-md mb-6 text-sm flex items-start">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <div className="ml-2">{error}</div>
               </div>
+            )}
 
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-all duration-300"
-              >
-                Sign In
-              </button>
-            </form>
-
-            <div className="mt-6 text-center">
-              {isDriver ? (
+            {isDriver ? (
+              <div className="text-center py-4">
+                <h2 className="text-xl font-semibold mb-4">Driver Portal</h2>
+                <p className="text-gray-600 mb-6">
+                  Please sign in through our partner portal to access the driver dashboard.
+                </p>
                 <button
                   onClick={handlePartnerClick}
-                  className="inline-flex items-center justify-center w-full bg-gray-100 text-gray-700 px-6 py-3 rounded-md hover:bg-gray-200 transition-all duration-300"
+                  className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-all duration-300 w-full"
                 >
-                  Partner with Us
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                  Go to Partner Portal
                 </button>
-              ) : (
-                <Link
-                  to="/customer-signup"
-                  className="inline-flex items-center justify-center w-full bg-gray-100 text-gray-700 px-6 py-3 rounded-md hover:bg-gray-200 transition-all duration-300"
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label htmlFor="emailOrPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    id="emailOrPhone"
+                    name="emailOrPhone"
+                    value={formData.emailOrPhone}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-all duration-300 ${
+                    isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                  }`}
                 >
-                  Sign Up as Customer
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Link>
-              )}
-            </div>
+                  {isSubmitting ? 'Signing in...' : 'Sign In'}
+                </button>
+
+                <div className="mt-6 text-center">
+                  <Link
+                    to="/customer-signup"
+                    className="inline-flex items-center justify-center w-full bg-gray-100 text-gray-700 px-6 py-3 rounded-md hover:bg-gray-200 transition-all duration-300"
+                  >
+                    Sign Up as Customer
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Link>
+                </div>
+              </form>
+            )}
 
             {/* Back Link */}
             <div className="mt-8 text-center">
