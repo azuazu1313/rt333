@@ -26,7 +26,7 @@ const TrustBadges = () => {
             >
               <div className="h-12 md:h-16 mb-2 relative">
                 <img 
-                  src="https://logos-world.net/wp-content/uploads/2021/08/Tripadvisor-Logo.png" 
+                  src="https://logos-world.net/wp-content/uploads/2020/11/Tripadvisor-Logo.png" 
                   alt="Tripadvisor Logo" 
                   className="h-full w-auto object-contain"
                   style={{ aspectRatio: '700/394' }}
@@ -73,7 +73,7 @@ const TrustBadges = () => {
                 </div>
                 <div className="flex justify-center">
                   <img 
-                    src="https://upload.wikimedia.org/wikipedia/commons/3/39/Google_Pay_Logo.svg" 
+                    src="https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg" 
                     alt="Google Pay" 
                     className="h-6 md:h-8"
                     style={{ aspectRatio: '2.5/1' }}
@@ -92,7 +92,6 @@ const TrustBadges = () => {
                     src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" 
                     alt="American Express" 
                     className="h-8 md:h-12"
-                    style={{ aspectRatio: '1.6/1' }}
                   />
                 </div>
                 <div className="flex justify-center">

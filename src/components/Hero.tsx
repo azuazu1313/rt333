@@ -9,7 +9,9 @@ const Hero = () => {
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `url("${window.innerWidth < 768 ? 'https://i.imgur.com/pfnf4hc.jpeg' : 'https://i.imgur.com/4U5ngny.jpeg'}")`,
+          backgroundImage: `url("${window.innerWidth < 768 
+            ? 'https://i.imghippo.com/files/GSIu4447oeQ.webp, https://i.imgur.com/pfnf4hc.jpeg' 
+            : 'https://i.imghippo.com/files/MJSV1132ko.webp, https://i.imgur.com/4U5ngny.jpeg'}")`,
           backgroundPosition: 'center center',
           backgroundSize: 'cover'
         }}

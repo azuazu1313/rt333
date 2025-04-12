@@ -78,12 +78,22 @@ input[type="date"]::-webkit-datetime-edit-year-field {
 }
 
 /* Chat widget positioning */
+.booking-page #voiceflow-chat-container,
+.booking-page .vf-widget-container,
+.booking-page [id^="voiceflow-chat"],
+.booking-page button[aria-label*="chat"],
+.booking-page div[style*="position: fixed"][style*="bottom: 20px"],
+.booking-page div[style*="position: fixed"][style*="bottom: 16px"] {
+  bottom: 81px !important;
+  z-index: 45;
+}
+
 :root:not(.booking-page) #voiceflow-chat-container,
 :root:not(.booking-page) .vf-widget-container,
 :root:not(.booking-page) [id^="voiceflow-chat"],
 :root:not(.booking-page) button[aria-label*="chat"],
 :root:not(.booking-page) div[style*="position: fixed"][style*="bottom: 20px"],
 :root:not(.booking-page) div[style*="position: fixed"][style*="bottom: 16px"] {
-  bottom: 81px !important;
+  bottom: 16px !important;
   z-index: 45;
 }
