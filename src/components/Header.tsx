@@ -96,11 +96,14 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             onClick={() => navigate('/')}
             className="flex items-center focus:outline-none h-[70px] py-[4px]"
           >
-            <img
-              src="https://i.imgur.com/991MInn.png"
-              alt="Royal Transfer EU Logo"
-              className="h-full w-auto object-contain"
-            />
+            <picture className="h-full w-auto">
+              <source srcSet="https://i.imghippo.com/files/cDgm3025PmI.webp" type="image/webp" />
+              <img
+                src="https://i.imgur.com/991MInn.png"
+                alt="Royal Transfer EU Logo PNG"
+                className="h-full w-auto object-contain"
+              />
+            </picture>
           </button>
           
           {/* Desktop Navigation */}
@@ -263,7 +266,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                 {/* Logo Section */}
                 <div className="flex justify-center items-center p-4 border-b">
                   <img
-                    src="https://i.imgur.com/991MInn.png"
+                    src="https://i.imghippo.com/files/cDgm3025PmI.webp"
                     alt="Royal Transfer EU Logo"
                     className="h-[62px] w-auto object-contain"
                   />
