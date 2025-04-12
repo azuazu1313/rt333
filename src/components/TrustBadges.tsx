@@ -24,11 +24,14 @@ const TrustBadges = () => {
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.2 }}
             >
-              <img 
-                src="https://imgs.search.brave.com/hTSLeIeT2GpU_PAug09N4LjrAr-EQVTBmH6nhY3nz1c/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9sb2dv/cy13b3JsZC5uZXQv/d3AtY29udGVudC91/cGxvYWRzLzIwMjAv/MTEvVHJpcGFkdmlz/b3ItTG9nby03MDB4/Mzk0LnBuZw" 
-                alt="Tripadvisor Logo" 
-                className="h-12 md:h-16 mb-2"
-              />
+              <div className="h-12 md:h-16 mb-2 relative">
+                <img 
+                  src="https://logos-world.net/wp-content/uploads/2021/08/Tripadvisor-Logo.png" 
+                  alt="Tripadvisor Logo" 
+                  className="h-full w-auto object-contain"
+                  style={{ aspectRatio: '700/394' }}
+                />
+              </div>
               <div className="flex items-center mb-2">
                 <Star className="w-4 h-4 md:w-6 md:h-6 text-yellow-400 fill-current" />
                 <span className="text-xl md:text-2xl font-bold ml-2">4.9</span>
@@ -54,23 +57,26 @@ const TrustBadges = () => {
               <div className="grid grid-cols-3 md:flex md:justify-center items-center gap-4 md:space-x-6">
                 <div className="flex justify-center">
                   <img 
-                    src="https://imgs.search.brave.com/vQ_CTHk50F04Cw1YQ9ZSYovb1YU1CzUnSbwszWTI_Q8/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9hc3Nl/dHMuc3RpY2twbmcu/Y29tL2ltYWdlcy81/ODQ4MjM2M2NlZjEw/MTRjMGI1ZTQ5YzEu/cG5n" 
+                    src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" 
                     alt="Visa" 
                     className="h-6 md:h-8"
+                    style={{ aspectRatio: '3/1' }}
                   />
                 </div>
                 <div className="flex justify-center">
                   <img 
-                    src="https://imgs.search.brave.com/KECO8Cte79k8P0KUmH1MQUZwagpccrEehDZJRq42YW8/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9hc3Nl/dHMuc3RpY2twbmcu/Y29tL2ltYWdlcy81/ODQ4MjM1NGNlZjEw/MTRjMGI1ZTQ5YzAu/cG5n" 
+                    src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" 
                     alt="MasterCard" 
                     className="h-6 md:h-8"
+                    style={{ aspectRatio: '1.6/1' }}
                   />
                 </div>
                 <div className="flex justify-center">
                   <img 
-                    src="https://imgs.search.brave.com/D-3MyxtcsQS-Nq9ZV5l6AG85LyTxOMTztKhJAWD6kPs/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9hc3Nl/dHMuc3RpY2twbmcu/Y29tL2ltYWdlcy82/MGU3Zjk2NDcxMWNm/NzAwMDQ4YjZhNmEu/cG5n" 
+                    src="https://upload.wikimedia.org/wikipedia/commons/3/39/Google_Pay_Logo.svg" 
                     alt="Google Pay" 
                     className="h-6 md:h-8"
+                    style={{ aspectRatio: '2.5/1' }}
                   />
                 </div>
                 <div className="flex justify-center">
@@ -78,20 +84,23 @@ const TrustBadges = () => {
                     src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Apple_Pay_logo.svg" 
                     alt="Apple Pay" 
                     className="h-6 md:h-8"
+                    style={{ aspectRatio: '2.7/1' }}
                   />
                 </div>
                 <div className="flex justify-center">
                   <img 
-                    src="https://i.ibb.co/sJ6mfb7v/amexlogo.png" 
-                    alt="American Express AMEX" 
+                    src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" 
+                    alt="American Express" 
                     className="h-8 md:h-12"
+                    style={{ aspectRatio: '1.6/1' }}
                   />
                 </div>
                 <div className="flex justify-center">
                   <img
-                    src="https://i.ibb.co/Rp0fZn10/stripe-logo-white-on-blue.png"
+                    src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg"
                     alt="Stripe Payments"
                     className="h-6 md:h-10"
+                    style={{ aspectRatio: '2.5/1' }}
                   />
                 </div>
               </div>
