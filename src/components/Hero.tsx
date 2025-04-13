@@ -1,21 +1,65 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import SearchForm from './SearchForm';
 import { motion } from 'framer-motion';
 
 const Hero = () => {
+  // Preload images
+  useEffect(() => {
+    const imagesToPreload = [
+      'https://i.imghippo.com/files/GSIu4447oeQ.webp',
+      'https://i.imghippo.com/files/MJSV1132ko.webp',
+      'https://i.imgur.com/pfnf4hc.jpeg',
+      'https://i.imgur.com/4U5ngny.jpeg'
+    ];
+
+    imagesToPreload.forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
+
   return (
     <div id="booking-form" className="relative h-[800px] md:h-auto md:min-h-[700px]">
-      {/* Background Image */}
-      <div 
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url("${window.innerWidth < 768 
-            ? 'https://i.imghippo.com/files/GSIu4447oeQ.webp, https://i.imgur.com/pfnf4hc.jpeg' 
-            : 'https://i.imghippo.com/files/MJSV1132ko.webp, https://i.imgur.com/4U5ngny.jpeg'}")`,
-          backgroundPosition: 'center center',
-          backgroundSize: 'cover'
-        }}
-      >
+      {/* Background Image Container */}
+      <div className="absolute inset-0 z-0">
+        <picture className="w-full h-full">
+          {/* Mobile Image */}
+          <source
+            media="(max-width: 767px)"
+            srcSet="https://i.imghippo.com/files/GSIu4447oeQ.webp"
+            type="image/webp"
+            fetchpriority="high"
+          />
+          <source
+            media="(max-width: 767px)"
+            srcSet="https://i.imgur.com/pfnf4hc.jpeg"
+            type="image/jpeg"
+            fetchpriority="high"
+          />
+          
+          {/* Desktop Image */}
+          <source
+            media="(min-width: 768px)"
+            srcSet="https://i.imghippo.com/files/MJSV1132ko.webp"
+            type="image/webp"
+            fetchpriority="high"
+          />
+          <source
+            media="(min-width: 768px)"
+            srcSet="https://i.imgur.com/4U5ngny.jpeg"
+            type="image/jpeg"
+            fetchpriority="high"
+          />
+          
+          {/* Fallback Image */}
+          <img
+            src="https://i.imgur.com/4U5ngny.jpeg"
+            alt="Royal Transfer EU Hero"
+            className="w-full h-full object-cover"
+            fetchpriority="high"
+            loading="eager"
+          />
+        </picture>
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
       </div>
 
