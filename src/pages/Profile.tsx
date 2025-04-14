@@ -1,21 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Phone, Mail, Globe, MapPin, Save, AlertTriangle } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Save, AlertTriangle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Header from '../components/Header';
 import Sitemap from '../components/Sitemap';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, profile, loading } = useAuth();
+  const { user, userData, preferences, loading, updateUserData } = useAuth();
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    name: '',
     email: '',
     phone: '',
-    country: '',
     address: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,17 +28,15 @@ const Profile = () => {
 
   // Populate form with user data
   useEffect(() => {
-    if (profile) {
+    if (userData) {
       setFormData({
-        firstName: profile.first_name || '',
-        lastName: profile.last_name || '',
-        email: user?.email || '',
-        phone: profile.phone || '',
-        country: '',
+        name: userData.name || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
         address: ''
       });
     }
-  }, [profile, user]);
+  }, [userData, user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -64,18 +59,15 @@ const Profile = () => {
     setSuccessMessage(null);
 
     try {
-      // Update the profile in Supabase
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phone
-        })
-        .eq('user_id', user.id);
+      // Update the user data in Supabase
+      const { error, data } = await updateUserData({
+        name: formData.name,
+        phone: formData.phone
+        // Address would go to a separate table if needed
+      });
 
-      if (updateError) {
-        throw updateError;
+      if (error) {
+        throw error;
       }
 
       setSuccessMessage('Profile updated successfully!');
@@ -130,18 +122,18 @@ const Profile = () => {
                   <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                     <User className="w-12 h-12 text-blue-600" />
                   </div>
-                  <h2 className="text-xl font-bold">{profile?.first_name} {profile?.last_name}</h2>
-                  <p className="text-gray-600">Customer</p>
+                  <h2 className="text-xl font-bold">{userData?.name || 'User'}</h2>
+                  <p className="text-gray-600">{userData?.role || 'Customer'}</p>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center">
                     <Mail className="w-5 h-5 text-gray-500 mr-2" />
-                    <span className="text-gray-700">{user?.email}</span>
+                    <span className="text-gray-700">{userData?.email}</span>
                   </div>
                   <div className="flex items-center">
                     <Phone className="w-5 h-5 text-gray-500 mr-2" />
-                    <span className="text-gray-700">{profile?.phone || 'Not provided'}</span>
+                    <span className="text-gray-700">{userData?.phone || 'Not provided'}</span>
                   </div>
                 </div>
 
@@ -184,33 +176,18 @@ const Profile = () => {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      id="firstName"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      id="lastName"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    />
-                  </div>
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  />
                 </div>
 
                 <div>
@@ -244,28 +221,6 @@ const Profile = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-                      Country
-                    </label>
-                    <select
-                      id="country"
-                      name="country"
-                      value={formData.country}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    >
-                      <option value="">Select a country</option>
-                      <option value="IT">Italy</option>
-                      <option value="FR">France</option>
-                      <option value="DE">Germany</option>
-                      <option value="ES">Spain</option>
-                      <option value="UK">United Kingdom</option>
-                    </select>
-                  </div>
-                </div>
-
                 <div>
                   <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
                     Address
@@ -277,6 +232,7 @@ const Profile = () => {
                     onChange={handleInputChange}
                     rows={3}
                     className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    placeholder="We'll use this for delivery or pickup"
                   />
                 </div>
 
@@ -284,12 +240,19 @@ const Profile = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className={`px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all duration-300 flex items-center ${
-                      isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-                    }`}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all duration-300 flex items-center"
                   >
-                    <Save className="w-5 h-5 mr-2" />
-                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-5 h-5 mr-2" />
+                        Save Changes
+                      </>
+                    )}
                   </button>
                 </div>
               </form>

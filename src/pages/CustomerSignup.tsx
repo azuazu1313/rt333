@@ -1,22 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { ArrowLeft, User, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import Header from '../components/Header';
 
 const CustomerSignup = () => {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { signUp, user, loading } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    country: '',
     password: '',
     confirmPassword: ''
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,24 +40,21 @@ const CustomerSignup = () => {
       return;
     }
 
+    // Validate name
+    if (formData.name.trim() === '') {
+      setError("Please enter your name");
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      // Split name into first and last name
-      const nameParts = formData.name.trim().split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-      
       // Sign up user with Supabase
       const { error } = await signUp(
         formData.email, 
         formData.password, 
-        {
-          first_name: firstName,
-          last_name: lastName,
-          phone: formData.phone || null,
-          profile_pic: null
-        }
+        formData.name,
+        formData.phone
       );
 
       if (error) {
@@ -59,7 +62,9 @@ const CustomerSignup = () => {
       }
 
       // Registration successful, navigate to login
-      navigate('/login', { state: { message: 'Registration successful! Please sign in to continue.' } });
+      navigate('/login', { 
+        state: { message: 'Registration successful! Please sign in to continue.' } 
+      });
     } catch (error: any) {
       console.error('Error during sign up:', error);
       setError(error.message || 'An unexpected error occurred during registration.');
@@ -76,10 +81,21 @@ const CustomerSignup = () => {
     }));
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Minimal Header */}
-      <Header />
+      {/* Header */}
+      <Header hideSignIn />
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-4 py-12">
@@ -91,8 +107,9 @@ const CustomerSignup = () => {
             <h1 className="text-3xl font-bold text-center mb-8">Create Account</h1>
             
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-md mb-6 text-sm">
-                {error}
+              <div className="bg-red-50 text-red-600 p-3 rounded-md mb-6 text-sm flex items-start">
+                <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+                <span>{error}</span>
               </div>
             )}
             
@@ -138,29 +155,7 @@ const CustomerSignup = () => {
                   value={formData.phone}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  required
                 />
-              </div>
-
-              <div>
-                <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-                  Country
-                </label>
-                <select
-                  id="country"
-                  name="country"
-                  value={formData.country}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  required
-                >
-                  <option value="">Select a country</option>
-                  <option value="IT">Italy</option>
-                  <option value="FR">France</option>
-                  <option value="DE">Germany</option>
-                  <option value="ES">Spain</option>
-                  <option value="UK">United Kingdom</option>
-                </select>
               </div>
 
               <div>
@@ -197,11 +192,14 @@ const CustomerSignup = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-all duration-300 ${
-                  isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-                }`}
+                className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-all duration-300 flex justify-center items-center"
               >
-                {isSubmitting ? 'Creating Account...' : 'Sign Up'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : 'Sign Up'}
               </button>
             </form>
 

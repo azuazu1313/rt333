@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Car, User, ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Car, User, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 
-type LocationState = {
+interface LocationState {
   message?: string;
-};
+}
 
 const Login = () => {
   const [isDriver, setIsDriver] = useState(false);
   const [formData, setFormData] = useState({
-    emailOrPhone: '',
+    email: '',
     password: ''
   });
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +21,14 @@ const Login = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, loading } = useAuth();
+  const { signIn, loading, user } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   // Check for any message passed from CustomerSignup page
   useEffect(() => {
@@ -30,7 +37,7 @@ const Login = () => {
       setSuccessMessage(state.message);
       
       // Clear the location state to avoid showing the message after page refresh
-      navigate(location.pathname, { replace: true });
+      navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location, navigate]);
 
@@ -38,7 +45,7 @@ const Login = () => {
     e.preventDefault();
     setError(null);
     
-    if (!formData.emailOrPhone || !formData.password) {
+    if (!formData.email || !formData.password) {
       setError('Please enter both email and password');
       return;
     }
@@ -46,7 +53,7 @@ const Login = () => {
     setIsSubmitting(true);
     
     try {
-      const { error } = await signIn(formData.emailOrPhone, formData.password);
+      const { error } = await signIn(formData.email, formData.password);
       
       if (error) {
         throw error;
@@ -78,7 +85,7 @@ const Login = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
           <p>Loading...</p>
         </div>
       </div>
@@ -157,14 +164,14 @@ const Login = () => {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label htmlFor="emailOrPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                     Email
                   </label>
                   <input
                     type="email"
-                    id="emailOrPhone"
-                    name="emailOrPhone"
-                    value={formData.emailOrPhone}
+                    id="email"
+                    name="email"
+                    value={formData.email}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
                     required
@@ -189,11 +196,14 @@ const Login = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-all duration-300 ${
-                    isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-                  }`}
+                  className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-all duration-300 flex items-center justify-center"
                 >
-                  {isSubmitting ? 'Signing in...' : 'Sign In'}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : 'Sign In'}
                 </button>
 
                 <div className="mt-6 text-center">
