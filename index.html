@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="https://i.imghippo.com/files/mijH1834b.png" />
+    <link rel="icon" type="image/png" href="https://i.imghippo.com/files/cDgm3025PmI.webp" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Royal Transfer EU</title>
 
@@ -56,11 +56,11 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/main.tsx" nonce="%VITE_CSP_NONCE%"></script>
     
     <!-- Voiceflow Chat Widget Container -->
     <div id="voiceflow-chat-container">
-      <script type="text/javascript">
+      <script type="text/javascript" nonce="%VITE_CSP_NONCE%">
         (function(d, t) {
             setTimeout(function() {
                 var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
@@ -74,7 +74,10 @@
                     }
                   });
                 }
-                v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs"; v.type = "text/javascript"; s.parentNode.insertBefore(v, s);
+                v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs"; 
+                v.type = "text/javascript";
+                v.nonce = "%VITE_CSP_NONCE%";
+                s.parentNode.insertBefore(v, s);
             }, 5000); // 5 second delay
         })(document, 'script');
       </script>
