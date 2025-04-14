@@ -79,17 +79,7 @@ const CustomerSignup = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Minimal Header */}
-      <header className="bg-white shadow-sm py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center h-[50px]">
-            <img
-              src="https://i.imgur.com/991MInn.png"
-              alt="Royal Transfer EU Logo"
-              className="h-full w-auto object-contain"
-            />
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-4 py-12">
