@@ -13,8 +13,8 @@ export default defineConfig(({ mode }) => {
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
   
-  // Generate a nonce for CSP
-  const nonce = generateNonce();
+  // Use environment variable or generate a new nonce
+  const nonce = env.VITE_CSP_NONCE || generateNonce();
 
   return {
     plugins: [react()],
