@@ -5,7 +5,10 @@ import { Link } from 'react-router-dom';
 interface Destination {
   city: string;
   country: string;
-  imageUrl: string;
+  images: {
+    webp: string;
+    fallback: string;
+  };
   rating: number;
   reviews: string;
   flag: string;
@@ -15,7 +18,10 @@ const destinations: Destination[] = [
   {
     city: 'Rome',
     country: 'Italy',
-    imageUrl: 'https://wallpapercat.com/w/full/0/7/b/293465-1920x1080-desktop-1080p-rome-background.jpg',
+    images: {
+      webp: 'https://i.imghippo.com/files/LSM4166MeU.webp',
+      fallback: 'https://i.imghippo.com/files/lTA7682kU.jpg'
+    },
     rating: 4.9,
     reviews: '1.7k',
     flag: '🇮🇹'
@@ -23,7 +29,10 @@ const destinations: Destination[] = [
   {
     city: 'Paris',
     country: 'France',
-    imageUrl: 'https://wallpapercat.com/w/full/b/f/3/30528-3840x2160-desktop-4k-eiffel-tower-background-image.jpg',
+    images: {
+      webp: 'https://i.imghippo.com/files/cMh1488SI.webp',
+      fallback: 'https://i.imghippo.com/files/IdwC2475VOg.jpg'
+    },
     rating: 4.8,
     reviews: '2.2k',
     flag: '🇫🇷'
@@ -31,7 +40,10 @@ const destinations: Destination[] = [
   {
     city: 'Barcelona',
     country: 'Spain',
-    imageUrl: 'https://wallpapers.com/images/hd/barcelona-1920-x-1080-picture-y19qwj8its708dty.jpg',
+    images: {
+      webp: 'https://i.imghippo.com/files/pAwd1108IE.webp',
+      fallback: 'https://i.imghippo.com/files/IZqo3474CDQ.jpg'
+    },
     rating: 4.9,
     reviews: '1.2k',
     flag: '🇪🇸'
@@ -39,7 +51,10 @@ const destinations: Destination[] = [
   {
     city: 'Milan',
     country: 'Italy',
-    imageUrl: 'https://img.travelnaut.com/web/db/photose/location/eu/it/milan/28ed6358c8d39fb9ad74d343877d94f8.jpeg',
+    images: {
+      webp: 'https://i.imghippo.com/files/ZQ1034aY.webp',
+      fallback: 'https://i.imghippo.com/files/rLX6532WHE.jpeg'
+    },
     rating: 4.7,
     reviews: '2.3k',
     flag: '🇮🇹'
@@ -113,11 +128,14 @@ const FeaturedDestinations = () => {
                   className="absolute inset-0 bg-black opacity-0 group-hover:opacity-50 transition-opacity duration-300 z-10"
                   aria-hidden="true"
                 />
-                <img
-                  src={destination.imageUrl}
-                  alt={`Scenic view of ${destination.city}, ${destination.country}`}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
+                <picture>
+                  <source srcSet={destination.images.webp} type="image/webp" />
+                  <img
+                    src={destination.images.fallback}
+                    alt={`Scenic view of ${destination.city}, ${destination.country}`}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </picture>
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
                   <h3 className="text-white text-3xl font-bold">{destination.city}</h3>
                 </div>

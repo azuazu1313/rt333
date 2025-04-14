@@ -8,7 +8,10 @@ interface DestinationPost {
   id: string;
   title: string;
   summary: string;
-  imageUrl: string;
+  images: {
+    webp: string;
+    fallback: string;
+  };
   location: string;
 }
 
@@ -17,28 +20,40 @@ const destinationPosts: DestinationPost[] = [
     id: '1',
     title: 'Exploring Rome: The Eternal City',
     summary: 'Discover the magic of Rome with our comprehensive guide to the city\'s most iconic landmarks and hidden gems.',
-    imageUrl: 'https://wallpapercat.com/w/full/0/7/b/293465-1920x1080-desktop-1080p-rome-background.jpg',
+    images: {
+      webp: 'https://i.imghippo.com/files/LSM4166MeU.webp',
+      fallback: 'https://i.imghippo.com/files/lTA7682kU.jpg'
+    },
     location: 'Rome, Italy'
   },
   {
     id: '2',
     title: 'Paris: City of Light and Love',
     summary: 'Experience the romance and charm of Paris through its architecture, cuisine, and cultural attractions.',
-    imageUrl: 'https://wallpapercat.com/w/full/b/f/3/30528-3840x2160-desktop-4k-eiffel-tower-background-image.jpg',
+    images: {
+      webp: 'https://i.imghippo.com/files/cMh1488SI.webp',
+      fallback: 'https://i.imghippo.com/files/IdwC2475VOg.jpg'
+    },
     location: 'Paris, France'
   },
   {
     id: '3',
     title: 'Barcelona: Mediterranean Jewel',
     summary: 'From Gaudi\'s masterpieces to vibrant street life, explore the best of Barcelona.',
-    imageUrl: 'https://wallpapers.com/images/hd/barcelona-1920-x-1080-picture-y19qwj8its708dty.jpg',
+    images: {
+      webp: 'https://i.imghippo.com/files/pAwd1108IE.webp',
+      fallback: 'https://i.imghippo.com/files/IZqo3474CDQ.jpg'
+    },
     location: 'Barcelona, Spain'
   },
   {
     id: '4',
     title: 'Milan: Fashion & Culture Capital',
     summary: 'Dive into the sophisticated world of Milan, where fashion meets historical grandeur.',
-    imageUrl: 'https://img.travelnaut.com/web/db/photose/location/eu/it/milan/28ed6358c8d39fb9ad74d343877d94f8.jpeg',
+    images: {
+      webp: 'https://i.imghippo.com/files/ZQ1034aY.webp',
+      fallback: 'https://i.imghippo.com/files/rLX6532WHE.jpeg'
+    },
     location: 'Milan, Italy'
   }
 ];
@@ -89,11 +104,14 @@ const BlogsDestinations = () => {
               >
                 <div className="relative aspect-[16/9] rounded-lg overflow-hidden mb-4">
                   <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity duration-300" />
-                  <img
-                    src={post.imageUrl}
-                    alt={post.title}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
+                  <picture>
+                    <source srcSet={post.images.webp} type="image/webp" />
+                    <img
+                      src={post.images.fallback}
+                      alt={post.title}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  </picture>
                 </div>
                 <div className="text-sm text-blue-600 mb-2">{post.location}</div>
                 <h3 className="text-xl font-semibold mb-2 group-hover:text-blue-600 transition-colors">
