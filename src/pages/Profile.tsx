@@ -28,7 +28,7 @@ const Profile = () => {
   // Last fetch timestamp ref
   const lastFetchRef = useRef<number>(0);
   // Cache duration in milliseconds (5 minutes)
-  const CACHE_DURATION = 5 * 60 * 1000;
+  const CACHE_DURATION = 15 * 60 * 1000;
 
   // Redirect if not authenticated
   useEffect(() => {
