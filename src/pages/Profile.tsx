@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Phone, Mail, MapPin, Save, AlertTriangle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -23,6 +23,13 @@ const Profile = () => {
   const [profileData, setProfileData] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
+  // Cache timeout ref
+  const cacheTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Last fetch timestamp ref
+  const lastFetchRef = useRef<number>(0);
+  // Cache duration in milliseconds (5 minutes)
+  const CACHE_DURATION = 5 * 60 * 1000;
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!loading && !user) {
@@ -30,41 +37,69 @@ const Profile = () => {
     }
   }, [user, loading, navigate]);
 
-  // Fetch user profile data
+  // Cleanup cache timeout on unmount
   useEffect(() => {
-    const fetchProfileData = async () => {
-      if (!user) return;
-
-      try {
-        // Fetch user data from public.users table
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (error) throw error;
-
-        console.log('Fetched profile data:', data);
-        setProfileData(data);
-        
-        // Populate form with user data
-        if (data) {
-          setFormData({
-            name: data.name || '',
-            email: data.email || '',
-            phone: data.phone || '',
-            address: ''
-          });
-        }
-      } catch (err) {
-        console.error('Error fetching profile:', err);
-        setError('Failed to load profile data');
-      } finally {
-        setLoadingProfile(false);
+    return () => {
+      if (cacheTimeoutRef.current) {
+        clearTimeout(cacheTimeoutRef.current);
       }
     };
+  }, []);
 
+  // Fetch user profile data with caching
+  const fetchProfileData = async (force = false) => {
+    if (!user) return;
+
+    const now = Date.now();
+    // Return cached data if within cache duration and not forced
+    if (!force && profileData && (now - lastFetchRef.current) < CACHE_DURATION) {
+      setLoadingProfile(false);
+      return;
+    }
+
+    try {
+      setLoadingProfile(true);
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+
+      console.log('Fetched profile data:', data);
+      setProfileData(data);
+      lastFetchRef.current = now;
+      
+      // Populate form with user data
+      if (data) {
+        setFormData({
+          name: data.name || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          address: ''
+        });
+      }
+
+      // Set cache timeout
+      if (cacheTimeoutRef.current) {
+        clearTimeout(cacheTimeoutRef.current);
+      }
+      cacheTimeoutRef.current = setTimeout(() => {
+        // Clear cache after duration
+        lastFetchRef.current = 0;
+      }, CACHE_DURATION);
+
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+      setError('Failed to load profile data');
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
     if (user) {
       fetchProfileData();
     }
@@ -80,6 +115,7 @@ const Profile = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     if (!user) {
       setError('You must be logged in to update your profile');
@@ -87,9 +123,7 @@ const Profile = () => {
     }
 
     setIsSubmitting(true);
-    setError(null);
-    setSuccessMessage(null);
-
+    
     try {
       // Update the user data directly in Supabase
       const { error } = await supabase
@@ -102,21 +136,18 @@ const Profile = () => {
 
       if (error) throw error;
 
-      // Update local profile data
-      setProfileData(prev => ({
-        ...prev,
-        name: formData.name,
-        phone: formData.phone
-      }));
+      // Force refresh profile data
+      await fetchProfileData(true);
 
       setSuccessMessage('Profile updated successfully!');
       
-      // Clear success message after a few seconds
+      // Clear success message after 3 seconds
       setTimeout(() => {
         setSuccessMessage(null);
       }, 3000);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while updating your profile');
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      setError(error.message || 'Failed to update profile');
     } finally {
       setIsSubmitting(false);
     }
