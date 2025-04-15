@@ -5,19 +5,23 @@ import { motion } from 'framer-motion';
 import Header from '../components/Header';
 import Sitemap from '../components/Sitemap';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, userData, preferences, loading, updateUserData } = useAuth();
+  const { user, loading } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     address: ''
   });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [profileData, setProfileData] = useState<any>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -26,17 +30,45 @@ const Profile = () => {
     }
   }, [user, loading, navigate]);
 
-  // Populate form with user data
+  // Fetch user profile data
   useEffect(() => {
-    if (userData) {
-      setFormData({
-        name: userData.name || '',
-        email: userData.email || '',
-        phone: userData.phone || '',
-        address: ''
-      });
+    const fetchProfileData = async () => {
+      if (!user) return;
+
+      try {
+        // Fetch user data from public.users table
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        console.log('Fetched profile data:', data);
+        setProfileData(data);
+        
+        // Populate form with user data
+        if (data) {
+          setFormData({
+            name: data.name || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            address: ''
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+        setError('Failed to load profile data');
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    if (user) {
+      fetchProfileData();
     }
-  }, [userData, user]);
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -59,16 +91,23 @@ const Profile = () => {
     setSuccessMessage(null);
 
     try {
-      // Update the user data in Supabase
-      const { error, data } = await updateUserData({
+      // Update the user data directly in Supabase
+      const { error } = await supabase
+        .from('users')
+        .update({
+          name: formData.name,
+          phone: formData.phone
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Update local profile data
+      setProfileData(prev => ({
+        ...prev,
         name: formData.name,
         phone: formData.phone
-        // Address would go to a separate table if needed
-      });
-
-      if (error) {
-        throw error;
-      }
+      }));
 
       setSuccessMessage('Profile updated successfully!');
       
@@ -83,11 +122,11 @@ const Profile = () => {
     }
   };
 
-  if (loading) {
+  if (loading || loadingProfile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
           <p>Loading...</p>
         </div>
       </div>
@@ -122,18 +161,18 @@ const Profile = () => {
                   <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                     <User className="w-12 h-12 text-blue-600" />
                   </div>
-                  <h2 className="text-xl font-bold">{userData?.name || 'User'}</h2>
-                  <p className="text-gray-600">{userData?.role || 'Customer'}</p>
+                  <h2 className="text-xl font-bold">{profileData?.name || 'User'}</h2>
+                  <p className="text-gray-600">{profileData?.role || 'Customer'}</p>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center">
                     <Mail className="w-5 h-5 text-gray-500 mr-2" />
-                    <span className="text-gray-700">{userData?.email}</span>
+                    <span className="text-gray-700">{profileData?.email}</span>
                   </div>
                   <div className="flex items-center">
                     <Phone className="w-5 h-5 text-gray-500 mr-2" />
-                    <span className="text-gray-700">{userData?.phone || 'Not provided'}</span>
+                    <span className="text-gray-700">{profileData?.phone || 'Not provided'}</span>
                   </div>
                 </div>
 
