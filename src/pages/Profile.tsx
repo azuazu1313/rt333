@@ -1,34 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Phone, Mail, MapPin, Save, AlertTriangle, Loader2 } from 'lucide-react';
+import { User, Phone, Mail, Save, AlertTriangle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Header from '../components/Header';
 import Sitemap from '../components/Sitemap';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, userData, loading, updateUserData } = useAuth();
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    address: ''
   });
-
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [profileData, setProfileData] = useState<any>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-
-  // Cache timeout ref
-  const cacheTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // Last fetch timestamp ref
-  const lastFetchRef = useRef<number>(0);
-  // Cache duration in milliseconds (5 minutes)
-  const CACHE_DURATION = 15 * 60 * 1000;
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -37,75 +27,18 @@ const Profile = () => {
     }
   }, [user, loading, navigate]);
 
-  // Cleanup cache timeout on unmount
+  // Populate form with user data when available
   useEffect(() => {
-    return () => {
-      if (cacheTimeoutRef.current) {
-        clearTimeout(cacheTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Fetch user profile data with caching
-  const fetchProfileData = async (force = false) => {
-    if (!user) return;
-
-    const now = Date.now();
-    // Return cached data if within cache duration and not forced
-    if (!force && profileData && (now - lastFetchRef.current) < CACHE_DURATION) {
-      setLoadingProfile(false);
-      return;
+    if (userData) {
+      setFormData({
+        name: userData.name || '',
+        email: userData.email || '',
+        phone: userData.phone || '',
+      });
     }
+  }, [userData]);
 
-    try {
-      setLoadingProfile(true);
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error) throw error;
-
-      console.log('Fetched profile data:', data);
-      setProfileData(data);
-      lastFetchRef.current = now;
-      
-      // Populate form with user data
-      if (data) {
-        setFormData({
-          name: data.name || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          address: ''
-        });
-      }
-
-      // Set cache timeout
-      if (cacheTimeoutRef.current) {
-        clearTimeout(cacheTimeoutRef.current);
-      }
-      cacheTimeoutRef.current = setTimeout(() => {
-        // Clear cache after duration
-        lastFetchRef.current = 0;
-      }, CACHE_DURATION);
-
-    } catch (err) {
-      console.error('Error fetching profile:', err);
-      setError('Failed to load profile data');
-    } finally {
-      setLoadingProfile(false);
-    }
-  };
-
-  // Initial fetch
-  useEffect(() => {
-    if (user) {
-      fetchProfileData();
-    }
-  }, [user]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -116,6 +49,7 @@ const Profile = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     
     if (!user) {
       setError('You must be logged in to update your profile');
@@ -125,19 +59,12 @@ const Profile = () => {
     setIsSubmitting(true);
     
     try {
-      // Update the user data directly in Supabase
-      const { error } = await supabase
-        .from('users')
-        .update({
-          name: formData.name,
-          phone: formData.phone
-        })
-        .eq('id', user.id);
+      const { error } = await updateUserData({
+        name: formData.name,
+        phone: formData.phone
+      });
 
       if (error) throw error;
-
-      // Force refresh profile data
-      await fetchProfileData(true);
 
       setSuccessMessage('Profile updated successfully!');
       
@@ -153,7 +80,7 @@ const Profile = () => {
     }
   };
 
-  if (loading || loadingProfile) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -192,18 +119,18 @@ const Profile = () => {
                   <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                     <User className="w-12 h-12 text-blue-600" />
                   </div>
-                  <h2 className="text-xl font-bold">{profileData?.name || 'User'}</h2>
-                  <p className="text-gray-600">{profileData?.role || 'Customer'}</p>
+                  <h2 className="text-xl font-bold">{userData?.name || 'User'}</h2>
+                  <p className="text-gray-600">{userData?.role || 'Customer'}</p>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center">
                     <Mail className="w-5 h-5 text-gray-500 mr-2" />
-                    <span className="text-gray-700">{profileData?.email}</span>
+                    <span className="text-gray-700">{userData?.email}</span>
                   </div>
                   <div className="flex items-center">
                     <Phone className="w-5 h-5 text-gray-500 mr-2" />
-                    <span className="text-gray-700">{profileData?.phone || 'Not provided'}</span>
+                    <span className="text-gray-700">{userData?.phone || 'Not provided'}</span>
                   </div>
                 </div>
 
@@ -288,21 +215,6 @@ const Profile = () => {
                     value={formData.phone}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                    Address
-                  </label>
-                  <textarea
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    placeholder="We'll use this for delivery or pickup"
                   />
                 </div>
 
