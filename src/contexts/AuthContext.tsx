@@ -28,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const initialStateLoadedRef = useRef(false);
 
   // Function to fetch user data
@@ -90,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error('Error initializing auth:', error);
       } finally {
+        setLoading(false);
         initialStateLoadedRef.current = true;
       }
     };
@@ -100,15 +101,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       console.log('Auth state change:', event);
       
-      if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        // Clear all auth state
         setSession(null);
         setUser(null);
         setUserData(null);
         setPreferences(null);
-      } else if (currentSession?.user) {
+      } else if (currentSession?.user && event !== 'TOKEN_REFRESHED') {
+        // Don't update state for token refreshes to avoid unnecessary re-renders
         setSession(currentSession);
         setUser(currentSession.user);
         
+        // Only fetch user data for sign in events
         if (event === 'SIGNED_IN') {
           await fetchUserData(currentSession.user.id);
           await fetchUserPreferences(currentSession.user.id);
