@@ -13,6 +13,10 @@ interface InviteLink {
   used_at: string | null;
   used_by: string | null;
   created_by: string;
+  creator?: {
+    name: string;
+    email: string;
+  };
 }
 
 const DevTools = () => {
@@ -29,9 +33,14 @@ const DevTools = () => {
   const fetchInviteLinks = async () => {
     try {
       setIsRefreshing(true);
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        throw new Error('Not authenticated');
+      }
+
       const { data, error } = await supabase
         .from('invite_links')
-        .select('*, created_by:users(name, email)')
+        .select('*, creator:users!invite_links_created_by_fkey(name, email)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -58,6 +67,12 @@ const DevTools = () => {
       setIsGenerating(true);
       setError(null);
 
+      // Get current user
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        throw new Error('Not authenticated');
+      }
+
       // Generate a random code
       const code = Math.random().toString(36).substring(2, 15) + 
                   Math.random().toString(36).substring(2, 15);
@@ -72,7 +87,8 @@ const DevTools = () => {
         .insert({
           code,
           role: selectedRole,
-          expires_at: expiresAt.toISOString()
+          expires_at: expiresAt.toISOString(),
+          created_by: userData.user.id // Add the current user's ID
         });
 
       if (insertError) throw insertError;
@@ -270,6 +286,11 @@ const DevTools = () => {
                       {link.used_at && (
                         <p className="text-sm text-gray-600">
                           Used: {format(new Date(link.used_at), 'PPp')}
+                        </p>
+                      )}
+                      {link.creator && (
+                        <p className="text-sm text-gray-600">
+                          Created by: {link.creator.name} ({link.creator.email})
                         </p>
                       )}
                     </div>
