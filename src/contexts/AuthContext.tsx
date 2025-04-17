@@ -182,7 +182,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.session) {
         setSession(data.session);
         setUser(data.session.user);
-        await fetchUserData(data.session.user.id);
+        
+        // Fetch user data and set JWT claim
+        const userData = await fetchUserData(data.session.user.id);
+        if (userData?.user_role) {
+          // Refresh the session to get updated JWT claims
+          const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
+          if (!refreshError && newSession) {
+            setSession(newSession);
+          }
+        }
+        
         await fetchUserPreferences(data.session.user.id);
       }
       
