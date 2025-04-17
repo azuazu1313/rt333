@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useToast } from '../ui/use-toast';
 
 const UserManagement = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchUsers();
@@ -23,6 +25,11 @@ const UserManagement = () => {
       setUsers(data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch users. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -41,8 +48,19 @@ const UserManagement = () => {
       setUsers(users.map(user => 
         user.id === userId ? { ...user, role: newRole } : user
       ));
+
+      toast({
+        variant: "success",
+        title: "Success",
+        description: "User role updated successfully.",
+      });
     } catch (error) {
       console.error('Error updating user role:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update user role. Please try again.",
+      });
     }
   };
 
@@ -59,8 +77,19 @@ const UserManagement = () => {
       setUsers(users.map(user => 
         user.id === userId ? { ...user, is_suspended: !currentStatus } : user
       ));
+
+      toast({
+        variant: "success",
+        title: "Success",
+        description: "User status updated successfully.",
+      });
     } catch (error) {
       console.error('Error updating user status:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update user status. Please try again.",
+      });
     }
   };
 

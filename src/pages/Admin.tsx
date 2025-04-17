@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Calendar, BarChart2, Settings, PenTool as Tool, AlertTriangle } from 'lucide-react';
+import { Users, Calendar, BarChart2, Settings, PenTool as Tool, AlertTriangle, ArrowLeft } from 'lucide-react';
 import Header from '../components/Header';
 import UserManagement from '../components/admin/UserManagement';
 import BookingsManagement from '../components/admin/BookingsManagement';
@@ -8,6 +8,7 @@ import Dashboard from '../components/admin/Dashboard';
 import PlatformSettings from '../components/admin/PlatformSettings';
 import DevTools from '../components/admin/DevTools';
 import { useAuth } from '../contexts/AuthContext';
+import { Toaster } from '../components/ui/toaster';
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -61,6 +62,15 @@ const Admin = () => {
       
       <main className="pt-32 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Back to Site Button */}
+          <button
+            onClick={() => navigate('/')}
+            className="mb-8 flex items-center text-gray-600 hover:text-blue-600 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Site
+          </button>
+
           <div className="flex">
             {/* Sidebar */}
             <div className="w-64 pr-8">
@@ -90,6 +100,9 @@ const Admin = () => {
           </div>
         </div>
       </main>
+
+      {/* Toast Container */}
+      <Toaster />
     </div>
   );
 };

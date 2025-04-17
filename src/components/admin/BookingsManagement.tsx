@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Search, Loader2, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
+import { useToast } from '../ui/use-toast';
 
 const BookingsManagement = () => {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchBookings();
@@ -28,6 +30,11 @@ const BookingsManagement = () => {
       setBookings(data || []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch bookings. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -46,8 +53,19 @@ const BookingsManagement = () => {
       setBookings(bookings.map(booking => 
         booking.id === bookingId ? { ...booking, status: newStatus } : booking
       ));
+
+      toast({
+        variant: "success",
+        title: "Success",
+        description: "Booking status updated successfully.",
+      });
     } catch (error) {
       console.error('Error updating booking status:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not update booking. Please try again.",
+      });
     }
   };
 
@@ -160,6 +178,7 @@ const BookingsManagement = () => {
                 </td>
               </tr>
             ))}
+          
           </tbody>
         </table>
       </div>
