@@ -1,13 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/use-toast';
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  is_suspended: boolean;
+}
+
+interface PendingChange {
+  role?: string;
+  is_suspended?: boolean;
+}
+
 const UserManagement = () => {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -35,61 +50,79 @@ const UserManagement = () => {
     }
   };
 
-  const updateUserRole = async (userId: string, newRole: string) => {
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ role: newRole })
-        .eq('id', userId);
-
-      if (error) throw error;
-      
-      // Update local state
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, role: newRole } : user
-      ));
-
-      toast({
-        variant: "success",
-        title: "Success",
-        description: "User role updated successfully.",
-      });
-    } catch (error) {
-      console.error('Error updating user role:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update user role. Please try again.",
-      });
-    }
+  const handleRoleChange = (userId: string, newRole: string) => {
+    setPendingChanges(prev => ({
+      ...prev,
+      [userId]: {
+        ...prev[userId],
+        role: newRole
+      }
+    }));
   };
 
-  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ is_suspended: !currentStatus })
-        .eq('id', userId);
+  const toggleUserStatus = (userId: string, currentStatus: boolean) => {
+    setPendingChanges(prev => ({
+      ...prev,
+      [userId]: {
+        ...prev[userId],
+        is_suspended: !currentStatus
+      }
+    }));
+  };
 
-      if (error) throw error;
-      
+  const saveChanges = async () => {
+    setIsSaving(true);
+    const updates = [];
+    let hasError = false;
+
+    try {
+      for (const [userId, changes] of Object.entries(pendingChanges)) {
+        const { error } = await supabase
+          .from('users')
+          .update(changes)
+          .eq('id', userId);
+
+        if (error) {
+          console.error(`Error updating user ${userId}:`, error);
+          hasError = true;
+          continue;
+        }
+
+        updates.push(userId);
+      }
+
       // Update local state
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, is_suspended: !currentStatus } : user
-      ));
+      setUsers(users.map(user => {
+        if (pendingChanges[user.id]) {
+          return {
+            ...user,
+            ...pendingChanges[user.id]
+          };
+        }
+        return user;
+      }));
+
+      // Clear pending changes for successful updates
+      const newPendingChanges = { ...pendingChanges };
+      updates.forEach(userId => delete newPendingChanges[userId]);
+      setPendingChanges(newPendingChanges);
 
       toast({
-        variant: "success",
-        title: "Success",
-        description: "User status updated successfully.",
+        variant: hasError ? "destructive" : "default",
+        title: hasError ? "Partial Success" : "Success",
+        description: hasError 
+          ? "Some changes were saved, but others failed. Please try again."
+          : "All changes were saved successfully.",
       });
     } catch (error) {
-      console.error('Error updating user status:', error);
+      console.error('Error saving changes:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to update user status. Please try again.",
+        description: "Failed to save changes. Please try again.",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -101,6 +134,8 @@ const UserManagement = () => {
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
   if (loading) {
     return (
@@ -133,6 +168,8 @@ const UserManagement = () => {
             <option value="all">All Roles</option>
             <option value="admin">Admin</option>
             <option value="customer">Customer</option>
+            <option value="driver">Driver</option>
+            <option value="support">Support</option>
           </select>
         </div>
       </div>
@@ -159,33 +196,37 @@ const UserManagement = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <select
-                    value={user.role}
-                    onChange={(e) => updateUserRole(user.id, e.target.value)}
-                    className="text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    value={pendingChanges[user.id]?.role ?? user.role}
+                    onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                    className={`text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+                      pendingChanges[user.id]?.role ? 'bg-yellow-50' : ''
+                    }`}
                   >
                     <option value="customer">Customer</option>
                     <option value="admin">Admin</option>
+                    <option value="driver">Driver</option>
+                    <option value="support">Support</option>
                   </select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    user.is_suspended
+                    (pendingChanges[user.id]?.is_suspended ?? user.is_suspended)
                       ? 'bg-red-100 text-red-800'
                       : 'bg-green-100 text-green-800'
                   }`}>
-                    {user.is_suspended ? 'Suspended' : 'Active'}
+                    {(pendingChanges[user.id]?.is_suspended ?? user.is_suspended) ? 'Suspended' : 'Active'}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <button
-                    onClick={() => toggleUserStatus(user.id, user.is_suspended)}
+                    onClick={() => toggleUserStatus(user.id, pendingChanges[user.id]?.is_suspended ?? user.is_suspended)}
                     className={`font-medium ${
-                      user.is_suspended
+                      (pendingChanges[user.id]?.is_suspended ?? user.is_suspended)
                         ? 'text-green-600 hover:text-green-700'
                         : 'text-red-600 hover:text-red-700'
                     }`}
                   >
-                    {user.is_suspended ? 'Reactivate' : 'Suspend'}
+                    {(pendingChanges[user.id]?.is_suspended ?? user.is_suspended) ? 'Reactivate' : 'Suspend'}
                   </button>
                 </td>
               </tr>
@@ -193,6 +234,29 @@ const UserManagement = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Save Changes Button */}
+      {hasPendingChanges && (
+        <div className="fixed bottom-8 right-8">
+          <button
+            onClick={saveChanges}
+            disabled={isSaving}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5" />
+                <span>Save Changes</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
