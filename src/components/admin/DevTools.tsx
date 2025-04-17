@@ -1,15 +1,57 @@
-import React, { useState } from 'react';
-import { Copy, Loader2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Copy, Loader2, AlertCircle, Trash2, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/use-toast';
+import { format } from 'date-fns';
+
+interface InviteLink {
+  id: string;
+  code: string;
+  role: 'admin' | 'support' | 'driver';
+  created_at: string;
+  expires_at: string | null;
+  used_at: string | null;
+  used_by: string | null;
+  created_by: string;
+}
 
 const DevTools = () => {
   const [selectedRole, setSelectedRole] = useState<'admin' | 'support' | 'driver'>('admin');
-  const [expiresIn, setExpiresIn] = useState('24'); // hours
+  const [expiresIn, setExpiresIn] = useState('24');
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
+
+  const fetchInviteLinks = async () => {
+    try {
+      setIsRefreshing(true);
+      const { data, error } = await supabase
+        .from('invite_links')
+        .select('*, created_by:users(name, email)')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setInviteLinks(data || []);
+    } catch (err) {
+      console.error('Error fetching invite links:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch invite links",
+      });
+    } finally {
+      setIsRefreshing(false);
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInviteLinks();
+  }, []);
 
   const generateInviteLink = async () => {
     try {
@@ -45,6 +87,9 @@ const DevTools = () => {
         title: "Success",
         description: "Invite link generated successfully!",
       });
+
+      // Refresh the list
+      fetchInviteLinks();
     } catch (err) {
       console.error('Error generating invite link:', err);
       setError('Failed to generate invite link. Please try again.');
@@ -73,6 +118,32 @@ const DevTools = () => {
         variant: "destructive",
         title: "Error",
         description: "Failed to copy link",
+      });
+    }
+  };
+
+  const deleteInviteLink = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('invite_links')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Invite link deleted successfully",
+      });
+
+      // Refresh the list
+      fetchInviteLinks();
+    } catch (err) {
+      console.error('Error deleting invite link:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete invite link",
       });
     }
   };
@@ -156,6 +227,62 @@ const DevTools = () => {
               <p className="mt-2 text-sm text-gray-500">
                 This link will expire in {expiresIn} hours and can only be used once.
               </p>
+            </div>
+          )}
+        </div>
+
+        {/* Active Invite Links */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium">Active Invite Links</h3>
+            <button
+              onClick={() => fetchInviteLinks()}
+              disabled={isRefreshing}
+              className="flex items-center text-blue-600 hover:text-blue-700"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          ) : inviteLinks.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">No invite links found</p>
+          ) : (
+            <div className="space-y-4">
+              {inviteLinks.map((link) => (
+                <div key={link.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium">Role: <span className="capitalize">{link.role}</span></p>
+                      <p className="text-sm text-gray-600">Code: {link.code}</p>
+                      <p className="text-sm text-gray-600">
+                        Created: {format(new Date(link.created_at), 'PPp')}
+                      </p>
+                      {link.expires_at && (
+                        <p className="text-sm text-gray-600">
+                          Expires: {format(new Date(link.expires_at), 'PPp')}
+                        </p>
+                      )}
+                      {link.used_at && (
+                        <p className="text-sm text-gray-600">
+                          Used: {format(new Date(link.used_at), 'PPp')}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => deleteInviteLink(link.id)}
+                      className="text-red-600 hover:text-red-700"
+                      title="Delete invite link"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
