@@ -46,6 +46,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
+      // Update JWT claims with user_role
+      if (data?.user_role) {
+        const { error: claimError } = await supabase.rpc('set_claim', {
+          uid: userId,
+          claim: 'user_role',
+          value: data.user_role
+        });
+
+        if (claimError) {
+          console.error('Error setting user role claim:', claimError);
+        }
+      }
+
       setUserData(data);
       return data;
     } catch (error) {
