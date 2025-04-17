@@ -14,6 +14,7 @@ import BlogsDestinations from './pages/BlogsDestinations';
 import BookingFlow from './pages/BookingFlow';
 import Profile from './pages/Profile';
 import Bookings from './pages/Bookings';
+import Admin from './pages/Admin';
 import { BookingProvider } from './contexts/BookingContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
@@ -47,7 +48,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!user) {
-    // Redirect to login if not authenticated
     return <Navigate to="/login" replace />;
   }
   
@@ -84,6 +84,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Bookings />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute>
+              <Admin />
             </ProtectedRoute>
           }
         />
