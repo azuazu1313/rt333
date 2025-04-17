@@ -30,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const initialStateLoadedRef = useRef(false);
+  const authStateChangeSubscribed = useRef(false);
 
   // Function to fetch user data
   const fetchUserData = async (userId: string) => {
@@ -74,11 +75,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Initialize auth state
+  // Initialize auth state with timeout
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
     const initializeAuth = async () => {
       try {
-        // Get current session
+        // Set a timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
+          if (loading) {
+            setLoading(false);
+            console.log('Auth initialization timed out');
+          }
+        }, 5000); // 5 second timeout
+
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         if (currentSession?.user) {
@@ -90,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error('Error initializing auth:', error);
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
         initialStateLoadedRef.current = true;
       }
@@ -97,7 +108,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // Listen for auth changes
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
+  // Listen for auth changes
+  useEffect(() => {
+    if (authStateChangeSubscribed.current) return;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       console.log('Auth state change:', event);
       
@@ -118,10 +137,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await fetchUserPreferences(currentSession.user.id);
         }
       }
+
+      // Ensure loading is false after auth state changes
+      setLoading(false);
     });
+
+    authStateChangeSubscribed.current = true;
 
     return () => {
       subscription.unsubscribe();
+      authStateChangeSubscribed.current = false;
     };
   }, []);
 
