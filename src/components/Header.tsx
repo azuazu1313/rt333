@@ -194,9 +194,10 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                       {userData?.role === 'admin' && (
                         <Link 
                           to="/admin" 
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => setShowUserMenu(false)}
                         >
+                          <Crown className="w-4 h-4 mr-2" />
                           Admin Portal
                         </Link>
                       )}

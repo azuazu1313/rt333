@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Calendar, BarChart2, Settings, PenTool as Tool } from 'lucide-react';
+import { Users, Calendar, BarChart2, Settings, PenTool as Tool, AlertTriangle } from 'lucide-react';
 import Header from '../components/Header';
 import UserManagement from '../components/admin/UserManagement';
 import BookingsManagement from '../components/admin/BookingsManagement';
@@ -11,25 +11,49 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { userData } = useAuth();
-  const [activeTab, setActiveTab] = useState('users');
+  const { userData, loading } = useAuth();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [error, setError] = useState<string | null>(null);
 
   // Redirect if not admin
-  React.useEffect(() => {
-    if (userData?.role !== 'admin') {
-      navigate('/');
+  useEffect(() => {
+    if (!loading && userData?.role !== 'admin') {
+      navigate('/', { replace: true });
     }
-  }, [userData, navigate]);
+  }, [userData, loading, navigate]);
 
   const tabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart2, component: Dashboard },
     { id: 'users', label: 'User Management', icon: Users, component: UserManagement },
     { id: 'bookings', label: 'Bookings', icon: Calendar, component: BookingsManagement },
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart2, component: Dashboard },
     { id: 'settings', label: 'Settings', icon: Settings, component: PlatformSettings },
     { id: 'devtools', label: 'Dev Tools', icon: Tool, component: DevTools }
   ];
 
-  const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || UserManagement;
+  const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || Dashboard;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Loading admin portal...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2">Error</h2>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
