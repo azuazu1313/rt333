@@ -1,11 +1,3 @@
-type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
-
 export interface Database {
   public: {
     Tables: {
@@ -15,27 +7,30 @@ export interface Database {
           name: string
           email: string
           phone: string | null
-          role: string | null
+          user_role: string | null
           password_hash: string
           created_at: string | null
+          is_suspended: boolean | null
         }
         Insert: {
           id?: string
           name: string
           email: string
           phone?: string | null
-          role?: string | null
+          user_role?: string | null
           password_hash: string
           created_at?: string | null
+          is_suspended?: boolean | null
         }
         Update: {
           id?: string
           name?: string
           email?: string
           phone?: string | null
-          role?: string | null
+          user_role?: string | null
           password_hash?: string
           created_at?: string | null
+          is_suspended?: boolean | null
         }
       }
       user_preferences: {
@@ -79,88 +74,6 @@ export interface Database {
           created_at?: string | null
           expires_at?: string
           verified?: boolean | null
-        }
-      }
-      trips: {
-        Row: {
-          id: string
-          user_id: string | null
-          driver_id: string | null
-          pickup_zone_id: string | null
-          dropoff_zone_id: string | null
-          estimated_distance_km: number | null
-          estimated_duration_min: number | null
-          estimated_price: number | null
-          surge_multiplier: number | null
-          promo_id: string | null
-          promo_discount: number | null
-          status: string | null
-          datetime: string
-          scheduled_for: string | null
-          is_scheduled: boolean | null
-        }
-        Insert: {
-          id?: string
-          user_id?: string | null
-          driver_id?: string | null
-          pickup_zone_id?: string | null
-          dropoff_zone_id?: string | null
-          estimated_distance_km?: number | null
-          estimated_duration_min?: number | null
-          estimated_price?: number | null
-          surge_multiplier?: number | null
-          promo_id?: string | null
-          promo_discount?: number | null
-          status?: string | null
-          datetime: string
-          scheduled_for?: string | null
-          is_scheduled?: boolean | null
-        }
-        Update: {
-          id?: string
-          user_id?: string | null
-          driver_id?: string | null
-          pickup_zone_id?: string | null
-          dropoff_zone_id?: string | null
-          estimated_distance_km?: number | null
-          estimated_duration_min?: number | null
-          estimated_price?: number | null
-          surge_multiplier?: number | null
-          promo_id?: string | null
-          promo_discount?: number | null
-          status?: string | null
-          datetime?: string
-          scheduled_for?: string | null
-          is_scheduled?: boolean | null
-        }
-      }
-      payments: {
-        Row: {
-          id: string
-          trip_id: string | null
-          user_id: string | null
-          amount: number
-          payment_method: string
-          status: string | null
-          paid_at: string | null
-        }
-        Insert: {
-          id?: string
-          trip_id?: string | null
-          user_id?: string | null
-          amount: number
-          payment_method: string
-          status?: string | null
-          paid_at?: string | null
-        }
-        Update: {
-          id?: string
-          trip_id?: string | null
-          user_id?: string | null
-          amount?: number
-          payment_method?: string
-          status?: string | null
-          paid_at?: string | null
         }
       }
     }

@@ -7,12 +7,12 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: string;
+  user_role: string;
   is_suspended: boolean;
 }
 
 interface PendingChange {
-  role?: string;
+  user_role?: string;
   is_suspended?: boolean;
 }
 
@@ -55,7 +55,7 @@ const UserManagement = () => {
       ...prev,
       [userId]: {
         ...prev[userId],
-        role: newRole
+        user_role: newRole
       }
     }));
   };
@@ -131,7 +131,7 @@ const UserManagement = () => {
       user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchQuery.toLowerCase())
     );
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    const matchesRole = roleFilter === 'all' || user.user_role === roleFilter;
     return matchesSearch && matchesRole;
   });
 
@@ -196,10 +196,10 @@ const UserManagement = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <select
-                    value={pendingChanges[user.id]?.role ?? user.role}
+                    value={pendingChanges[user.id]?.user_role ?? user.user_role}
                     onChange={(e) => handleRoleChange(user.id, e.target.value)}
                     className={`text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-600 ${
-                      pendingChanges[user.id]?.role ? 'bg-yellow-50' : ''
+                      pendingChanges[user.id]?.user_role ? 'bg-yellow-50' : ''
                     }`}
                   >
                     <option value="customer">Customer</option>
