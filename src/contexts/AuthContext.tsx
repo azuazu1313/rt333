@@ -75,20 +75,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Initialize auth state with timeout
+  // Initialize auth state
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
     const initializeAuth = async () => {
       try {
-        // Set a timeout to prevent infinite loading
-        timeoutId = setTimeout(() => {
-          if (loading) {
-            setLoading(false);
-            console.log('Auth initialization timed out');
-          }
-        }, 5000); // 5 second timeout
-
+        // Get the current session
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         if (currentSession?.user) {
@@ -100,22 +91,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error('Error initializing auth:', error);
       } finally {
-        clearTimeout(timeoutId);
         setLoading(false);
         initialStateLoadedRef.current = true;
       }
     };
 
     initializeAuth();
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
   }, []);
 
   // Listen for auth changes
   useEffect(() => {
-    if (authStateChangeSubscribed.current) return;
+    if (!initialStateLoadedRef.current || authStateChangeSubscribed.current) return;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       console.log('Auth state change:', event);
@@ -126,13 +112,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setUserData(null);
         setPreferences(null);
-      } else if (currentSession?.user && event !== 'TOKEN_REFRESHED') {
-        // Don't update state for token refreshes to avoid unnecessary re-renders
+      } else if (currentSession?.user) {
+        // Update session and user state
         setSession(currentSession);
         setUser(currentSession.user);
         
-        // Only fetch user data for sign in events
-        if (event === 'SIGNED_IN') {
+        // Only fetch user data if it's not already loaded or for specific events
+        if (!userData || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           await fetchUserData(currentSession.user.id);
           await fetchUserPreferences(currentSession.user.id);
         }
@@ -148,7 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe();
       authStateChangeSubscribed.current = false;
     };
-  }, []);
+  }, [userData]);
 
   const signUp = async (email: string, password: string, name: string, phone?: string) => {
     try {
