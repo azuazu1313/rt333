@@ -53,11 +53,15 @@ const Login = () => {
     setIsSubmitting(true);
     
     try {
-      const { error } = await signIn(formData.email, formData.password);
+      const { error, session } = await signIn(formData.email, formData.password);
       
       if (error) throw error;
       
-      // Successful login will trigger the useEffect above to handle redirect
+      // If we have a session, redirect immediately
+      if (session) {
+        const state = location.state as LocationState;
+        navigate(state?.from?.pathname || '/', { replace: true });
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       setError(error.message || 'Failed to sign in. Please check your credentials.');

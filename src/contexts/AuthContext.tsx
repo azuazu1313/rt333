@@ -13,7 +13,7 @@ interface AuthContextType {
   preferences: UserPreferences | null;
   loading: boolean;
   signUp: (email: string, password: string, name: string, phone?: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null, session: Session | null }>;
   signOut: () => Promise<void>;
   updateUserData: (updates: Partial<Omit<UserData, 'id' | 'email' | 'password_hash' | 'created_at'>>) => 
     Promise<{ error: Error | null, data: UserData | null }>;
@@ -79,7 +79,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Get the current session
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         if (currentSession?.user) {
@@ -107,24 +106,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Auth state change:', event);
       
       if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-        // Clear all auth state
         setSession(null);
         setUser(null);
         setUserData(null);
         setPreferences(null);
       } else if (currentSession?.user) {
-        // Update session and user state
         setSession(currentSession);
         setUser(currentSession.user);
         
-        // Only fetch user data if it's not already loaded or for specific events
         if (!userData || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           await fetchUserData(currentSession.user.id);
           await fetchUserPreferences(currentSession.user.id);
         }
       }
 
-      // Ensure loading is false after auth state changes
       setLoading(false);
     });
 
@@ -169,11 +164,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) throw error;
+
+      // Immediately update local state
+      if (data.session) {
+        setSession(data.session);
+        setUser(data.session.user);
+        await fetchUserData(data.session.user.id);
+        await fetchUserPreferences(data.session.user.id);
+      }
       
-      return { error: null };
+      return { error: null, session: data.session };
     } catch (error) {
       console.error('Sign in error:', error);
-      return { error: error as Error };
+      return { error: error as Error, session: null };
     } finally {
       setLoading(false);
     }
