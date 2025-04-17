@@ -64,9 +64,14 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
     try {
       await signOut();
       setShowUserMenu(false);
+      setIsMenuOpen(false); // Also close mobile menu if open
       navigate('/');
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error('Error during logout:', error);
+      // Continue with navigation even if there's an error since local state is already cleared
+      setShowUserMenu(false);
+      setIsMenuOpen(false);
+      navigate('/');
     }
   };
 
