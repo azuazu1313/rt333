@@ -13,6 +13,7 @@ import Blogs from './pages/Blogs';
 import BlogsDestinations from './pages/BlogsDestinations';
 import BookingFlow from './pages/BookingFlow';
 import Profile from './pages/Profile';
+import Bookings from './pages/Bookings';
 import { BookingProvider } from './contexts/BookingContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
@@ -75,6 +76,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/bookings" 
+          element={
+            <ProtectedRoute>
+              <Bookings />
             </ProtectedRoute>
           }
         />
