@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Calendar, BarChart2, Settings, PenTool as Tool, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Users, Calendar, BarChart2, Settings, PenTool as Tool, AlertTriangle, ArrowLeft, Menu } from 'lucide-react';
 import Header from '../components/Header';
 import UserManagement from '../components/admin/UserManagement';
 import BookingsManagement from '../components/admin/BookingsManagement';
@@ -9,12 +9,14 @@ import PlatformSettings from '../components/admin/PlatformSettings';
 import DevTools from '../components/admin/DevTools';
 import { useAuth } from '../contexts/AuthContext';
 import { Toaster } from '../components/ui/toaster';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Admin = () => {
   const navigate = useNavigate();
   const { userData, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [error, setError] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Redirect if not admin
   useEffect(() => {
@@ -32,6 +34,11 @@ const Admin = () => {
   ];
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || Dashboard;
+
+  const handleTabClick = (tabId: string) => {
+    setActiveTab(tabId);
+    setIsSidebarOpen(false);
+  };
 
   if (loading) {
     return (
@@ -71,30 +78,53 @@ const Admin = () => {
             Back to Site
           </button>
 
-          <div className="flex">
+          <div className="flex flex-col md:flex-row">
+            {/* Mobile Menu Button */}
+            <button
+              className="md:hidden mb-4 p-2 text-gray-600 hover:text-blue-600 transition-colors"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+
             {/* Sidebar */}
-            <div className="w-64 pr-8">
-              <h1 className="text-2xl font-bold mb-8">Admin Portal</h1>
-              <nav className="space-y-1">
-                {tabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-                      activeTab === tab.id
-                        ? 'bg-blue-100 text-blue-600'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <tab.icon className="mr-3 h-5 w-5" />
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
+            <AnimatePresence>
+              {(isSidebarOpen || window.innerWidth >= 768) && (
+                <motion.div
+                  initial={{ x: -300, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: -300, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  className={`
+                    ${isSidebarOpen ? 'fixed inset-0 bg-white z-50 md:relative md:bg-transparent' : ''}
+                    w-64 md:w-64 md:pr-8
+                  `}
+                >
+                  <div className="p-4 md:p-0">
+                    <h1 className="text-2xl font-bold mb-8">Admin Portal</h1>
+                    <nav className="space-y-1">
+                      {tabs.map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={() => handleTabClick(tab.id)}
+                          className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md ${
+                            activeTab === tab.id
+                              ? 'bg-blue-100 text-blue-600'
+                              : 'text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          <tab.icon className="mr-3 h-5 w-5" />
+                          {tab.label}
+                        </button>
+                      ))}
+                    </nav>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Main Content */}
-            <div className="flex-1">
+            <div className="flex-1 mt-4 md:mt-0">
               <ActiveComponent />
             </div>
           </div>

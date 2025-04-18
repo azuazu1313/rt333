@@ -16,12 +16,12 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
   const location = useLocation();
   const { user, userData, loading, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const isAdmin = userData?.user_role === 'admin';
 
   const handleCTAClick = () => {
-    setIsMenuOpen(false); // Close menu when CTA is clicked
+    setIsMenuOpen(false);
     if (location.pathname !== '/') {
       navigate('/');
-      // Wait for navigation to complete before scrolling
       setTimeout(() => {
         const bookingForm = document.getElementById('booking-form');
         if (bookingForm) {
@@ -64,18 +64,16 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
     try {
       await signOut();
       setShowUserMenu(false);
-      setIsMenuOpen(false); // Also close mobile menu if open
+      setIsMenuOpen(false);
       navigate('/');
     } catch (error) {
       console.error('Error during logout:', error);
-      // Continue with navigation even if there's an error since local state is already cleared
       setShowUserMenu(false);
       setIsMenuOpen(false);
       navigate('/');
     }
   };
 
-  // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -94,8 +92,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
     <header className="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
-          {/* Hamburger Menu Button - Mobile Only */}
-          <div className="md:hidden w-12 h-12" /> {/* Spacer */}
+          <div className="md:hidden w-12 h-12" />
 
           <button 
             onClick={() => navigate('/')}
@@ -111,7 +108,6 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             </picture>
           </button>
           
-          {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-6 lg:space-x-8">
             <a 
               href="/" 
@@ -187,7 +183,6 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                     <User className="h-5 w-5" />
                   </button>
                   
-                  {/* User Dropdown Menu */}
                   {showUserMenu && (
                     <div 
                       id="user-menu"
@@ -195,8 +190,13 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                     >
                       <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b">
                         {userData?.name || 'User'}
+                        {userData?.user_role && (
+                          <div className="text-xs text-gray-500 capitalize">
+                            {userData.user_role}
+                          </div>
+                        )}
                       </div>
-                      {userData?.role === 'admin' && (
+                      {isAdmin && (
                         <Link 
                           to="/admin" 
                           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -248,11 +248,9 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
         </div>
       </div>
 
-      {/* Mobile Navigation Menu */}
       <AnimatePresence>
         {isMenuOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -262,7 +260,6 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
               onClick={() => setIsMenuOpen(false)}
             />
             
-            {/* Menu */}
             <motion.div
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
@@ -270,7 +267,6 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
               transition={{ type: 'tween', duration: 0.3 }}
               className="fixed top-0 left-0 h-full w-[280px] bg-white z-40 md:hidden"
             >
-              {/* Close Button */}
               <motion.button
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -285,7 +281,6 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
               </motion.button>
 
               <div className="flex flex-col h-full">
-                {/* Logo Section */}
                 <div className="flex justify-center items-center p-4 border-b">
                   <img
                     src="https://i.imghippo.com/files/cDgm3025PmI.webp"
@@ -294,7 +289,6 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                   />
                 </div>
 
-                {/* Navigation Links */}
                 <nav className="flex-1 overflow-y-auto p-4">
                   <div className="flex flex-col space-y-4">
                     {[
@@ -321,7 +315,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                     
                     {user && (
                       <>
-                        {userData?.role === 'admin' && (
+                        {isAdmin && (
                           <div className="flex">
                             <a
                               href="/admin"
@@ -358,7 +352,6 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                   </div>
                 </nav>
 
-                {/* Bottom Actions */}
                 <div className="p-4 border-t space-y-3">
                   {!hideSignIn && (
                     loading ? (
@@ -395,7 +388,6 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
         )}
       </AnimatePresence>
 
-      {/* Mobile Menu Toggle Button */}
       <button 
         className="md:hidden fixed top-[22px] left-4 z-50 w-12 h-12 flex items-center justify-center"
         onClick={() => setIsMenuOpen(!isMenuOpen)}

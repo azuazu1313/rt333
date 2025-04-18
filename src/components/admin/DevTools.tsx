@@ -17,6 +17,10 @@ interface InviteLink {
     name: string;
     email: string;
   };
+  used_by_user?: {
+    name: string;
+    email: string;
+  };
 }
 
 const DevTools = () => {
@@ -40,7 +44,11 @@ const DevTools = () => {
 
       const { data, error } = await supabase
         .from('invite_links')
-        .select('*, creator:users!invite_links_created_by_fkey(name, email)')
+        .select(`
+          *,
+          creator:users!invite_links_created_by_fkey(name, email),
+          used_by_user:users!invite_links_used_by_fkey(name, email)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -88,7 +96,7 @@ const DevTools = () => {
           code,
           role: selectedRole,
           expires_at: expiresAt.toISOString(),
-          created_by: userData.user.id // Add the current user's ID
+          created_by: userData.user.id
         });
 
       if (insertError) throw insertError;
@@ -250,7 +258,7 @@ const DevTools = () => {
         {/* Active Invite Links */}
         <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium">Active Invite Links</h3>
+            <h3 className="text-lg font-medium">Invite Links History</h3>
             <button
               onClick={() => fetchInviteLinks()}
               disabled={isRefreshing}
@@ -283,15 +291,22 @@ const DevTools = () => {
                           Expires: {format(new Date(link.expires_at), 'PPp')}
                         </p>
                       )}
-                      {link.used_at && (
-                        <p className="text-sm text-gray-600">
-                          Used: {format(new Date(link.used_at), 'PPp')}
-                        </p>
-                      )}
                       {link.creator && (
                         <p className="text-sm text-gray-600">
                           Created by: {link.creator.name} ({link.creator.email})
                         </p>
+                      )}
+                      {link.used_at && (
+                        <>
+                          <p className="text-sm text-gray-600">
+                            Used: {format(new Date(link.used_at), 'PPp')}
+                          </p>
+                          {link.used_by_user && (
+                            <p className="text-sm text-gray-600">
+                              Used by: {link.used_by_user.name} ({link.used_by_user.email})
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                     <button

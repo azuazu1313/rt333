@@ -21,7 +21,7 @@ interface AuthContextType {
     Promise<{ error: Error | null }>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
@@ -79,12 +79,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        // Get session with JWT claims
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         if (currentSession?.user) {
           setSession(currentSession);
           setUser(currentSession.user);
-          await fetchUserData(currentSession.user.id);
+          
+          // Fetch user data and update JWT claims if needed
+          const userData = await fetchUserData(currentSession.user.id);
+          if (userData?.user_role) {
+            // Refresh session to get updated JWT claims
+            const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
+            if (!refreshError && newSession) {
+              setSession(newSession);
+            }
+          }
+          
           await fetchUserPreferences(currentSession.user.id);
         }
       } catch (error) {
@@ -115,7 +126,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(currentSession.user);
         
         if (!userData || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-          await fetchUserData(currentSession.user.id);
+          const userData = await fetchUserData(currentSession.user.id);
+          if (userData?.user_role) {
+            // Refresh session to get updated JWT claims
+            const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
+            if (!refreshError && newSession) {
+              setSession(newSession);
+            }
+          }
           await fetchUserPreferences(currentSession.user.id);
         }
       }
@@ -232,6 +250,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       setUserData(data);
+      
+      // Refresh session to update JWT claims if user_role was updated
+      if ('user_role' in updates) {
+        const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
+        if (!refreshError && newSession) {
+          setSession(newSession);
+        }
+      }
+      
       return { error: null, data };
     } catch (error) {
       console.error('Error updating user data:', error);

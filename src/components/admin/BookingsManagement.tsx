@@ -3,6 +3,7 @@ import { Search, Loader2, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { useToast } from '../ui/use-toast';
+import { useAuth } from '../../hooks/useAuth';
 
 const BookingsManagement = () => {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -10,10 +11,13 @@ const BookingsManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const { toast } = useToast();
+  const { userData } = useAuth();
 
   useEffect(() => {
-    fetchBookings();
-  }, []);
+    if (userData?.user_role === 'admin') {
+      fetchBookings();
+    }
+  }, [userData]);
 
   const fetchBookings = async () => {
     try {
@@ -178,7 +182,6 @@ const BookingsManagement = () => {
                 </td>
               </tr>
             ))}
-          
           </tbody>
         </table>
       </div>
