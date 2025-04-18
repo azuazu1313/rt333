@@ -46,19 +46,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
 
-      // Update JWT claims with user_role
-      if (data?.user_role) {
-        const { error: claimError } = await supabase.rpc('set_claim', {
-          uid: userId,
-          claim: 'user_role',
-          value: data.user_role
-        });
-
-        if (claimError) {
-          console.error('Error setting user role claim:', claimError);
-        }
-      }
-
       setUserData(data);
       return data;
     } catch (error) {
@@ -183,12 +170,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(data.session);
         setUser(data.session.user);
         
-        // Fetch user data and set JWT claim
+        // Fetch user data
         const userData = await fetchUserData(data.session.user.id);
+        
         if (userData?.user_role) {
-          // Refresh the session to get updated JWT claims
+          // Refresh session to get updated JWT claims
           const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
           if (!refreshError && newSession) {
+            // Set the new session with updated claims
             setSession(newSession);
           }
         }
@@ -219,11 +208,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.warn('Error during Supabase sign out:', error);
-        // Continue execution even if there's an error since we've already cleared local state
       }
     } catch (error) {
       console.error('Error signing out:', error);
-      // Don't rethrow the error since we've already cleared local state
     } finally {
       setLoading(false);
     }
