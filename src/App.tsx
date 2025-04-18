@@ -15,6 +15,7 @@ import BookingFlow from './pages/BookingFlow';
 import Profile from './pages/Profile';
 import Bookings from './pages/Bookings';
 import Admin from './pages/Admin';
+import NotFound from './pages/NotFound';
 import { BookingProvider } from './contexts/BookingContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
@@ -99,6 +100,7 @@ function AppRoutes() {
           path="/transfer/:from/:to/:type/:date/:returnDate/:passengers/form" 
           element={<BookingFlow />} 
         />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </>
   );
