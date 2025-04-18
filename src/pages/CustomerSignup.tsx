@@ -85,21 +85,34 @@ const CustomerSignup = () => {
         }
       }
 
-      // Sign up the user with Supabase Auth
+      // First, create the auth user
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            name: formData.name,
-            phone: formData.phone || null,
-            user_role: userRole
-          }
-        }
+        password: formData.password
       });
 
       if (signUpError) throw signUpError;
       if (!authData.user) throw new Error('Failed to create user account');
+
+      // Then, insert the user data into the users table
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert([
+          {
+            id: authData.user.id,
+            email: formData.email,
+            name: formData.name,
+            phone: formData.phone || null,
+            user_role: userRole,
+            password_hash: 'MANAGED_BY_SUPABASE_AUTH' // This is just a placeholder as auth handles the real password
+          }
+        ]);
+
+      if (insertError) {
+        // If user data insertion fails, we should handle this appropriately
+        console.error('Error inserting user data:', insertError);
+        throw new Error('Failed to create user profile. Please try again.');
+      }
 
       // If signup was successful and we used an invite code, mark it as used
       if (inviteData) {
