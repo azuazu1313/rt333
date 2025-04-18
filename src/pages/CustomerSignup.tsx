@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, User, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
+import { supabase } from '../lib/supabase';
 
 const CustomerSignup = () => {
   const navigate = useNavigate();
   const { signUp, user, loading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const inviteCode = searchParams.get('code');
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -23,6 +27,30 @@ const CustomerSignup = () => {
       navigate('/');
     }
   }, [user, navigate]);
+
+  const validateInviteCode = async (code: string) => {
+    try {
+      const { data: invite, error } = await supabase
+        .from('invite_links')
+        .select('*')
+        .eq('code', code)
+        .is('used_at', null)
+        .single();
+
+      if (error) throw error;
+      if (!invite) throw new Error('Invalid or expired invite code');
+
+      // Check if invite has expired
+      if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+        throw new Error('Invite link has expired');
+      }
+
+      return invite;
+    } catch (error: any) {
+      console.error('Error validating invite code:', error);
+      throw new Error(error.message || 'Invalid invite code');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,16 +77,47 @@ const CustomerSignup = () => {
     setIsSubmitting(true);
     
     try {
+      let userRole = 'customer';
+      let inviteData = null;
+
+      // If invite code exists, validate it and get the role
+      if (inviteCode) {
+        try {
+          inviteData = await validateInviteCode(inviteCode);
+          userRole = inviteData.role;
+        } catch (error: any) {
+          setError(error.message);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // Sign up user with Supabase
-      const { error } = await signUp(
+      const { error: signUpError } = await signUp(
         formData.email, 
         formData.password, 
         formData.name,
-        formData.phone
+        formData.phone,
+        userRole // Pass the role to signUp
       );
 
-      if (error) {
-        throw error;
+      if (signUpError) {
+        throw signUpError;
+      }
+
+      // If signup was successful and we used an invite code, mark it as used
+      if (inviteData) {
+        const { error: updateError } = await supabase
+          .from('invite_links')
+          .update({
+            used_at: new Date().toISOString(),
+            used_by: user?.id
+          })
+          .eq('code', inviteCode);
+
+        if (updateError) {
+          console.error('Error updating invite link:', updateError);
+        }
       }
 
       // Registration successful, navigate to login
@@ -105,6 +164,12 @@ const CustomerSignup = () => {
               <User className="w-12 h-12 text-blue-600" />
             </div>
             <h1 className="text-3xl font-bold text-center mb-8">Create Account</h1>
+            
+            {inviteCode && (
+              <div className="bg-blue-50 text-blue-600 p-3 rounded-md mb-6 text-sm">
+                Using invite code: {inviteCode}
+              </div>
+            )}
             
             {error && (
               <div className="bg-red-50 text-red-600 p-3 rounded-md mb-6 text-sm flex items-start">
