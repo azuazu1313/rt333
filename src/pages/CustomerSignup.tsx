@@ -88,7 +88,14 @@ const CustomerSignup = () => {
       // First, create the auth user
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.name,
+            phone: formData.phone || null,
+            user_role: userRole
+          }
+        }
       });
 
       if (signUpError) throw signUpError;
@@ -103,8 +110,7 @@ const CustomerSignup = () => {
             email: formData.email,
             name: formData.name,
             phone: formData.phone || null,
-            user_role: userRole,
-            password_hash: 'MANAGED_BY_SUPABASE_AUTH' // This is just a placeholder as auth handles the real password
+            user_role: userRole
           }
         ]);
 
