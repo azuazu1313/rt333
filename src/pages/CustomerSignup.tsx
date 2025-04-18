@@ -56,54 +56,50 @@ const CustomerSignup = () => {
     e.preventDefault();
     setError(null);
     
-    // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords don't match!");
-      return;
-    }
-
-    // Validate password strength
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long!");
-      return;
-    }
-
-    // Validate name
-    if (formData.name.trim() === '') {
-      setError("Please enter your name");
-      return;
-    }
-
-    setIsSubmitting(true);
-    
     try {
+      // Form validation
+      if (formData.password !== formData.confirmPassword) {
+        throw new Error("Passwords don't match!");
+      }
+
+      if (formData.password.length < 6) {
+        throw new Error("Password must be at least 6 characters long!");
+      }
+
+      if (formData.name.trim() === '') {
+        throw new Error("Please enter your name");
+      }
+
+      setIsSubmitting(true);
+      
       let userRole = 'customer';
       let inviteData = null;
 
-      // If invite code exists, validate it and get the role
+      // Validate invite code if present
       if (inviteCode) {
         try {
           inviteData = await validateInviteCode(inviteCode);
           userRole = inviteData.role;
         } catch (error: any) {
-          setError(error.message);
-          setIsSubmitting(false);
-          return;
+          throw new Error(error.message);
         }
       }
 
-      // Sign up user with Supabase
-      const { error: signUpError } = await signUp(
-        formData.email, 
-        formData.password, 
-        formData.name,
-        formData.phone,
-        userRole // Pass the role to signUp
-      );
+      // Sign up the user with Supabase Auth
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.name,
+            phone: formData.phone || null,
+            user_role: userRole
+          }
+        }
+      });
 
-      if (signUpError) {
-        throw signUpError;
-      }
+      if (signUpError) throw signUpError;
+      if (!authData.user) throw new Error('Failed to create user account');
 
       // If signup was successful and we used an invite code, mark it as used
       if (inviteData) {
@@ -111,7 +107,7 @@ const CustomerSignup = () => {
           .from('invite_links')
           .update({
             used_at: new Date().toISOString(),
-            used_by: user?.id
+            used_by: authData.user.id
           })
           .eq('code', inviteCode);
 
