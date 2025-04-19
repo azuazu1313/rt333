@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, TrendingUp, DollarSign, Loader2 } from 'lucide-react';
+import { Users, TrendingUp, Settings, ShieldCheck, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../ui/use-toast';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
-    totalBookings: 0,
     activeUsers: 0,
-    recentBookings: 0,
+    adminCount: 0,
+    supportCount: 0,
     loading: true
   });
   const { userData } = useAuth();
@@ -35,37 +35,35 @@ const Dashboard = () => {
 
       if (userError) throw userError;
 
-      // Fetch total bookings
-      const { count: bookingCount, error: bookingError } = await supabase
-        .from('trips')
-        .select('*', { count: 'exact' });
-
-      if (bookingError) throw bookingError;
-
-      // Fetch recent bookings (last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      const { count: recentBookingCount, error: recentBookingError } = await supabase
-        .from('trips')
-        .select('*', { count: 'exact' })
-        .gte('datetime', thirtyDaysAgo.toISOString());
-
-      if (recentBookingError) throw recentBookingError;
-
-      // Fetch active users (users with bookings in last 30 days)
+      // Fetch active users (non-suspended)
       const { count: activeUserCount, error: activeUserError } = await supabase
-        .from('trips')
-        .select('user_id', { count: 'exact', distinct: true })
-        .gte('datetime', thirtyDaysAgo.toISOString());
+        .from('users')
+        .select('*', { count: 'exact' })
+        .eq('is_suspended', false);
 
       if (activeUserError) throw activeUserError;
 
+      // Fetch admin count
+      const { count: adminCount, error: adminError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact' })
+        .eq('user_role', 'admin');
+
+      if (adminError) throw adminError;
+
+      // Fetch support count
+      const { count: supportCount, error: supportError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact' })
+        .eq('user_role', 'support');
+
+      if (supportError) throw supportError;
+
       setStats({
         totalUsers: userCount || 0,
-        totalBookings: bookingCount || 0,
         activeUsers: activeUserCount || 0,
-        recentBookings: recentBookingCount || 0,
+        adminCount: adminCount || 0,
+        supportCount: supportCount || 0,
         loading: false
       });
     } catch (error: any) {
@@ -114,34 +112,33 @@ const Dashboard = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Active Users</p>
               <p className="text-2xl font-semibold">{stats.activeUsers}</p>
-              <p className="text-xs text-gray-500">Last 30 days</p>
+              <p className="text-xs text-gray-500">Non-suspended accounts</p>
             </div>
           </div>
         </div>
 
-        {/* Total Bookings */}
+        {/* Admin Users */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="p-3 bg-purple-100 rounded-full">
-              <Calendar className="h-6 w-6 text-purple-600" />
+              <Settings className="h-6 w-6 text-purple-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-              <p className="text-2xl font-semibold">{stats.totalBookings}</p>
+              <p className="text-sm font-medium text-gray-600">Admin Users</p>
+              <p className="text-2xl font-semibold">{stats.adminCount}</p>
             </div>
           </div>
         </div>
 
-        {/* Recent Bookings */}
+        {/* Support Users */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="p-3 bg-yellow-100 rounded-full">
-              <DollarSign className="h-6 w-6 text-yellow-600" />
+              <ShieldCheck className="h-6 w-6 text-yellow-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Recent Bookings</p>
-              <p className="text-2xl font-semibold">{stats.recentBookings}</p>
-              <p className="text-xs text-gray-500">Last 30 days</p>
+              <p className="text-sm font-medium text-gray-600">Support Users</p>
+              <p className="text-2xl font-semibold">{stats.supportCount}</p>
             </div>
           </div>
         </div>
