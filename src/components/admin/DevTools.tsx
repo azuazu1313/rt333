@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, Loader2, AlertCircle, Trash2, RefreshCw } from 'lucide-react';
+import { Copy, Loader2, AlertCircle, Trash2, RefreshCw, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/use-toast';
 import { format } from 'date-fns';
@@ -7,12 +7,14 @@ import { format } from 'date-fns';
 interface InviteLink {
   id: string;
   code: string;
-  role: 'admin' | 'support' | 'driver';
+  role: 'admin' | 'support' | 'partner';
   created_at: string;
   expires_at: string | null;
   used_at: string | null;
   used_by: string | null;
   created_by: string;
+  note: string | null;
+  status: 'active' | 'used' | 'expired';
   creator?: {
     name: string;
     email: string;
@@ -24,14 +26,16 @@ interface InviteLink {
 }
 
 const DevTools = () => {
-  const [selectedRole, setSelectedRole] = useState<'admin' | 'support' | 'driver'>('admin');
+  const [selectedRole, setSelectedRole] = useState<'admin' | 'support' | 'partner'>('admin');
   const [expiresIn, setExpiresIn] = useState('24');
+  const [note, setNote] = useState('');
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
 
   const fetchInviteLinks = async () => {
@@ -96,7 +100,9 @@ const DevTools = () => {
           code,
           role: selectedRole,
           expires_at: expiresAt.toISOString(),
-          created_by: userData.user.id
+          created_by: userData.user.id,
+          note: note.trim() || null,
+          status: 'active'
         });
 
       if (insertError) throw insertError;
@@ -111,6 +117,9 @@ const DevTools = () => {
         title: "Success",
         description: "Invite link generated successfully!",
       });
+
+      // Reset the note field
+      setNote('');
 
       // Refresh the list
       fetchInviteLinks();
@@ -146,31 +155,49 @@ const DevTools = () => {
     }
   };
 
-  const deleteInviteLink = async (id: string) => {
+  const markInviteLinkAsExpired = async (id: string) => {
     try {
       const { error } = await supabase
         .from('invite_links')
-        .delete()
+        .update({ status: 'expired' })
         .eq('id', id);
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: "Invite link deleted successfully",
+        description: "Invite link marked as expired",
       });
 
       // Refresh the list
       fetchInviteLinks();
     } catch (err) {
-      console.error('Error deleting invite link:', err);
+      console.error('Error updating invite link:', err);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to delete invite link",
+        description: "Failed to update invite link",
       });
     }
   };
+
+  // Filter invite links based on search query
+  const filteredInviteLinks = inviteLinks.filter(link => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    
+    return (
+      link.code.toLowerCase().includes(query) ||
+      link.role.toLowerCase().includes(query) ||
+      (link.note && link.note.toLowerCase().includes(query)) ||
+      (link.creator?.name && link.creator.name.toLowerCase().includes(query)) ||
+      (link.creator?.email && link.creator.email.toLowerCase().includes(query)) ||
+      (link.used_by_user?.name && link.used_by_user.name.toLowerCase().includes(query)) ||
+      (link.used_by_user?.email && link.used_by_user.email.toLowerCase().includes(query)) ||
+      (link.status && link.status.toLowerCase().includes(query))
+    );
+  });
 
   return (
     <div>
@@ -193,12 +220,12 @@ const DevTools = () => {
             </label>
             <select
               value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value as 'admin' | 'support' | 'driver')}
+              onChange={(e) => setSelectedRole(e.target.value as 'admin' | 'support' | 'partner')}
               className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
             >
               <option value="admin">Admin</option>
               <option value="support">Support Agent</option>
-              <option value="driver">Driver</option>
+              <option value="partner">Partner</option>
             </select>
           </div>
 
@@ -213,6 +240,18 @@ const DevTools = () => {
               min="1"
               max="168"
               className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Note (optional)
+            </label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add a note about this invite link"
+              className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 min-h-[80px]"
             />
           </div>
 
@@ -269,19 +308,46 @@ const DevTools = () => {
             </button>
           </div>
 
+          {/* Search field */}
+          <div className="mb-4 relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by code, role, note, creator..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+            />
+          </div>
+
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             </div>
-          ) : inviteLinks.length === 0 ? (
+          ) : filteredInviteLinks.length === 0 ? (
             <p className="text-gray-500 text-center py-8">No invite links found</p>
           ) : (
             <div className="space-y-4">
-              {inviteLinks.map((link) => (
-                <div key={link.id} className="border rounded-lg p-4">
+              {filteredInviteLinks.map((link) => (
+                <div key={link.id} className={`border rounded-lg p-4 ${
+                  link.status === 'expired' ? 'bg-gray-50 border-gray-200' : 
+                  link.status === 'used' ? 'bg-blue-50 border-blue-200' : 
+                  'bg-white border-gray-200'
+                }`}>
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-medium">Role: <span className="capitalize">{link.role}</span></p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <p className="font-medium">Role: <span className="capitalize">{link.role}</span></p>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          link.status === 'active' ? 'bg-green-100 text-green-800' : 
+                          link.status === 'used' ? 'bg-blue-100 text-blue-800' : 
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {link.status}
+                        </span>
+                      </div>
                       <p className="text-sm text-gray-600">Code: {link.code}</p>
                       <p className="text-sm text-gray-600">
                         Created: {format(new Date(link.created_at), 'PPp')}
@@ -308,14 +374,22 @@ const DevTools = () => {
                           )}
                         </>
                       )}
+                      {link.note && (
+                        <div className="mt-2 text-sm text-gray-700 bg-gray-50 p-2 rounded border border-gray-200">
+                          <p className="font-medium">Note:</p>
+                          <p>{link.note}</p>
+                        </div>
+                      )}
                     </div>
-                    <button
-                      onClick={() => deleteInviteLink(link.id)}
-                      className="text-red-600 hover:text-red-700"
-                      title="Delete invite link"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
+                    {link.status === 'active' && (
+                      <button
+                        onClick={() => markInviteLinkAsExpired(link.id)}
+                        className="text-red-600 hover:text-red-700"
+                        title="Mark as expired"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
