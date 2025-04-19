@@ -12,7 +12,7 @@ interface AuthContextType {
   userData: UserData | null;
   preferences: UserPreferences | null;
   loading: boolean;
-  signUp: (email: string, password: string, name: string, phone?: string) => Promise<{ error: Error | null, data?: { user: User | null } }>;
+  signUp: (email: string, password: string, name: string, phone?: string, inviteCode?: string) => Promise<{ error: Error | null, data?: { user: User | null } }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null, session: Session | null }>;
   signOut: () => Promise<void>;
   updateUserData: (updates: Partial<Omit<UserData, 'id' | 'email' | 'created_at'>>) => 
@@ -150,35 +150,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [userData]);
 
-  const signUp = async (email: string, password: string, name: string, phone?: string) => {
+  const signUp = async (email: string, password: string, name: string, phone?: string, inviteCode?: string) => {
     try {
       setLoading(true);
       
-      // Get invite code from URL, ensuring it's properly formatted for the database
-      const urlParams = new URLSearchParams(window.location.search);
-      const inviteCode = urlParams.get('invite');
+      // Log for debugging
+      console.log('Signup with invite code:', inviteCode);
       
-      console.log('Sign up with invite code:', inviteCode);
+      // Check invite code validity first if provided
+      let inviteData = null;
+      if (inviteCode) {
+        const { data, error } = await supabase
+          .from('invite_links')
+          .select('*')
+          .eq('code', inviteCode)
+          .eq('status', 'active')
+          .single();
+          
+        if (error) {
+          console.error('Error validating invite code:', error);
+          throw new Error('Invalid or expired invite code');
+        }
+        
+        if (data.expires_at && new Date(data.expires_at) < new Date()) {
+          // Mark as expired
+          await supabase
+            .from('invite_links')
+            .update({ status: 'expired' })
+            .eq('id', data.id);
+            
+          throw new Error('This invite link has expired');
+        }
+        
+        inviteData = data;
+        console.log('Valid invite data:', inviteData);
+      }
       
-      // Prepare user metadata with proper null handling
-      const userMetadata = {
+      // Create metadata object
+      const metadata: Record<string, string | null> = {
         name: name.trim(),
         phone: phone ? phone.trim() : null
       };
       
-      // Only add invite code to metadata if it exists
+      // Important: Add invite code to metadata if provided
       if (inviteCode) {
-        // Use a specific property name that matches what the database trigger expects
-        // @ts-ignore - TypeScript might complain about dynamic property
-        userMetadata.invite_code = inviteCode;
+        metadata.invite = inviteCode.trim();
       }
       
-      // Use the fixed metadata in the signup request
+      console.log('Signup metadata being sent:', metadata);
+      
+      // Call Supabase signup with the metadata
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
-          data: userMetadata
+          data: metadata
         }
       });
 
@@ -186,39 +212,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Supabase signup error:', error);
         throw error;
       }
-
-      // If we have an invite code and the signup was successful, update the invite status
-      if (inviteCode && data.user) {
+      
+      if (!data.user) {
+        throw new Error('User creation failed');
+      }
+      
+      // Update invite link status if an invite code was used
+      // NOTE: Using the anon client to update instead of the authenticated user
+      if (inviteCode && inviteData && data.user) {
         try {
-          // Fetch the invite to check if it exists and is active
-          const { data: inviteData, error: inviteError } = await supabase
+          const userId = data.user.id;
+          console.log('Updating invite link status for new user:', userId);
+          
+          // Sign out temporarily to return to anon state
+          await supabase.auth.signOut();
+          
+          // Now update as anon role (which has permission according to the RLS policy)
+          const { error: updateError } = await supabase
             .from('invite_links')
-            .select('*')
-            .eq('code', inviteCode)
-            .eq('status', 'active')
-            .single();
-
-          if (inviteError) {
-            console.error('Error fetching invite during signup:', inviteError);
-          } else if (inviteData) {
-            // Update the invite status to used and record the user who used it
-            const { error: updateError } = await supabase
-              .from('invite_links')
-              .update({
-                status: 'used',
-                used_at: new Date().toISOString(),
-                used_by: data.user.id
-              })
-              .eq('id', inviteData.id);
-
-            if (updateError) {
-              console.error('Error updating invite status after signup:', updateError);
+            .update({ 
+              status: 'used',
+              used_at: new Date().toISOString(),
+              used_by: userId
+            })
+            .eq('id', inviteData.id)
+            .eq('status', 'active'); // Ensure we're only updating active invites
+            
+          if (updateError) {
+            // Log the error but don't fail the signup
+            console.error('Error updating invite link status:', updateError);
+          } else {
+            console.log('Successfully updated invite link status');
+          }
+          
+          // Now sign back in to get a session for the new user
+          await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password
+          });
+          
+          // If the invite specified a role, update the user's role
+          if (inviteData.role) {
+            console.log('Setting user role from invite:', inviteData.role);
+            
+            const { error: roleUpdateError } = await supabase
+              .from('users')
+              .update({ user_role: inviteData.role })
+              .eq('id', userId);
+              
+            if (roleUpdateError) {
+              console.error('Error updating user role:', roleUpdateError);
+            } else {
+              console.log('Successfully updated user role');
             }
           }
-        } catch (inviteProcessError) {
-          console.error('Error processing invite during signup:', inviteProcessError);
-          // We don't want to fail the signup if the invite processing fails
-          // The user is already created, so we'll just log the error
+        } catch (updateError) {
+          // Log the error but don't fail the signup
+          console.error('Unexpected error updating invite status:', updateError);
         }
       }
 

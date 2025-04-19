@@ -117,7 +117,7 @@ const DevTools = () => {
         title: "Success",
         description: "Invite link generated successfully!",
       });
-
+      
       // Reset the note field
       setNote('');
 

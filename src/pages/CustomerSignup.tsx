@@ -40,6 +40,8 @@ const CustomerSignup = () => {
   const checkInviteValidity = async (code: string) => {
     setInviteLoading(true);
     try {
+      console.log('Checking invite code validity:', code);
+      
       const { data, error } = await supabase
         .from('invite_links')
         .select('*')
@@ -52,6 +54,8 @@ const CustomerSignup = () => {
         setError('Invalid or expired invite code');
         return;
       }
+
+      console.log('Invite details:', data);
 
       if (data.expires_at && new Date(data.expires_at) < new Date()) {
         // Mark as expired
@@ -94,21 +98,27 @@ const CustomerSignup = () => {
       }
 
       setIsSubmitting(true);
-
-      // Call signUp from auth context to create the user
-      const { data, error: signUpError } = await signUp(
+      
+      // Debug logging
+      console.log('Submitting with invite code:', inviteCode);
+      console.log('Form data:', {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone
+      });
+      
+      // Call signUp function with invite code
+      const { error: signUpError } = await signUp(
         formData.email, 
         formData.password,
         formData.name,
-        formData.phone
+        formData.phone,
+        inviteCode || undefined
       );
 
       if (signUpError) {
         console.error('Signup error details:', signUpError);
-        throw new Error(
-          signUpError.message || 
-          'An error occurred during sign up. Please try again.'
-        );
+        throw signUpError;
       }
 
       // Navigate to login with success message
