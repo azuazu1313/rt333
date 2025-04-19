@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Navigate, Outlet } from 'react-router-dom';
 import Home from './pages/Home';
 import About from './pages/About';
 import FAQ from './pages/FAQ';
@@ -89,7 +89,7 @@ function AppRoutes() {
           }
         />
         <Route 
-          path="/admin" 
+          path="/admin/*" 
           element={
             <ProtectedRoute>
               <Admin />
