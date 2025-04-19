@@ -13,6 +13,7 @@
     <link rel="preconnect" href="https://upload.wikimedia.org" crossorigin>
     <link rel="preconnect" href="https://logos-world.net" crossorigin>
     <link rel="preconnect" href="https://cdn.voiceflow.com" crossorigin>
+    <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
     
     <!-- DNS Prefetch -->
     <link rel="dns-prefetch" href="https://general-runtime.voiceflow.com">
@@ -21,11 +22,15 @@
     <link rel="dns-prefetch" href="https://upload.wikimedia.org">
     <link rel="dns-prefetch" href="https://logos-world.net">
     <link rel="dns-prefetch" href="https://cdn.voiceflow.com">
+    <link rel="dns-prefetch" href="https://maps.googleapis.com">
 
     <!-- Preload Critical Images -->
     <link rel="preload" as="image" href="https://i.imghippo.com/files/cDgm3025PmI.webp" type="image/webp">
     <link rel="preload" as="image" href="https://i.imghippo.com/files/MJSV1132ko.webp" type="image/webp" media="(min-width: 768px)">
     <link rel="preload" as="image" href="https://i.imghippo.com/files/GSIu4447oeQ.webp" type="image/webp" media="(max-width: 767px)">
+
+    <!-- Google Maps Script -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=%VITE_GOOGLE_MAPS_API_KEY%&libraries=places"></script>
 
     <!-- Cache Control -->
     <meta http-equiv="Cache-Control" content="max-age=31536000, immutable">
