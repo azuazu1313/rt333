@@ -34,7 +34,7 @@ const CustomerSignup = () => {
         .from('invite_links')
         .select('*')
         .eq('code', code)
-        .is('used_at', null)
+        .eq('status', 'active')
         .single();
 
       if (error) throw error;
@@ -42,6 +42,12 @@ const CustomerSignup = () => {
 
       // Check if invite has expired
       if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+        // Mark as expired
+        await supabase
+          .from('invite_links')
+          .update({ status: 'expired' })
+          .eq('id', invite.id);
+          
         throw new Error('Invite link has expired');
       }
 
@@ -49,6 +55,23 @@ const CustomerSignup = () => {
     } catch (error: any) {
       console.error('Error validating invite code:', error);
       throw new Error(error.message || 'Invalid invite code');
+    }
+  };
+
+  const markInviteAsUsed = async (inviteId: string, userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('invite_links')
+        .update({
+          used_at: new Date().toISOString(),
+          used_by: userId,
+          status: 'used'
+        })
+        .eq('id', inviteId);
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Error marking invite as used:', error);
     }
   };
 
@@ -87,7 +110,7 @@ const CustomerSignup = () => {
 
       // Call signUp from auth context - this will create both the auth.users entry
       // and allow the database trigger to create the public.users entry
-      const { error: signUpError } = await signUp(
+      const { data, error: signUpError } = await signUp(
         formData.email, 
         formData.password,
         formData.name,
@@ -95,6 +118,11 @@ const CustomerSignup = () => {
       );
 
       if (signUpError) throw signUpError;
+
+      // Mark invite as used if applicable
+      if (inviteCode && inviteData && data?.user) {
+        await markInviteAsUsed(inviteData.id, data.user.id);
+      }
 
       // Registration successful, navigate to login
       navigate('/login', { 
