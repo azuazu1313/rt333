@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate, Routes, Route, Link, Outlet } from 'react-router-dom';
 import { Users, Calendar, BarChart2, Settings, PenTool as Tool, AlertTriangle, ArrowLeft, Menu } from 'lucide-react';
 import Header from '../components/Header';
 import UserManagement from '../components/admin/UserManagement';
@@ -7,16 +7,15 @@ import BookingsManagement from '../components/admin/BookingsManagement';
 import Dashboard from '../components/admin/Dashboard';
 import PlatformSettings from '../components/admin/PlatformSettings';
 import DevTools from '../components/admin/DevTools';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { Toaster } from '../components/ui/toaster';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const Admin = () => {
+const AdminLayout = () => {
   const navigate = useNavigate();
   const { userData, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [error, setError] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   // Redirect if not admin
   useEffect(() => {
@@ -26,19 +25,12 @@ const Admin = () => {
   }, [userData, loading, navigate]);
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart2, component: Dashboard },
-    { id: 'users', label: 'User Management', icon: Users, component: UserManagement },
-    { id: 'bookings', label: 'Bookings', icon: Calendar, component: BookingsManagement },
-    { id: 'settings', label: 'Settings', icon: Settings, component: PlatformSettings },
-    { id: 'devtools', label: 'Dev Tools', icon: Tool, component: DevTools }
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart2, path: '/admin' },
+    { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
+    { id: 'bookings', label: 'Bookings', icon: Calendar, path: '/admin/bookings' },
+    { id: 'settings', label: 'Settings', icon: Settings, path: '/admin' },
+    { id: 'devtools', label: 'Dev Tools', icon: Tool, path: '/admin/dev-tools' }
   ];
-
-  const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || Dashboard;
-
-  const handleTabClick = (tabId: string) => {
-    setActiveTab(tabId);
-    setIsSidebarOpen(false);
-  };
 
   if (loading) {
     return (
@@ -104,18 +96,19 @@ const Admin = () => {
                     <h1 className="text-2xl font-bold mb-8">Admin Portal</h1>
                     <nav className="space-y-1">
                       {tabs.map(tab => (
-                        <button
+                        <Link
                           key={tab.id}
-                          onClick={() => handleTabClick(tab.id)}
-                          className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md ${
-                            activeTab === tab.id
+                          to={tab.path}
+                          onClick={() => setIsSidebarOpen(false)}
+                          className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md 
+                          ${location.pathname === tab.path || (tab.id === 'dashboard' && location.pathname === '/admin')
                               ? 'bg-blue-100 text-blue-600'
                               : 'text-gray-600 hover:bg-gray-50'
                           }`}
                         >
                           <tab.icon className="mr-3 h-5 w-5" />
                           {tab.label}
-                        </button>
+                        </Link>
                       ))}
                     </nav>
                   </div>
@@ -125,7 +118,7 @@ const Admin = () => {
 
             {/* Main Content */}
             <div className="flex-1 mt-4 md:mt-0">
-              <ActiveComponent />
+              <Outlet />
             </div>
           </div>
         </div>
@@ -134,6 +127,19 @@ const Admin = () => {
       {/* Toast Container */}
       <Toaster />
     </div>
+  );
+};
+
+const Admin = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<AdminLayout />}>
+        <Route index element={<Dashboard />} />
+        <Route path="users" element={<UserManagement />} />
+        <Route path="bookings" element={<BookingsManagement />} />
+        <Route path="dev-tools" element={<DevTools />} />
+      </Route>
+    </Routes>
   );
 };
 
