@@ -9,7 +9,7 @@ const CustomerSignup = () => {
   const navigate = useNavigate();
   const { signUp, user, loading } = useAuth();
   const [searchParams] = useSearchParams();
-  const inviteCode = searchParams.get('code');
+  const inviteCode = searchParams.get('invite');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -85,55 +85,16 @@ const CustomerSignup = () => {
         }
       }
 
-      // First, create the auth user
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            name: formData.name,
-            phone: formData.phone || null,
-            user_role: userRole
-          }
-        }
-      });
+      // Call signUp from auth context - this will create both the auth.users entry
+      // and allow the database trigger to create the public.users entry
+      const { error: signUpError } = await signUp(
+        formData.email, 
+        formData.password,
+        formData.name,
+        formData.phone
+      );
 
       if (signUpError) throw signUpError;
-      if (!authData.user) throw new Error('Failed to create user account');
-
-      // Then, insert the user data into the users table
-      const { error: insertError } = await supabase
-        .from('users')
-        .insert([
-          {
-            id: authData.user.id,
-            email: formData.email,
-            name: formData.name,
-            phone: formData.phone || null,
-            user_role: userRole
-          }
-        ]);
-
-      if (insertError) {
-        // If user data insertion fails, we should handle this appropriately
-        console.error('Error inserting user data:', insertError);
-        throw new Error('Failed to create user profile. Please try again.');
-      }
-
-      // If signup was successful and we used an invite code, mark it as used
-      if (inviteData) {
-        const { error: updateError } = await supabase
-          .from('invite_links')
-          .update({
-            used_at: new Date().toISOString(),
-            used_by: authData.user.id
-          })
-          .eq('code', inviteCode);
-
-        if (updateError) {
-          console.error('Error updating invite link:', updateError);
-        }
-      }
 
       // Registration successful, navigate to login
       navigate('/login', { 
