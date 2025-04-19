@@ -47,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setUserData(data);
+      
       return data;
     } catch (error) {
       console.error('Unexpected error fetching user data:', error);
@@ -153,6 +154,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
+      const inviteCode = new URLSearchParams(window.location.search).get('invite');
+      console.log('Sign up with invite code:', inviteCode);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -160,7 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             name,
             phone: phone || null,
-            user_role: 'customer'
+            invite: inviteCode // Pass invite code from URL to the auth signup
           }
         }
       });
