@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Calendar, TrendingUp, DollarSign, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../ui/use-toast';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -10,37 +12,54 @@ const Dashboard = () => {
     recentBookings: 0,
     loading: true
   });
+  const { userData } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    if (userData?.user_role === 'admin') {
+      fetchStats();
+    }
+  }, [userData]);
 
   const fetchStats = async () => {
     try {
+      // Verify admin role before querying
+      if (userData?.user_role !== 'admin') {
+        throw new Error('Admin permissions required');
+      }
+
       // Fetch total users
-      const { count: userCount } = await supabase
+      const { count: userCount, error: userError } = await supabase
         .from('users')
         .select('*', { count: 'exact' });
 
+      if (userError) throw userError;
+
       // Fetch total bookings
-      const { count: bookingCount } = await supabase
+      const { count: bookingCount, error: bookingError } = await supabase
         .from('trips')
         .select('*', { count: 'exact' });
+
+      if (bookingError) throw bookingError;
 
       // Fetch recent bookings (last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
-      const { count: recentBookingCount } = await supabase
+      const { count: recentBookingCount, error: recentBookingError } = await supabase
         .from('trips')
         .select('*', { count: 'exact' })
         .gte('datetime', thirtyDaysAgo.toISOString());
 
+      if (recentBookingError) throw recentBookingError;
+
       // Fetch active users (users with bookings in last 30 days)
-      const { count: activeUserCount } = await supabase
+      const { count: activeUserCount, error: activeUserError } = await supabase
         .from('trips')
         .select('user_id', { count: 'exact', distinct: true })
         .gte('datetime', thirtyDaysAgo.toISOString());
+
+      if (activeUserError) throw activeUserError;
 
       setStats({
         totalUsers: userCount || 0,
@@ -49,8 +68,13 @@ const Dashboard = () => {
         recentBookings: recentBookingCount || 0,
         loading: false
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching stats:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to fetch dashboard data. Please try again.",
+      });
       setStats(prev => ({ ...prev, loading: false }));
     }
   };
