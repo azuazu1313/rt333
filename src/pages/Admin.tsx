@@ -28,7 +28,7 @@ const AdminLayout = () => {
     { id: 'dashboard', label: 'Dashboard', icon: BarChart2, path: '/admin' },
     { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
     { id: 'bookings', label: 'Bookings', icon: Calendar, path: '/admin/bookings' },
-    { id: 'settings', label: 'Settings', icon: Settings, path: '/admin' },
+    { id: 'settings', label: 'Settings', icon: Settings, path: '/admin/settings' },
     { id: 'devtools', label: 'Dev Tools', icon: Tool, path: '/admin/dev-tools' }
   ];
 
@@ -101,7 +101,7 @@ const AdminLayout = () => {
                           to={tab.path}
                           onClick={() => setIsSidebarOpen(false)}
                           className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md 
-                          ${location.pathname === tab.path || (tab.id === 'dashboard' && location.pathname === '/admin')
+                          ${location.pathname === tab.path
                               ? 'bg-blue-100 text-blue-600'
                               : 'text-gray-600 hover:bg-gray-50'
                           }`}
@@ -137,6 +137,7 @@ const Admin = () => {
         <Route index element={<Dashboard />} />
         <Route path="users" element={<UserManagement />} />
         <Route path="bookings" element={<BookingsManagement />} />
+        <Route path="settings" element={<PlatformSettings />} />
         <Route path="dev-tools" element={<DevTools />} />
       </Route>
     </Routes>
