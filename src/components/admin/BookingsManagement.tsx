@@ -21,6 +21,13 @@ const BookingsManagement = () => {
 
   const fetchBookings = async () => {
     try {
+      setLoading(true);
+      
+      // Check for admin role before making the request
+      if (userData?.user_role !== 'admin') {
+        throw new Error('Admin permissions required');
+      }
+      
       const { data, error } = await supabase
         .from('trips')
         .select(`
@@ -32,12 +39,12 @@ const BookingsManagement = () => {
 
       if (error) throw error;
       setBookings(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching bookings:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to fetch bookings. Please try again.",
+        description: error.message || "Failed to fetch bookings. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -59,16 +66,15 @@ const BookingsManagement = () => {
       ));
 
       toast({
-        variant: "success",
         title: "Success",
         description: "Booking status updated successfully.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating booking status:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not update booking. Please try again.",
+        description: error.message || "Could not update booking. Please try again.",
       });
     }
   };
