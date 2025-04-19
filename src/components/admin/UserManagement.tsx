@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Save } from 'lucide-react';
+import { Search, Loader2, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/use-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface User {
   id: string;
@@ -23,27 +24,64 @@ const UserManagement = () => {
   const [roleFilter, setRoleFilter] = useState('all');
   const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [usersPerPage] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
   const { toast } = useToast();
+  const { userData } = useAuth();
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (userData?.user_role === 'admin') {
+      fetchUsers();
+    }
+  }, [currentPage, roleFilter, userData]);
 
   const fetchUsers = async () => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Verify admin role before querying
+      if (userData?.user_role !== 'admin') {
+        throw new Error('Admin permissions required');
+      }
+
+      // Start with a base query
+      let query = supabase
         .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' });
+      
+      // Apply search filter if provided
+      if (searchQuery.trim() !== '') {
+        query = query.or(`name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+      }
+      
+      // Apply role filter if not 'all'
+      if (roleFilter !== 'all') {
+        // Map 'driver' filter to 'partner' role in database
+        const dbRole = roleFilter === 'driver' ? 'partner' : roleFilter;
+        query = query.eq('user_role', dbRole);
+      }
+      
+      // Get the total count first
+      const { count, error: countError } = await query;
+      
+      if (countError) throw countError;
+      setTotalCount(count || 0);
+      
+      // Then get the paginated results
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .range((currentPage - 1) * usersPerPage, currentPage * usersPerPage - 1);
 
       if (error) throw error;
+      
+      console.log('Fetched users:', data);
       setUsers(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching users:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to fetch users. Please try again.",
+        description: error.message || "Failed to fetch users. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -114,28 +152,42 @@ const UserManagement = () => {
           ? "Some changes were saved, but others failed. Please try again."
           : "All changes were saved successfully.",
       });
-    } catch (error) {
+      
+      // Refresh the user list after saving changes
+      fetchUsers();
+    } catch (error: any) {
       console.error('Error saving changes:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to save changes. Please try again.",
+        description: error.message || "Failed to save changes. Please try again.",
       });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = (
-      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    const matchesRole = roleFilter === 'all' || user.user_role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
+  // Handle search form submission
+  const handleSearch = () => {
+    setCurrentPage(1); // Reset to page 1 when searching
+    fetchUsers();
+  };
 
+  const filteredUsers = users;
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
+  const totalPages = Math.ceil(totalCount / usersPerPage);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   if (loading) {
     return (
@@ -147,9 +199,9 @@ const UserManagement = () => {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-xl font-semibold">User Management</h2>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 flex-wrap gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
             <input
@@ -157,12 +209,16 @@ const UserManagement = () => {
               placeholder="Search users..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
           </div>
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(e) => {
+              setRoleFilter(e.target.value);
+              setCurrentPage(1); // Reset to first page when changing filter
+            }}
             className="px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="all">All Roles</option>
@@ -171,6 +227,12 @@ const UserManagement = () => {
             <option value="driver">Driver</option>
             <option value="support">Support</option>
           </select>
+          <button
+            onClick={handleSearch}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Search
+          </button>
         </div>
       </div>
 
@@ -186,54 +248,98 @@ const UserManagement = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredUsers.map((user) => (
-              <tr key={user.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">{user.email}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <select
-                    value={pendingChanges[user.id]?.user_role ?? user.user_role}
-                    onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                    className={`text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-600 ${
-                      pendingChanges[user.id]?.user_role ? 'bg-yellow-50' : ''
-                    }`}
-                  >
-                    <option value="customer">Customer</option>
-                    <option value="admin">Admin</option>
-                    <option value="driver">Driver</option>
-                    <option value="support">Support</option>
-                  </select>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    (pendingChanges[user.id]?.is_suspended ?? user.is_suspended)
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-green-100 text-green-800'
-                  }`}>
-                    {(pendingChanges[user.id]?.is_suspended ?? user.is_suspended) ? 'Suspended' : 'Active'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <button
-                    onClick={() => toggleUserStatus(user.id, pendingChanges[user.id]?.is_suspended ?? user.is_suspended)}
-                    className={`font-medium ${
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map((user) => (
+                <tr key={user.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{user.name || '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{user.email}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <select
+                      value={pendingChanges[user.id]?.user_role ?? user.user_role}
+                      onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                      className={`text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+                        pendingChanges[user.id]?.user_role ? 'bg-yellow-50' : ''
+                      }`}
+                    >
+                      <option value="customer">Customer</option>
+                      <option value="admin">Admin</option>
+                      <option value="partner">Driver</option>
+                      <option value="support">Support</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       (pendingChanges[user.id]?.is_suspended ?? user.is_suspended)
-                        ? 'text-green-600 hover:text-green-700'
-                        : 'text-red-600 hover:text-red-700'
-                    }`}
-                  >
-                    {(pendingChanges[user.id]?.is_suspended ?? user.is_suspended) ? 'Reactivate' : 'Suspend'}
-                  </button>
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {(pendingChanges[user.id]?.is_suspended ?? user.is_suspended) ? 'Suspended' : 'Active'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => toggleUserStatus(user.id, pendingChanges[user.id]?.is_suspended ?? user.is_suspended)}
+                      className={`font-medium ${
+                        (pendingChanges[user.id]?.is_suspended ?? user.is_suspended)
+                          ? 'text-green-600 hover:text-green-700'
+                          : 'text-red-600 hover:text-red-700'
+                      }`}
+                    >
+                      {(pendingChanges[user.id]?.is_suspended ?? user.is_suspended) ? 'Reactivate' : 'Suspend'}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                  No users found
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {totalCount > usersPerPage && (
+        <div className="flex justify-between items-center mt-4">
+          <div className="text-sm text-gray-500">
+            Showing {Math.min((currentPage - 1) * usersPerPage + 1, totalCount)} to {Math.min(currentPage * usersPerPage, totalCount)} of {totalCount} users
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={handlePrevPage}
+              disabled={currentPage === 1}
+              className={`px-3 py-1 rounded border ${
+                currentPage === 1 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-white text-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <span className="px-3 py-1 bg-white border rounded">
+              {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={handleNextPage}
+              disabled={currentPage >= totalPages}
+              className={`px-3 py-1 rounded border ${
+                currentPage >= totalPages 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-white text-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Save Changes Button */}
       {hasPendingChanges && (
