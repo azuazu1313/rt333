@@ -154,22 +154,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      const inviteCode = new URLSearchParams(window.location.search).get('invite');
+      // Get invite code from URL, ensuring it's properly formatted for the database
+      const urlParams = new URLSearchParams(window.location.search);
+      const inviteCode = urlParams.get('invite');
+      
       console.log('Sign up with invite code:', inviteCode);
       
+      // Prepare user metadata with proper null handling
+      const userMetadata = {
+        name: name.trim(),
+        phone: phone ? phone.trim() : null
+      };
+      
+      // Only add invite code to metadata if it exists
+      if (inviteCode) {
+        // Use a specific property name that matches what the database trigger expects
+        // @ts-ignore - TypeScript might complain about dynamic property
+        userMetadata.invite_code = inviteCode;
+      }
+      
+      // Use the fixed metadata in the signup request
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: {
-          data: {
-            name,
-            phone: phone || null,
-            invite: inviteCode // Pass invite code from URL to the auth signup
-          }
+          data: userMetadata
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase signup error:', error);
+        throw error;
+      }
+
+      // If we have an invite code and the signup was successful, update the invite status
+      if (inviteCode && data.user) {
+        try {
+          // Fetch the invite to check if it exists and is active
+          const { data: inviteData, error: inviteError } = await supabase
+            .from('invite_links')
+            .select('*')
+            .eq('code', inviteCode)
+            .eq('status', 'active')
+            .single();
+
+          if (inviteError) {
+            console.error('Error fetching invite during signup:', inviteError);
+          } else if (inviteData) {
+            // Update the invite status to used and record the user who used it
+            const { error: updateError } = await supabase
+              .from('invite_links')
+              .update({
+                status: 'used',
+                used_at: new Date().toISOString(),
+                used_by: data.user.id
+              })
+              .eq('id', inviteData.id);
+
+            if (updateError) {
+              console.error('Error updating invite status after signup:', updateError);
+            }
+          }
+        } catch (inviteProcessError) {
+          console.error('Error processing invite during signup:', inviteProcessError);
+          // We don't want to fail the signup if the invite processing fails
+          // The user is already created, so we'll just log the error
+        }
+      }
 
       return { error: null, data };
     } catch (error) {

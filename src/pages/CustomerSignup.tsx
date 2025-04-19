@@ -21,6 +21,7 @@ const CustomerSignup = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inviteDetails, setInviteDetails] = useState<any>(null);
+  const [inviteLoading, setInviteLoading] = useState(!!inviteCode);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -37,6 +38,7 @@ const CustomerSignup = () => {
   }, [inviteCode]);
 
   const checkInviteValidity = async (code: string) => {
+    setInviteLoading(true);
     try {
       const { data, error } = await supabase
         .from('invite_links')
@@ -68,6 +70,8 @@ const CustomerSignup = () => {
     } catch (error: any) {
       console.error('Error checking invite:', error);
       setError('Unable to validate invite code');
+    } finally {
+      setInviteLoading(false);
     }
   };
 
@@ -92,7 +96,6 @@ const CustomerSignup = () => {
       setIsSubmitting(true);
 
       // Call signUp from auth context to create the user
-      // The invite code will be automatically passed from URL in the auth context
       const { data, error: signUpError } = await signUp(
         formData.email, 
         formData.password,
@@ -100,7 +103,13 @@ const CustomerSignup = () => {
         formData.phone
       );
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        console.error('Signup error details:', signUpError);
+        throw new Error(
+          signUpError.message || 
+          'An error occurred during sign up. Please try again.'
+        );
+      }
 
       // Navigate to login with success message
       navigate('/login', { 
@@ -122,7 +131,7 @@ const CustomerSignup = () => {
     }));
   };
 
-  if (loading) {
+  if (loading || inviteLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

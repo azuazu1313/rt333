@@ -84,8 +84,8 @@ const Profile = () => {
   };
 
   // Function to determine if role should be displayed
-  const shouldShowRole = (role?: string) => {
-    return role && ['admin', 'support', 'driver'].includes(role.toLowerCase());
+  const shouldShowRole = (user_role?: string) => {
+    return user_role && ['admin', 'support', 'driver'].includes(user_role.toLowerCase());
   };
 
   if (loading) {
@@ -128,8 +128,8 @@ const Profile = () => {
                     <User className="w-12 h-12 text-blue-600" />
                   </div>
                   <h2 className="text-xl font-bold">{userData?.name || 'User'}</h2>
-                  {shouldShowRole(userData?.role) && (
-                    <p className="text-gray-600 capitalize">{userData?.role}</p>
+                  {shouldShowRole(userData?.user_role) && (
+                    <p className="text-gray-600 capitalize">{userData?.user_role}</p>
                   )}
                 </div>
 

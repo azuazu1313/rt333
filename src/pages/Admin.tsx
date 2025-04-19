@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useNavigate, Routes, Route, Link, Outlet } from 'react-router-dom';
+import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Users, Calendar, BarChart2, Settings, PenTool as Tool, AlertTriangle, ArrowLeft, Menu } from 'lucide-react';
 import Header from '../components/Header';
 import UserManagement from '../components/admin/UserManagement';
@@ -7,12 +7,13 @@ import BookingsManagement from '../components/admin/BookingsManagement';
 import Dashboard from '../components/admin/Dashboard';
 import PlatformSettings from '../components/admin/PlatformSettings';
 import DevTools from '../components/admin/DevTools';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { Toaster } from '../components/ui/toaster';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminLayout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { userData, loading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -118,7 +119,13 @@ const AdminLayout = () => {
 
             {/* Main Content */}
             <div className="flex-1 mt-4 md:mt-0">
-              <Outlet />
+              <Routes>
+                <Route index element={<Dashboard />} />
+                <Route path="users" element={<UserManagement />} />
+                <Route path="bookings" element={<BookingsManagement />} />
+                <Route path="settings" element={<PlatformSettings />} />
+                <Route path="dev-tools" element={<DevTools />} />
+              </Routes>
             </div>
           </div>
         </div>
@@ -131,17 +138,7 @@ const AdminLayout = () => {
 };
 
 const Admin = () => {
-  return (
-    <Routes>
-      <Route path="/" element={<AdminLayout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="users" element={<UserManagement />} />
-        <Route path="bookings" element={<BookingsManagement />} />
-        <Route path="settings" element={<PlatformSettings />} />
-        <Route path="dev-tools" element={<DevTools />} />
-      </Route>
-    </Routes>
-  );
+  return <AdminLayout />;
 };
 
 export default Admin;
