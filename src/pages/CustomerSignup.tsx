@@ -20,6 +20,7 @@ const CustomerSignup = () => {
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inviteDetails, setInviteDetails] = useState<any>(null);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -28,50 +29,45 @@ const CustomerSignup = () => {
     }
   }, [user, navigate]);
 
-  const validateInviteCode = async (code: string) => {
+  // Check invite code validity when component mounts
+  useEffect(() => {
+    if (inviteCode) {
+      checkInviteValidity(inviteCode);
+    }
+  }, [inviteCode]);
+
+  const checkInviteValidity = async (code: string) => {
     try {
-      const { data: invite, error } = await supabase
+      const { data, error } = await supabase
         .from('invite_links')
         .select('*')
         .eq('code', code)
         .eq('status', 'active')
         .single();
 
-      if (error) throw error;
-      if (!invite) throw new Error('Invalid or expired invite code');
-
-      // Check if invite has expired
-      if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-        // Mark as expired
-        await supabase
-          .from('invite_links')
-          .update({ status: 'expired' })
-          .eq('id', invite.id);
-          
-        throw new Error('Invite link has expired');
+      if (error) {
+        console.error('Error validating invite code:', error);
+        setError('Invalid or expired invite code');
+        return;
       }
 
-      return invite;
-    } catch (error: any) {
-      console.error('Error validating invite code:', error);
-      throw new Error(error.message || 'Invalid invite code');
-    }
-  };
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        // Mark as expired
+        const { error: updateError } = await supabase
+          .from('invite_links')
+          .update({ status: 'expired' })
+          .eq('id', data.id);
 
-  const markInviteAsUsed = async (inviteId: string, userId: string) => {
-    try {
-      const { error } = await supabase
-        .from('invite_links')
-        .update({
-          used_at: new Date().toISOString(),
-          used_by: userId,
-          status: 'used'
-        })
-        .eq('id', inviteId);
+        if (updateError) console.error('Error updating invite status:', updateError);
+        
+        setError('This invite link has expired');
+        return;
+      }
 
-      if (error) throw error;
+      setInviteDetails(data);
     } catch (error: any) {
-      console.error('Error marking invite as used:', error);
+      console.error('Error checking invite:', error);
+      setError('Unable to validate invite code');
     }
   };
 
@@ -94,22 +90,9 @@ const CustomerSignup = () => {
       }
 
       setIsSubmitting(true);
-      
-      let userRole = 'customer';
-      let inviteData = null;
 
-      // Validate invite code if present
-      if (inviteCode) {
-        try {
-          inviteData = await validateInviteCode(inviteCode);
-          userRole = inviteData.role;
-        } catch (error: any) {
-          throw new Error(error.message);
-        }
-      }
-
-      // Call signUp from auth context - this will create both the auth.users entry
-      // and allow the database trigger to create the public.users entry
+      // Call signUp from auth context to create the user
+      // The invite code will be automatically passed from URL in the auth context
       const { data, error: signUpError } = await signUp(
         formData.email, 
         formData.password,
@@ -119,12 +102,7 @@ const CustomerSignup = () => {
 
       if (signUpError) throw signUpError;
 
-      // Mark invite as used if applicable
-      if (inviteCode && inviteData && data?.user) {
-        await markInviteAsUsed(inviteData.id, data.user.id);
-      }
-
-      // Registration successful, navigate to login
+      // Navigate to login with success message
       navigate('/login', { 
         state: { message: 'Registration successful! Please sign in to continue.' } 
       });
@@ -171,7 +149,19 @@ const CustomerSignup = () => {
             
             {inviteCode && (
               <div className="bg-blue-50 text-blue-600 p-3 rounded-md mb-6 text-sm">
-                Using invite code: {inviteCode}
+                {inviteDetails ? (
+                  <>
+                    <p className="font-medium">Using invite code: {inviteCode}</p>
+                    {inviteDetails.role && (
+                      <p className="mt-1">You will be registered as: <span className="font-medium capitalize">{inviteDetails.role}</span></p>
+                    )}
+                    {inviteDetails.note && (
+                      <p className="mt-1 text-gray-600">{inviteDetails.note}</p>
+                    )}
+                  </>
+                ) : (
+                  <p>Using invite code: {inviteCode}</p>
+                )}
               </div>
             )}
             
