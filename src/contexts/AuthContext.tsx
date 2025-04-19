@@ -12,10 +12,10 @@ interface AuthContextType {
   userData: UserData | null;
   preferences: UserPreferences | null;
   loading: boolean;
-  signUp: (email: string, password: string, name: string, phone?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, name: string, phone?: string) => Promise<{ error: Error | null, data?: { user: User | null } }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null, session: Session | null }>;
   signOut: () => Promise<void>;
-  updateUserData: (updates: Partial<Omit<UserData, 'id' | 'email' | 'password_hash' | 'created_at'>>) => 
+  updateUserData: (updates: Partial<Omit<UserData, 'id' | 'email' | 'created_at'>>) => 
     Promise<{ error: Error | null, data: UserData | null }>;
   updatePreferences: (updates: Partial<Omit<UserPreferences, 'id' | 'user_id'>>) => 
     Promise<{ error: Error | null }>;
@@ -157,13 +157,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
         options: {
-          data: { name, phone }
+          data: {
+            name,
+            phone: phone || null,
+            user_role: 'customer'
+          }
         }
       });
 
       if (error) throw error;
 
-      return { error: null };
+      return { error: null, data };
     } catch (error) {
       console.error('Sign up error:', error);
       return { error: error as Error };
@@ -234,7 +238,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateUserData = async (updates: Partial<Omit<UserData, 'id' | 'email' | 'password_hash' | 'created_at'>>) => {
+  const updateUserData = async (updates: Partial<Omit<UserData, 'id' | 'email' | 'created_at'>>) => {
     if (!user) {
       return { error: new Error('User not authenticated'), data: null };
     }
