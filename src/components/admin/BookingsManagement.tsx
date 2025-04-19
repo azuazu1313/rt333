@@ -3,7 +3,7 @@ import { Search, Loader2, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { useToast } from '../ui/use-toast';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 
 const BookingsManagement = () => {
   const [bookings, setBookings] = useState<any[]>([]);
