@@ -92,7 +92,7 @@ const BookingsManagement = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" />
       </div>
     );
   }
@@ -100,22 +100,22 @@ const BookingsManagement = () => {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Bookings Management</h2>
+        <h2 className="text-xl font-semibold dark:text-white">Bookings Management</h2>
         <div className="flex items-center space-x-4">
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search bookings..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="px-4 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
@@ -126,43 +126,43 @@ const BookingsManagement = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border dark:border-gray-700">
         <table className="min-w-full">
           <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            <tr className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Booking ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">User</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Driver</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {filteredBookings.map((booking) => (
-              <tr key={booking.id}>
+              <tr key={booking.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{booking.id.slice(0, 8)}...</div>
+                  <div className="text-sm text-gray-900 dark:text-white">{booking.id.slice(0, 8)}...</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{booking.user?.name}</div>
-                  <div className="text-sm text-gray-500">{booking.user?.email}</div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">{booking.user?.name}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{booking.user?.email}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {booking.driver ? (
                     <>
-                      <div className="text-sm font-medium text-gray-900">{booking.driver.name}</div>
-                      <div className="text-sm text-gray-500">{booking.driver.email}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">{booking.driver.name}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{booking.driver.email}</div>
                     </>
                   ) : (
-                    <span className="text-sm text-gray-500">Not assigned</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Not assigned</span>
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
+                  <div className="text-sm text-gray-900 dark:text-white">
                     {format(new Date(booking.datetime), 'PPP')}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
                     {format(new Date(booking.datetime), 'p')}
                   </div>
                 </td>
@@ -170,7 +170,7 @@ const BookingsManagement = () => {
                   <select
                     value={booking.status}
                     onChange={(e) => updateBookingStatus(booking.id, e.target.value)}
-                    className="text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-700 dark:text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-600"
                   >
                     <option value="pending">Pending</option>
                     <option value="accepted">Accepted</option>
@@ -180,7 +180,7 @@ const BookingsManagement = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <button
-                    className="text-blue-600 hover:text-blue-700"
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                     title="View Details"
                   >
                     <Info className="w-5 h-5" />

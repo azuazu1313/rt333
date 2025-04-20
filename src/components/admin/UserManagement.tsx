@@ -344,7 +344,7 @@ const UserManagement = () => {
   if (loading && !users.length) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" />
       </div>
     );
   }
@@ -352,18 +352,18 @@ const UserManagement = () => {
   return (
     <div>
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h2 className="text-xl font-semibold">User Management</h2>
+        <h2 className="text-xl font-semibold dark:text-white">User Management</h2>
         <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-4">
           {/* Search field */}
           <div className="relative w-full md:w-auto">
-            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search name, email, phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 w-full md:w-64"
+              className="pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 w-full md:w-64"
             />
           </div>
 
@@ -374,7 +374,7 @@ const UserManagement = () => {
               setRoleFilter(e.target.value);
               setCurrentPage(1); // Reset to first page when changing filter
             }}
-            className="w-full md:w-auto px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="w-full md:w-auto px-4 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="all">All Roles</option>
             <option value="admin">Admin</option>
@@ -390,7 +390,7 @@ const UserManagement = () => {
               setStatusFilter(e.target.value);
               setCurrentPage(1); // Reset to first page when changing filter
             }}
-            className="w-full md:w-auto px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="w-full md:w-auto px-4 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -408,43 +408,43 @@ const UserManagement = () => {
 
       {loading && users.length > 0 && (
         <div className="text-center p-4">
-          <Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
-          <p className="mt-2 text-gray-600">Refreshing...</p>
+          <Loader2 className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin mx-auto" />
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Refreshing...</p>
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border dark:border-gray-700">
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead>
-              <tr className="bg-gray-50 border-b">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <tr className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Phone</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => (
-                  <tr key={user.id} className="max-h-16 h-16">
+                  <tr key={user.id} className="max-h-16 h-16 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{user.name || '-'}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">{user.name || '-'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.email}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.phone || '-'}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{user.phone || '-'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <select
                         value={pendingChanges[user.id]?.user_role ?? user.user_role}
                         onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                        className={`text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-600 ${
-                          pendingChanges[user.id]?.user_role ? 'bg-yellow-50' : ''
+                        className={`text-sm border border-gray-200 dark:border-gray-700 dark:bg-gray-700 dark:text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+                          pendingChanges[user.id]?.user_role ? 'bg-yellow-50 dark:bg-yellow-900/30' : ''
                         }`}
                       >
                         <option value="customer">Customer</option>
@@ -456,8 +456,8 @@ const UserManagement = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         (pendingChanges[user.id]?.is_suspended ?? user.is_suspended)
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-green-100 text-green-800'
+                          ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                          : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
                       }`}>
                         {(pendingChanges[user.id]?.is_suspended ?? user.is_suspended) ? 'Suspended' : 'Active'}
                       </span>
@@ -467,10 +467,10 @@ const UserManagement = () => {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button
-                              className="p-1 rounded-full hover:bg-gray-100"
+                              className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
                               aria-label="User actions"
                             >
-                              <MoreVertical className="h-5 w-5 text-gray-500" />
+                              <MoreVertical className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start" className="w-48 z-50">
@@ -485,8 +485,8 @@ const UserManagement = () => {
                                 pendingChanges[user.id]?.is_suspended ?? user.is_suspended
                               )}
                               className={(pendingChanges[user.id]?.is_suspended ?? user.is_suspended)
-                                ? 'text-green-600'
-                                : 'text-red-600'
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-red-600 dark:text-red-400'
                               }
                             >
                               {(pendingChanges[user.id]?.is_suspended ?? user.is_suspended) ? (
@@ -504,7 +504,7 @@ const UserManagement = () => {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => confirmDeleteUser(user.id)}
-                              className="text-red-600 hover:bg-red-50"
+                              className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete User
@@ -517,7 +517,7 @@ const UserManagement = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                     {loading ? 'Loading users...' : 'No users found'}
                   </td>
                 </tr>
@@ -530,7 +530,7 @@ const UserManagement = () => {
       {/* Pagination Controls */}
       {totalCount > usersPerPage && (
         <div className="flex justify-between items-center mt-4">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
             Showing {Math.min((currentPage - 1) * usersPerPage + 1, totalCount)} to {Math.min(currentPage * usersPerPage, totalCount)} of {totalCount} users
           </div>
           <div className="flex space-x-2">
@@ -539,13 +539,13 @@ const UserManagement = () => {
               disabled={currentPage === 1}
               className={`px-3 py-1 rounded border ${
                 currentPage === 1 
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                  : 'bg-white text-blue-600 hover:bg-blue-50'
+                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-700' 
+                  : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-gray-200 dark:border-gray-700'
               }`}
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <span className="px-3 py-1 bg-white border rounded">
+            <span className="px-3 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded dark:text-white">
               {currentPage} of {totalPages}
             </span>
             <button
@@ -553,8 +553,8 @@ const UserManagement = () => {
               disabled={currentPage >= totalPages}
               className={`px-3 py-1 rounded border ${
                 currentPage >= totalPages 
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                  : 'bg-white text-blue-600 hover:bg-blue-50'
+                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-700' 
+                  : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-gray-200 dark:border-gray-700'
               }`}
             >
               <ChevronRight className="h-5 w-5" />
@@ -566,12 +566,12 @@ const UserManagement = () => {
       {/* Edit User Modal */}
       {isEditModalOpen && editingUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Edit User</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4 dark:text-white">Edit User</h3>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Name
                 </label>
                 <input
@@ -579,12 +579,12 @@ const UserManagement = () => {
                   name="name"
                   value={editingUser.name}
                   onChange={handleEditInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-gray-700 dark:text-white"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Email
                 </label>
                 <input
@@ -592,12 +592,12 @@ const UserManagement = () => {
                   name="email"
                   value={editingUser.email}
                   onChange={handleEditInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-gray-700 dark:text-white"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Phone
                 </label>
                 <input
@@ -605,7 +605,7 @@ const UserManagement = () => {
                   name="phone"
                   value={editingUser.phone || ''}
                   onChange={handleEditInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-gray-700 dark:text-white"
                 />
               </div>
             </div>
@@ -613,7 +613,7 @@ const UserManagement = () => {
             <div className="mt-6 flex justify-end space-x-3">
               <button
                 onClick={closeEditModal}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 Cancel
               </button>
@@ -642,16 +642,16 @@ const UserManagement = () => {
       {/* Suspend/Reactivate Confirmation Modal */}
       {showSuspendConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
             <div className="flex items-start mb-4">
-              <div className="flex-shrink-0 text-red-600">
+              <div className="flex-shrink-0 text-red-600 dark:text-red-400">
                 <AlertTriangle className="h-6 w-6" />
               </div>
               <div className="ml-3">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                   {showSuspendConfirm.suspend ? 'Suspend User' : 'Reactivate User'}
                 </h3>
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   {showSuspendConfirm.suspend 
                     ? 'Are you sure you want to suspend this user? They will not be able to log in until reactivated.'
                     : 'Are you sure you want to reactivate this user? They will regain access to their account.'}
@@ -662,13 +662,13 @@ const UserManagement = () => {
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowSuspendConfirm(null)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={executeToggleUserStatus}
-                className={`px-4 py-2 rounded-md text-white ${showSuspendConfirm.suspend ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
+                className={`px-4 py-2 rounded-md text-white ${showSuspendConfirm.suspend ? 'bg-red-600 dark:bg-red-700 hover:bg-red-700 dark:hover:bg-red-600' : 'bg-green-600 dark:bg-green-700 hover:bg-green-700 dark:hover:bg-green-600'}`}
               >
                 {showSuspendConfirm.suspend ? 'Yes, Suspend User' : 'Yes, Reactivate User'}
               </button>
@@ -680,17 +680,17 @@ const UserManagement = () => {
       {/* Delete User Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
             <div className="flex items-start mb-4">
-              <div className="flex-shrink-0 text-red-600">
+              <div className="flex-shrink-0 text-red-600 dark:text-red-400">
                 <AlertTriangle className="h-6 w-6" />
               </div>
               <div className="ml-3">
-                <h3 className="text-lg font-semibold text-red-600">Delete User</h3>
-                <p className="mt-1 text-sm text-gray-500">
+                <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">Delete User</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   Are you sure you want to permanently delete this user? This action cannot be undone.
                 </p>
-                <p className="mt-2 text-sm font-medium text-red-600">
+                <p className="mt-2 text-sm font-medium text-red-600 dark:text-red-400">
                   Warning: This will delete all associated data and cannot be recovered.
                 </p>
               </div>
@@ -699,14 +699,14 @@ const UserManagement = () => {
             <div className="flex justify-end space-x-3 mt-4">
               <button
                 onClick={() => setShowDeleteConfirm(null)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={executeDeleteUser}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+                className="px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 transition-colors flex items-center"
               >
                 {isDeleting ? (
                   <>
@@ -728,16 +728,16 @@ const UserManagement = () => {
       {/* Save Changes Confirmation Modal */}
       {showSaveConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Confirm Changes</h3>
-            <p className="text-gray-600 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4 dark:text-white">Confirm Changes</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               Are you sure you want to save all changes? This action cannot be undone.
             </p>
             
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowSaveConfirm(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 Cancel
               </button>

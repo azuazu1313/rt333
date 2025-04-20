@@ -3,6 +3,7 @@ import { User, Loader2, RefreshCw } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface HeaderProps {
   hideSignIn?: boolean;
@@ -14,6 +15,7 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, userData, loading, signOut } = useAuth();
+  const { theme } = useTheme();
 
   const handleLogout = async () => {
     try {
@@ -48,7 +50,7 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
   }, [showUserMenu]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
+    <header className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-md z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center space-x-4">
@@ -56,17 +58,32 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
               onClick={() => navigate('/admin')}
               className="flex items-center focus:outline-none h-[70px] py-[4px]"
             >
-              <picture className="h-full w-auto">
-                <source srcSet="https://i.imghippo.com/files/cDgm3025PmI.webp" type="image/webp" />
-                <img
-                  src="https://i.imgur.com/991MInn.png"
-                  alt="Royal Transfer EU Logo PNG"
-                  className="h-full w-auto object-contain"
-                />
-              </picture>
+              {/* Light mode logo */}
+              <div className="block dark:hidden h-full">
+                <picture className="h-full w-auto">
+                  <source srcSet="https://i.imghippo.com/files/cDgm3025PmI.webp" type="image/webp" />
+                  <img
+                    src="https://i.imgur.com/991MInn.png"
+                    alt="Royal Transfer EU Logo"
+                    className="h-full w-auto object-contain"
+                  />
+                </picture>
+              </div>
+              
+              {/* Dark mode logo */}
+              <div className="hidden dark:block h-full">
+                <picture className="h-full w-auto">
+                  <source srcSet="https://i.imghippo.com/files/SUQ5630UJo.webp" type="image/webp" />
+                  <img
+                    src="https://i.imghippo.com/files/SUQ5630UJo.webp"
+                    alt="Royal Transfer EU Logo"
+                    className="h-full w-auto object-contain"
+                  />
+                </picture>
+              </div>
             </button>
             {userData && (
-              <div className="hidden md:block text-gray-700">
+              <div className="hidden md:block text-gray-700 dark:text-gray-200">
                 <span className="font-semibold">Admin Portal</span>
               </div>
             )}
@@ -78,7 +95,7 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
               <button
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                className="flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 title="Refresh"
               >
                 <RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -95,7 +112,7 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
                   <button
                     id="user-menu-button"
                     onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                    className="flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   >
                     <User className="h-5 w-5" />
                   </button>
@@ -103,19 +120,19 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
                   {showUserMenu && (
                     <div 
                       id="user-menu"
-                      className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200"
+                      className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-10 border border-gray-200 dark:border-gray-700"
                     >
-                      <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b">
+                      <div className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 border-b dark:border-gray-700">
                         {userData?.name || 'User'}
                         {userData?.user_role && (
-                          <div className="text-xs text-gray-500 capitalize">
+                          <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
                             {userData.user_role}
                           </div>
                         )}
                       </div>
                       <button
                         onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         Sign out
                       </button>
@@ -125,7 +142,7 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
               ) : (
                 <button 
                   onClick={() => navigate('/login')}
-                  className="hidden md:inline-flex border border-blue-600 text-blue-600 px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-blue-50 transition-all duration-300 box-border"
+                  className="hidden md:inline-flex border border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 box-border"
                 >
                   Sign In
                 </button>

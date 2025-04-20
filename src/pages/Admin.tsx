@@ -8,6 +8,7 @@ import Dashboard from '../components/admin/Dashboard';
 import PlatformSettings from '../components/admin/PlatformSettings';
 import DevTools from '../components/admin/DevTools';
 import DebugPanel from '../components/admin/DebugPanel';
+import ThemeToggle from '../components/ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
 import { Toaster } from '../components/ui/toaster';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -50,10 +51,10 @@ const AdminLayout = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p>Loading admin portal...</p>
+          <p className="dark:text-gray-300">Loading admin portal...</p>
         </div>
       </div>
     );
@@ -61,35 +62,38 @@ const AdminLayout = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">Error</h2>
-          <p className="text-gray-600">{error}</p>
+          <h2 className="text-xl font-bold mb-2 dark:text-white">Error</h2>
+          <p className="text-gray-600 dark:text-gray-400">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <Header />
       
       <main className="pt-32 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Back to Site Button */}
-          <a
-            href="https://royaltransfer.eu/"
-            className="mb-8 flex items-center text-gray-600 hover:text-blue-600 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Main Website
-          </a>
+          {/* Back to Site Button and Theme Toggle */}
+          <div className="mb-8 flex items-center justify-between">
+            <a
+              href="https://royaltransfer.eu/"
+              className="flex items-center text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Back to main site
+            </a>
+            <ThemeToggle />
+          </div>
 
           <div className="flex flex-col md:flex-row">
             {/* Mobile Menu Button */}
             <button
-              className="md:hidden mb-4 p-2 text-gray-600 hover:text-blue-600 transition-colors"
+              className="md:hidden mb-4 p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             >
               <Menu className="w-6 h-6" />
@@ -104,12 +108,12 @@ const AdminLayout = () => {
                   exit={{ x: -300, opacity: 0 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                   className={`
-                    ${isSidebarOpen ? 'fixed inset-0 bg-white z-50 md:relative md:bg-transparent' : ''}
+                    ${isSidebarOpen ? 'fixed inset-0 bg-white dark:bg-gray-800 z-50 md:relative md:bg-transparent dark:md:bg-transparent' : ''}
                     w-64 md:w-64 md:pr-8
                   `}
                 >
                   <div className="p-4 md:p-0">
-                    <h1 className="text-2xl font-bold mb-8">Admin Portal</h1>
+                    <h1 className="text-2xl font-bold mb-8 dark:text-white">Admin Portal</h1>
                     <nav className="space-y-1">
                       {tabs.map(tab => (
                         <Link
@@ -118,8 +122,8 @@ const AdminLayout = () => {
                           onClick={() => setIsSidebarOpen(false)}
                           className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md 
                           ${location.pathname === tab.path
-                              ? 'bg-blue-100 text-blue-600'
-                              : 'text-gray-600 hover:bg-gray-50'
+                              ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
+                              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                           }`}
                         >
                           <tab.icon className="mr-3 h-5 w-5" />

@@ -5,6 +5,7 @@ import Admin from './pages/Admin';
 import NotFound from './pages/NotFound';
 import { BookingProvider } from './contexts/BookingContext';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { useAuth } from './contexts/AuthContext';
 import InstallPWA from './components/InstallPWA';
 
@@ -103,14 +104,16 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <BookingProvider>
-        <BrowserRouter>
-          <AppRoutes />
-          <InstallPWA />
-        </BrowserRouter>
-      </BookingProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BookingProvider>
+          <BrowserRouter>
+            <AppRoutes />
+            <InstallPWA />
+          </BrowserRouter>
+        </BookingProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

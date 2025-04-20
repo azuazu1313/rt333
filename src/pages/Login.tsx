@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
+import ThemeToggle from '../components/ThemeToggle';
 import { toast } from '../components/ui/use-toast';
 import { Toaster } from '../components/ui/toaster';
 
@@ -90,20 +91,23 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       <Header hideSignIn />
       
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
-          <div className="bg-white p-8 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold text-center mb-6">Admin Portal Login</h2>
-            <p className="text-center text-gray-600 mb-8">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
+            <div className="flex justify-end mb-4">
+              <ThemeToggle />
+            </div>
+            <h2 className="text-2xl font-bold text-center mb-6 dark:text-white">Admin Portal Login</h2>
+            <p className="text-center text-gray-600 dark:text-gray-300 mb-8">
               Access the administrative area of Royal Transfer EU
             </p>
             
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-md mb-6 text-sm flex items-start">
+              <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 p-3 rounded-md mb-6 text-sm flex items-start">
                 <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <div className="ml-2">{error}</div>
               </div>
@@ -111,7 +115,7 @@ const Login = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Email
                 </label>
                 <input
@@ -120,13 +124,13 @@ const Login = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Password
                 </label>
                 <input
@@ -135,7 +139,7 @@ const Login = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
                 />
               </div>
@@ -158,10 +162,10 @@ const Login = () => {
             <div className="mt-8 text-center">
               <a
                 href="https://royaltransfer.eu/"
-                className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors"
+                className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Main Website
+                Back to main site
               </a>
             </div>
           </div>
@@ -170,7 +174,7 @@ const Login = () => {
           <div className="text-center mt-6">
             <a
               href="https://royaltransfer.eu/contact"
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
             >
               Need Help? Contact Support
             </a>

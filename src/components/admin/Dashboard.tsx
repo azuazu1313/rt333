@@ -125,7 +125,7 @@ const Dashboard = () => {
   if (stats.loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" />
       </div>
     );
   }
@@ -133,11 +133,11 @@ const Dashboard = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold">Dashboard</h2>
+        <h2 className="text-xl font-semibold dark:text-white">Dashboard</h2>
         <button 
           onClick={refreshData}
           disabled={isRefreshing}
-          className="flex items-center text-blue-600 hover:text-blue-700 py-2 px-3 rounded-md hover:bg-blue-50"
+          className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 py-2 px-3 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/30"
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
           Refresh Data
@@ -146,63 +146,63 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Users */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
           <div className="flex items-center">
-            <div className="p-3 bg-blue-100 rounded-full">
-              <Users className="h-6 w-6 text-blue-600" />
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-full">
+              <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Users</p>
-              <p className="text-2xl font-semibold">{stats.totalUsers}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Users</p>
+              <p className="text-2xl font-semibold dark:text-white">{stats.totalUsers}</p>
             </div>
           </div>
         </div>
 
         {/* Active Users */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
           <div className="flex items-center">
-            <div className="p-3 bg-green-100 rounded-full">
-              <TrendingUp className="h-6 w-6 text-green-600" />
+            <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-full">
+              <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Active Users</p>
-              <p className="text-2xl font-semibold">{stats.activeUsers}</p>
-              <p className="text-xs text-gray-500">Non-suspended accounts</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Active Users</p>
+              <p className="text-2xl font-semibold dark:text-white">{stats.activeUsers}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Non-suspended accounts</p>
             </div>
           </div>
         </div>
 
         {/* Admin Users */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
           <div className="flex items-center">
-            <div className="p-3 bg-purple-100 rounded-full">
-              <Settings className="h-6 w-6 text-purple-600" />
+            <div className="p-3 bg-purple-100 dark:bg-purple-900/50 rounded-full">
+              <Settings className="h-6 w-6 text-purple-600 dark:text-purple-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Admin Users</p>
-              <p className="text-2xl font-semibold">{stats.adminCount}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Admin Users</p>
+              <p className="text-2xl font-semibold dark:text-white">{stats.adminCount}</p>
             </div>
           </div>
         </div>
 
         {/* Support Users */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
           <div className="flex items-center">
-            <div className="p-3 bg-yellow-100 rounded-full">
-              <ShieldCheck className="h-6 w-6 text-yellow-600" />
+            <div className="p-3 bg-yellow-100 dark:bg-yellow-900/50 rounded-full">
+              <ShieldCheck className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Support Users</p>
-              <p className="text-2xl font-semibold">{stats.supportCount}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Support Users</p>
+              <p className="text-2xl font-semibold dark:text-white">{stats.supportCount}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Additional charts and analytics can be added here */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-medium mb-4">Recent Activity</h3>
-        <p className="text-gray-500">Coming soon: Activity charts and detailed analytics</p>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
+        <h3 className="text-lg font-medium mb-4 dark:text-white">Recent Activity</h3>
+        <p className="text-gray-500 dark:text-gray-400">Coming soon: Activity charts and detailed analytics</p>
       </div>
     </div>
   );
