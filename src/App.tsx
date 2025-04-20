@@ -1,26 +1,41 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
+
+// Import commonly used components directly
 import Home from './pages/Home';
-import About from './pages/About';
-import FAQ from './pages/FAQ';
-import BlogPost from './pages/BlogPost';
-import Services from './pages/Services';
-import Partners from './pages/Partners';
-import Login from './pages/Login';
-import Contact from './pages/Contact';
-import CustomerSignup from './pages/CustomerSignup';
-import Blogs from './pages/Blogs';
-import BlogsDestinations from './pages/BlogsDestinations';
-import BookingFlow from './pages/BookingFlow';
-import BookingSuccess from './pages/BookingSuccess';
-import BookingCancelled from './pages/BookingCancelled';
-import Profile from './pages/Profile';
-import Bookings from './pages/Bookings';
-import NotFound from './pages/NotFound';
 import { BookingProvider } from './contexts/BookingContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 import { useAnalytics } from './hooks/useAnalytics';
+
+// Lazily load less frequently accessed pages
+const About = lazy(() => import('./pages/About'));
+const FAQ = lazy(() => import('./pages/FAQ'));
+const BlogPost = lazy(() => import('./pages/BlogPost'));
+const Services = lazy(() => import('./pages/Services'));
+const Partners = lazy(() => import('./pages/Partners'));
+const Login = lazy(() => import('./pages/Login'));
+const Contact = lazy(() => import('./pages/Contact'));
+const CustomerSignup = lazy(() => import('./pages/CustomerSignup'));
+const Blogs = lazy(() => import('./pages/Blogs'));
+const BlogsDestinations = lazy(() => import('./pages/BlogsDestinations'));
+const BookingFlow = lazy(() => import('./pages/BookingFlow'));
+const BookingSuccess = lazy(() => import('./pages/BookingSuccess'));
+const BookingCancelled = lazy(() => import('./pages/BookingCancelled'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Bookings = lazy(() => import('./pages/Bookings'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="text-center">
+      <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" aria-hidden="true" />
+      <p className="text-gray-600">Loading...</p>
+    </div>
+  </div>
+);
 
 // Route observer component to handle page-specific classes
 const RouteObserver = () => {
@@ -72,43 +87,45 @@ function AppRoutes() {
   return (
     <>
       <RouteObserver />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/home/transfer/:from/:to/:type/:date/:returnDate/:passengers/form" element={<Home />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/faq" element={<FAQ />} />
-        <Route path="/blogs" element={<Blogs />} />
-        <Route path="/blogs/destinations" element={<BlogsDestinations />} />
-        <Route path="/blogs/:city" element={<BlogPost />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/partners" element={<Partners />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/customer-signup" element={<CustomerSignup />} />
-        <Route path="/booking-success" element={<BookingSuccess />} />
-        <Route path="/booking-cancelled" element={<BookingCancelled />} />
-        <Route 
-          path="/profile" 
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route 
-          path="/bookings" 
-          element={
-            <ProtectedRoute>
-              <Bookings />
-            </ProtectedRoute>
-          }
-        />
-        <Route 
-          path="/transfer/:from/:to/:type/:date/:returnDate/:passengers/form" 
-          element={<BookingFlow />} 
-        />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/home/transfer/:from/:to/:type/:date/:returnDate/:passengers/form" element={<Home />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/blogs" element={<Blogs />} />
+          <Route path="/blogs/destinations" element={<BlogsDestinations />} />
+          <Route path="/blogs/:city" element={<BlogPost />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/partners" element={<Partners />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/customer-signup" element={<CustomerSignup />} />
+          <Route path="/booking-success" element={<BookingSuccess />} />
+          <Route path="/booking-cancelled" element={<BookingCancelled />} />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/bookings" 
+            element={
+              <ProtectedRoute>
+                <Bookings />
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/transfer/:from/:to/:type/:date/:returnDate/:passengers/form" 
+            element={<BookingFlow />} 
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }
