@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "npm:stripe@12.0.0";
 
 const corsHeaders = {
@@ -7,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -32,6 +31,24 @@ serve(async (req) => {
     // Parse the request body
     const { trip, vehicle, customer, extras, amount, discountCode } = await req.json();
 
+    // Validate required fields
+    if (!trip || !vehicle || !customer || !customer.email) {
+      throw new Error("Missing required booking information");
+    }
+
+    // Validate email format - this is critical for Stripe
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customer.email)) {
+      throw new Error("Invalid email address format");
+    }
+
+    console.log("Creating checkout session with data:", { 
+      trip, 
+      vehicle: vehicle.name, 
+      customerEmail: customer.email,
+      amount 
+    });
+
     // Create a Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -43,7 +60,7 @@ serve(async (req) => {
               name: `${vehicle.name} - ${trip.from} to ${trip.to}`,
               description: `${trip.type} transfer on ${new Date(trip.date).toLocaleDateString()} for ${trip.passengers} passenger(s)`,
             },
-            unit_amount: amount, // Amount in cents
+            unit_amount: Math.round(amount * 100), // Convert to cents and ensure it's an integer
           },
           quantity: 1,
         },
@@ -56,12 +73,12 @@ serve(async (req) => {
         trip_from: trip.from,
         trip_to: trip.to,
         trip_type: trip.type,
-        trip_date: trip.date,
-        trip_return_date: trip.returnDate || "",
+        trip_date: new Date(trip.date).toISOString(),
+        trip_return_date: trip.returnDate ? new Date(trip.returnDate).toISOString() : "",
         trip_passengers: trip.passengers.toString(),
         vehicle_id: vehicle.id,
         vehicle_name: vehicle.name,
-        customer_name: `${customer.firstName} ${customer.lastName}`,
+        customer_name: `${customer.firstName || ""} ${customer.lastName || ""}`.trim(),
         customer_phone: customer.phone || "",
         extras: extras.join(","),
         discount_code: discountCode || "",

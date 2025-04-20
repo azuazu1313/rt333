@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, CreditCard, Banknote, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBooking } from '../../contexts/BookingContext';
+import { useAuth } from '../../contexts/AuthContext';
 import BookingLayout from './BookingLayout';
 
 const PaymentDetails = () => {
   const { bookingState, setBookingState } = useBooking();
+  const { user, userData } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
   const [showDiscount, setShowDiscount] = useState(false);
   const [discountCode, setDiscountCode] = useState('');
@@ -18,22 +20,40 @@ const PaymentDetails = () => {
       setIsProcessing(true);
       setError(null);
 
+      // Ensure email is valid - first check user data from auth context
+      let customerEmail = userData?.email;
+      
+      // Fallback to the form data if not available in userData
+      if (!customerEmail && bookingState.personalDetails?.email) {
+        customerEmail = bookingState.personalDetails.email;
+      }
+      
+      // Validate email
+      if (!customerEmail || !isValidEmail(customerEmail)) {
+        throw new Error("Invalid email address. Please enter a valid email in your profile or booking details.");
+      }
+
       // Prepare booking data for the checkout session
       const bookingData = {
         trip: {
-          from: bookingState.from || 'Unknown location',
-          to: bookingState.to || 'Unknown location',
+          from: bookingState.from || bookingState.personalDetails?.pickup || 'Unknown location',
+          to: bookingState.to || bookingState.personalDetails?.dropoff || 'Unknown location',
           type: bookingState.isReturn ? 'round-trip' : 'one-way',
           date: bookingState.departureDate || new Date().toISOString(),
           returnDate: bookingState.returnDate || null,
           passengers: bookingState.passengers || 1
         },
         vehicle: bookingState.selectedVehicle,
-        customer: bookingState.personalDetails,
+        customer: {
+          ...bookingState.personalDetails,
+          email: customerEmail
+        },
         extras: Array.from(bookingState.personalDetails?.selectedExtras || []),
-        amount: calculateTotal() * 100, // Convert to cents for Stripe
+        amount: calculateTotal(), // We'll multiply by 100 in the function
         discountCode: discountCode || null
       };
+
+      console.log("Sending booking data:", bookingData);
 
       // Call the Supabase Edge Function to create a checkout session
       const response = await fetch(
@@ -65,6 +85,11 @@ const PaymentDetails = () => {
     }
   };
 
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleBook = () => {
     if (paymentMethod === 'card') {
       handleStripeCheckout();
@@ -78,8 +103,9 @@ const PaymentDetails = () => {
           discountCode
         }
       }));
-      // Handle booking completion logic here
-      console.log('Cash booking completed', bookingState);
+      
+      // Navigate to success page for cash payment
+      window.location.href = '/booking-success';
     }
   };
 
@@ -145,7 +171,7 @@ const PaymentDetails = () => {
                   name="payment"
                   checked={paymentMethod === 'card'}
                   onChange={() => setPaymentMethod('card')}
-                  className="h-5 w-5 text-blue-600"
+                  className="h-5 w-5 text-black"
                 />
                 <CreditCard className="w-6 h-6 text-gray-500" />
                 <div>
@@ -164,7 +190,7 @@ const PaymentDetails = () => {
                   name="payment"
                   checked={paymentMethod === 'cash'}
                   onChange={() => setPaymentMethod('cash')}
-                  className="h-5 w-5 text-blue-600"
+                  className="h-5 w-5 text-black"
                 />
                 <Banknote className="w-6 h-6 text-gray-500" />
                 <div>
@@ -182,7 +208,7 @@ const PaymentDetails = () => {
         <section className="bg-white rounded-lg shadow-md p-6 mb-8">
           <button
             onClick={() => setShowDiscount(!showDiscount)}
-            className="flex items-center text-blue-600 hover:text-blue-700"
+            className="flex items-center text-black hover:text-gray-600"
           >
             <Tag className="w-5 h-5 mr-2" />
             Got a Discount Code?
@@ -203,10 +229,10 @@ const PaymentDetails = () => {
                     value={discountCode}
                     onChange={(e) => setDiscountCode(e.target.value)}
                     placeholder="Enter code"
-                    className="flex-1 px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="flex-1 px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
                   />
                   <button
-                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
                   >
                     Apply
                   </button>
@@ -222,7 +248,7 @@ const PaymentDetails = () => {
             <h2 className="text-xl font-semibold">Price Details</h2>
             <button
               onClick={() => setShowPriceDetails(!showPriceDetails)}
-              className="text-blue-600 hover:text-blue-700 flex items-center"
+              className="text-black hover:text-gray-700 flex items-center"
             >
               {showPriceDetails ? 'Hide' : 'Show'} details
               <ChevronDown

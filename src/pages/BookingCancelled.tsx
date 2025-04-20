@@ -1,11 +1,13 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { XCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 import Header from '../components/Header';
 import Sitemap from '../components/Sitemap';
 import { motion } from 'framer-motion';
 
 const BookingCancelled = () => {
+  const navigate = useNavigate();
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -37,16 +39,16 @@ const BookingCancelled = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-              <Link
-                to="/"
-                className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-all duration-300 flex items-center justify-center"
+              <button
+                onClick={() => navigate('/')}
+                className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-all duration-300 flex items-center justify-center"
               >
                 <ArrowLeft className="w-5 h-5 mr-2" />
                 Return to Home
-              </Link>
+              </button>
               <Link
                 to="/contact"
-                className="border border-blue-600 text-blue-600 px-6 py-3 rounded-md hover:bg-blue-50 transition-all duration-300 flex items-center justify-center"
+                className="border border-black text-black px-6 py-3 rounded-md hover:bg-gray-50 transition-all duration-300 flex items-center justify-center"
               >
                 Contact Support
                 <ArrowRight className="w-5 h-5 ml-2" />
