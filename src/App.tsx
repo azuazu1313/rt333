@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy } from 'react';
+import React, { useEffect, Suspense, lazy, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 
@@ -8,7 +8,8 @@ import { BookingProvider } from './contexts/BookingContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 import { useAnalytics } from './hooks/useAnalytics';
-import CookieConsent from './components/CookieConsent';
+import CookieBanner from './components/ui/CookieBanner';
+import { FeatureFlagProvider, useFeatureFlags } from './components/FeatureFlagProvider';
 
 // Lazily load less frequently accessed pages
 const About = lazy(() => import('./pages/About'));
@@ -87,6 +88,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function AppRoutes() {
+  // Use feature flags to determine if we should show the cookie banner
+  const { flags } = useFeatureFlags();
+  
   return (
     <>
       <RouteObserver />
@@ -131,10 +135,9 @@ function AppRoutes() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
-      <CookieConsent 
-        privacyPolicyUrl="/privacy" 
-        cookiePolicyUrl="/cookie-policy" 
-      />
+      
+      {/* Conditionally render the CookieBanner based on the feature flag */}
+      {flags.showCookieBanner && <CookieBanner />}
     </>
   );
 }
@@ -155,7 +158,9 @@ const AppWithAuth = () => {
 function App() {
   return (
     <BrowserRouter>
-      <AppWithAuth />
+      <FeatureFlagProvider>
+        <AppWithAuth />
+      </FeatureFlagProvider>
     </BrowserRouter>
   );
 }

@@ -19,4 +19,7 @@ interface Window {
       show: () => void;
     }
   };
+  
+  // Feature flag system
+  setFeatureFlag?: (key: string, value: boolean) => boolean;
 }

@@ -105,8 +105,10 @@ const Sitemap = () => {
               <li><a href="/privacy" className="text-gray-600 hover:text-blue-600">Privacy Policy</a></li>
               <li>
                 <button 
+                  id="cookie-settings"
                   onClick={openCookieSettings} 
                   className="text-gray-600 hover:text-blue-600 flex items-center"
+                  aria-label="Manage cookie settings"
                 >
                   <Settings className="h-4 w-4 mr-1" aria-hidden="true" />
                   Cookie Settings
