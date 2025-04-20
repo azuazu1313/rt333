@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy } from 'react';
+import React, { useEffect, Suspense, lazy, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 
@@ -8,6 +8,7 @@ import { BookingProvider } from './contexts/BookingContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 import { useAnalytics } from './hooks/useAnalytics';
+import CookieConsent from './components/CookieConsent';
 
 // Lazily load less frequently accessed pages
 const About = lazy(() => import('./pages/About'));
@@ -144,9 +145,15 @@ const AppWithAuth = () => {
 };
 
 function App() {
+  const [showCookieConsentBanner, setShowCookieConsentBanner] = useState(true);
+  
   return (
     <BrowserRouter>
       <AppWithAuth />
+      <CookieConsent 
+        privacyPolicyUrl="/privacy" 
+        cookiePolicyUrl="/terms" 
+      />
     </BrowserRouter>
   );
 }
