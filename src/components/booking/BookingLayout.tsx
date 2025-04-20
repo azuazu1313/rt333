@@ -17,6 +17,7 @@ interface BookingLayoutProps {
   onNext?: () => void;
   nextButtonText?: string;
   showNewsletter?: boolean;
+  modalOpen?: boolean;
 }
 
 const BookingLayout: React.FC<BookingLayoutProps> = ({
@@ -26,7 +27,8 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
   onBack,
   onNext,
   nextButtonText = 'Next Step',
-  showNewsletter = true
+  showNewsletter = true,
+  modalOpen = false
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,11 +46,20 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
   const [isSlotted, setIsSlotted] = useState(false);
   // Track exact position for smooth transitions
   const [slotPosition, setSlotPosition] = useState(0);
+  // Track modal state from external events
+  const [isModalActive, setIsModalActive] = useState(modalOpen);
+
+  // Update modal state when prop changes
+  useEffect(() => {
+    setIsModalActive(modalOpen);
+  }, [modalOpen]);
 
   // Add event listener for custom modal state changes
   useEffect(() => {
     const handleModalStateChange = (event: CustomEvent) => {
-      // No longer needed since we're using z-index hierarchy
+      if (event.detail && typeof event.detail.isOpen === 'boolean') {
+        setIsModalActive(event.detail.isOpen);
+      }
     };
 
     window.addEventListener('modalStateChange' as any, handleModalStateChange);
@@ -184,6 +195,9 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
     }
   };
 
+  // For step 3 with card payment, don't show the bottom button
+  const showNextButton = !(currentStep === 3 && bookingState.paymentDetails?.method === 'card');
+
   return (
     <div className="min-h-screen bg-[#f8fafc]">
       <Header />
@@ -241,47 +255,63 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
         </div>
 
         {/* Floating/Docked Price Bar */}
-        <div 
-          ref={priceBarRef}
-          className={`${isSlotted ? 'absolute' : 'fixed'} left-0 right-0 px-4 sm:px-6 lg:px-8 price-bar-container z-[45]`}
-          style={{
-            top: isSlotted ? slotPosition : 'auto',
-            bottom: isSlotted ? 'auto' : '16px'
-          }}
-        >
+        {(showNextButton || currentStep !== 3) && (
           <div 
-            className={`max-w-3xl mx-auto rounded-full ${
-              isFloating 
-                ? 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.2)]' 
-                : 'bg-white shadow-[0_4px_10px_rgba(0,0,0,0.1)]'
-            } price-bar`}
+            ref={priceBarRef}
+            className={`
+              ${isSlotted ? 'absolute' : 'fixed'} 
+              left-0 right-0 px-4 sm:px-6 lg:px-8 price-bar-container 
+              ${isModalActive 
+                ? isFloating 
+                    ? 'z-[50]' // Keep high z-index but visible when not fixed to bottom
+                    : 'z-[50] opacity-0 pointer-events-none' // Hide when fixed to bottom and modal is open
+                : 'z-[50]'
+              }
+              transition-opacity duration-300
+            `}
+            style={{
+              top: isSlotted ? slotPosition : 'auto',
+              bottom: isSlotted ? 'auto' : '16px'
+            }}
           >
-            <div className="flex items-center justify-between px-4 py-3">
-              <button
-                onClick={handleBack}
-                className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
-              </button>
-
-              <div className="flex items-center space-x-6">
-                <div className="text-right">
-                  <div className="text-sm text-gray-600">Total Price</div>
-                  <div className="text-xl font-bold">
-                    €{totalPrice.toFixed(2)}
-                  </div>
-                </div>
-
+            <div 
+              className={`max-w-3xl mx-auto rounded-full ${
+                isFloating 
+                  ? 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.2)]' 
+                  : 'bg-white shadow-[0_4px_10px_rgba(0,0,0,0.1)]'
+              } price-bar`}
+            >
+              <div className="flex items-center justify-between px-4 py-3">
                 <button
-                  onClick={handleNext}
-                  className="bg-blue-600 text-white text-[13px] md:text-sm px-4 md:px-6 py-2.5 rounded-full hover:bg-blue-700 transition-all duration-300"
+                  onClick={handleBack}
+                  className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                  disabled={isModalActive && isFloating === false}
                 >
-                  {nextButtonText}
+                  <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>
+
+                <div className="flex items-center space-x-6">
+                  <div className="text-right">
+                    <div className="text-sm text-gray-600">Total Price</div>
+                    <div className="text-xl font-bold">
+                      €{totalPrice.toFixed(2)}
+                    </div>
+                  </div>
+
+                  {showNextButton && (
+                    <button
+                      onClick={handleNext}
+                      disabled={isModalActive && isFloating === false}
+                      className="bg-black text-white text-[13px] md:text-sm px-4 md:px-6 py-2.5 rounded-full hover:bg-gray-800 transition-all duration-300"
+                    >
+                      {nextButtonText}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
 
       <Sitemap />

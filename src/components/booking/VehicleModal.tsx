@@ -29,7 +29,9 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
 }) => {
   // Dispatch custom event when modal state changes
   useEffect(() => {
-    const event = new CustomEvent('modalStateChange', { detail: { isOpen } });
+    const event = new CustomEvent('modalStateChange', { 
+      detail: { isOpen } 
+    });
     window.dispatchEvent(event);
   }, [isOpen]);
 
@@ -43,7 +45,7 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 z-[50]"
+          className="fixed inset-0 bg-black bg-opacity-50 z-[100]"
           onClick={onClose}
         />
         
@@ -53,11 +55,11 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[50] overflow-hidden flex items-center justify-center"
+          className="fixed inset-0 z-[101] overflow-hidden flex items-center justify-center"
           style={{
             // Add padding to avoid header and price bar
             paddingTop: 'calc(80px + 1rem)', // Header height + some spacing
-            paddingBottom: '1rem', // Price bar height + some spacing
+            paddingBottom: '6rem', // Price bar height + some spacing
             paddingLeft: '1rem',
             paddingRight: '1rem'
           }}
@@ -150,7 +152,7 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
                 className={`w-full sm:w-auto px-6 py-2 rounded-md transition-colors flex items-center justify-center ${
                   isSelected
                     ? 'bg-gray-100 text-gray-600'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-black text-white hover:bg-gray-800'
                 }`}
               >
                 <Check className="w-5 h-5 mr-2" />

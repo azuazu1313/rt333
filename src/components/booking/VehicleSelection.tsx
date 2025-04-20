@@ -9,6 +9,7 @@ const VehicleSelection = () => {
   const { bookingState, setBookingState } = useBooking();
   const [selectedVehicle, setSelectedVehicle] = useState(vehicles[0]);
   const [modalVehicle, setModalVehicle] = useState<typeof vehicles[0] | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Set initial selected vehicle on component mount
   useEffect(() => {
@@ -17,6 +18,19 @@ const VehicleSelection = () => {
       setSelectedVehicle(bookingState.selectedVehicle);
     }
   }, [bookingState.selectedVehicle]);
+
+  // Handle modal open state
+  const handleOpenModal = (vehicle: typeof vehicles[0]) => {
+    setModalVehicle(vehicle);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setTimeout(() => {
+      setModalVehicle(null);
+    }, 300); // Wait for animation to complete
+  };
 
   const handleNext = () => {
     // Scroll to top
@@ -36,6 +50,7 @@ const VehicleSelection = () => {
       totalPrice={selectedVehicle.price}
       onNext={handleNext}
       nextButtonText="Next: Personal Details"
+      modalOpen={isModalOpen}
     >
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Choose Your Vehicle</h1>
@@ -47,7 +62,7 @@ const VehicleSelection = () => {
               {...vehicle}
               isSelected={selectedVehicle.id === vehicle.id}
               onSelect={() => setSelectedVehicle(vehicle)}
-              onLearnMore={() => setModalVehicle(vehicle)}
+              onLearnMore={() => handleOpenModal(vehicle)}
             />
           ))}
         </div>
@@ -55,8 +70,8 @@ const VehicleSelection = () => {
 
       {modalVehicle && (
         <VehicleModal
-          isOpen={!!modalVehicle}
-          onClose={() => setModalVehicle(null)}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
           onSelect={() => setSelectedVehicle(modalVehicle)}
           vehicle={modalVehicle}
           isSelected={selectedVehicle.id === modalVehicle.id}

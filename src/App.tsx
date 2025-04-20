@@ -12,6 +12,7 @@ import CustomerSignup from './pages/CustomerSignup';
 import Blogs from './pages/Blogs';
 import BlogsDestinations from './pages/BlogsDestinations';
 import BookingFlow from './pages/BookingFlow';
+import BookingConfirmation from './pages/BookingConfirmation';
 import Profile from './pages/Profile';
 import Bookings from './pages/Bookings';
 import NotFound from './pages/NotFound';
@@ -42,7 +43,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -71,6 +72,14 @@ function AppRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/customer-signup" element={<CustomerSignup />} />
+        <Route 
+          path="/booking-confirmation" 
+          element={
+            <ProtectedRoute>
+              <BookingConfirmation />
+            </ProtectedRoute>
+          }
+        />
         <Route 
           path="/profile" 
           element={

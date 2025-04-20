@@ -35,14 +35,14 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       className={`bg-white rounded-xl shadow-lg p-6 relative ${
-        isSelected ? 'ring-2 ring-blue-600' : ''
+        isSelected ? 'ring-2 ring-black' : ''
       }`}
     >
       {/* Selected Badge */}
       <div 
         className={`absolute top-4 left-4 px-3 py-1 rounded-full text-sm font-medium transition-opacity duration-300 ${
           isSelected 
-            ? 'opacity-100 bg-blue-100 text-blue-600' 
+            ? 'opacity-100 bg-gray-100 text-gray-600' 
             : 'opacity-0'
         }`}
       >
@@ -64,9 +64,9 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
           <h3 className="text-xl font-bold">{name}</h3>
           <button
             onClick={onLearnMore}
-            className="flex items-center text-gray-500 hover:text-blue-600 transition-colors p-2 hover:bg-gray-100 rounded-lg group"
+            className="flex items-center text-gray-500 hover:text-black transition-colors p-2 hover:bg-gray-100 rounded-lg group"
           >
-            <span className="mr-2 text-[10px] md:text-sm group-hover:text-blue-600">Learn more</span>
+            <span className="mr-2 text-[10px] md:text-sm group-hover:text-black">Learn more</span>
             <Info className="w-5 h-5" />
           </button>
         </div>
@@ -114,7 +114,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
             className={`px-6 py-2 rounded-lg transition-colors ${
               isSelected
                 ? 'bg-gray-100 text-gray-600'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-black text-white hover:bg-gray-800'
             }`}
           >
             {isSelected ? 'Selected' : 'Choose'}

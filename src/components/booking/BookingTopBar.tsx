@@ -328,7 +328,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
               One Way
             </button>
             <div 
-              className={`absolute inset-y-0 w-32 bg-blue-600 transition-transform duration-300 ${
+              className={`absolute inset-y-0 w-32 bg-black transition-transform duration-300 ${
                 isOneWay ? 'left-32' : 'left-0'
               }`}
             />
@@ -347,7 +347,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                 placeholder="From"
                 value={pickupValue}
                 onChange={handlePickupChange}
-                className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
               />
             </div>
 
@@ -358,7 +358,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                 placeholder="To"
                 value={dropoffValue}
                 onChange={handleDropoffChange}
-                className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
               />
             </div>
 
@@ -402,7 +402,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                   <button
                     onClick={() => handlePassengerChange(false)}
                     className={`p-1 rounded-full transition-colors ${
-                      formData.passengers > 1 ? 'text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-gray-300'
+                      formData.passengers > 1 ? 'text-black hover:bg-gray-50 active:bg-gray-100' : 'text-gray-300'
                     }`}
                     disabled={formData.passengers <= 1}
                   >
@@ -411,7 +411,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                   <button
                     onClick={() => handlePassengerChange(true)}
                     className={`p-1 rounded-full transition-colors ${
-                      formData.passengers < 100 ? 'text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-gray-300'
+                      formData.passengers < 100 ? 'text-black hover:bg-gray-50 active:bg-gray-100' : 'text-gray-300'
                     }`}
                     disabled={formData.passengers >= 100}
                   >
@@ -426,7 +426,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
               onClick={handleUpdateRoute}
               className={`w-full py-2 rounded-lg transition-all duration-300 ${
                 hasChanges 
-                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                  ? 'bg-black text-white hover:bg-gray-800' 
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               }`}
               disabled={!hasChanges}
@@ -445,7 +445,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                   placeholder="From"
                   value={pickupValue}
                   onChange={handlePickupChange}
-                  className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
 
@@ -456,7 +456,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                   placeholder="To"
                   value={dropoffValue}
                   onChange={handleDropoffChange}
-                  className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
 
@@ -500,7 +500,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                     <button
                       onClick={() => handlePassengerChange(false)}
                       className={`p-1 rounded-full transition-colors ${
-                        formData.passengers > 1 ? 'text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-gray-300'
+                        formData.passengers > 1 ? 'text-black hover:bg-gray-50 active:bg-gray-100' : 'text-gray-300'
                       }`}
                       disabled={formData.passengers <= 1}
                     >
@@ -509,7 +509,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                     <button
                       onClick={() => handlePassengerChange(true)}
                       className={`p-1 rounded-full transition-colors ${
-                        formData.passengers < 100 ? 'text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-gray-300'
+                        formData.passengers < 100 ? 'text-black hover:bg-gray-50 active:bg-gray-100' : 'text-gray-300'
                       }`}
                       disabled={formData.passengers >= 100}
                     >
@@ -525,7 +525,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
               onClick={handleUpdateRoute}
               className={`px-6 py-2 rounded-lg transition-all duration-300 min-w-[120px] ${
                 hasChanges 
-                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                  ? 'bg-black text-white hover:bg-gray-800' 
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               }`}
               disabled={!hasChanges}

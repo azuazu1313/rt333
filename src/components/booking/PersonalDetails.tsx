@@ -82,7 +82,7 @@ const PersonalDetails = () => {
                   type="checkbox"
                   checked={formData.selectedExtras.has(extra.id)}
                   onChange={() => handleExtraToggle(extra.id)}
-                  className="h-5 w-5 text-blue-600 rounded"
+                  className="h-5 w-5 text-black rounded"
                 />
                 <div className="flex-1">
                   <div className="font-medium">{extra.name}</div>
@@ -109,7 +109,7 @@ const PersonalDetails = () => {
                   value="mr"
                   checked={formData.title === 'mr'}
                   onChange={handleInputChange}
-                  className="h-4 w-4 text-blue-600"
+                  className="h-4 w-4 text-black"
                 />
                 <span>Mr.</span>
               </label>
@@ -120,7 +120,7 @@ const PersonalDetails = () => {
                   value="ms"
                   checked={formData.title === 'ms'}
                   onChange={handleInputChange}
-                  className="h-4 w-4 text-blue-600"
+                  className="h-4 w-4 text-black"
                 />
                 <span>Ms.</span>
               </label>
@@ -137,7 +137,7 @@ const PersonalDetails = () => {
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
                   required
                 />
               </div>
@@ -150,7 +150,7 @@ const PersonalDetails = () => {
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
                   required
                 />
               </div>
@@ -166,7 +166,7 @@ const PersonalDetails = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
                 required
               />
             </div>
@@ -181,7 +181,7 @@ const PersonalDetails = () => {
                   name="country"
                   value={formData.country}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
                   required
                 >
                   <option value="">Select a country</option>
@@ -202,7 +202,7 @@ const PersonalDetails = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
-                    className="w-full pl-4 pr-10 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    className="w-full pl-4 pr-10 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
                     required
                   />
                   <div className="absolute right-3 top-2">
