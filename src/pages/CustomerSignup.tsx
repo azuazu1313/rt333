@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, User, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, User, AlertCircle, Loader2, Mail, Lock, Phone, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
+import FormField, { ValidationRule } from '../components/ui/form-field';
+import useFormValidation from '../hooks/useFormValidation';
 
 const CustomerSignup = () => {
   const navigate = useNavigate();
@@ -22,6 +24,43 @@ const CustomerSignup = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inviteDetails, setInviteDetails] = useState<any>(null);
   const [inviteLoading, setInviteLoading] = useState(!!inviteCode);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Define validation rules
+  const validationRules = {
+    name: [
+      { required: true, message: 'Please enter your name' }
+    ],
+    email: [
+      { required: true, message: 'Please enter your email address' },
+      { 
+        pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, 
+        message: 'Please enter a valid email address' 
+      }
+    ],
+    password: [
+      { required: true, message: 'Please enter a password' },
+      { 
+        validate: (value) => value.length >= 6,
+        message: 'Password must be at least 6 characters long' 
+      }
+    ],
+    confirmPassword: [
+      { required: true, message: 'Please confirm your password' },
+      { 
+        validate: (value) => value === formData.password,
+        message: 'Passwords do not match' 
+      }
+    ]
+  };
+
+  const {
+    errors,
+    isValid,
+    validateAllFields,
+    handleBlur
+  } = useFormValidation(formData, validationRules);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -83,20 +122,14 @@ const CustomerSignup = () => {
     e.preventDefault();
     setError(null);
     
+    // Validate all fields before submitting
+    const isFormValid = validateAllFields();
+    
+    if (!isFormValid) {
+      return;
+    }
+
     try {
-      // Form validation
-      if (formData.password !== formData.confirmPassword) {
-        throw new Error("Passwords don't match!");
-      }
-
-      if (formData.password.length < 6) {
-        throw new Error("Password must be at least 6 characters long!");
-      }
-
-      if (formData.name.trim() === '') {
-        throw new Error("Please enter your name");
-      }
-
       setIsSubmitting(true);
       
       // Debug logging
@@ -133,12 +166,20 @@ const CustomerSignup = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(prev => !prev);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(prev => !prev);
   };
 
   if (loading || inviteLoading) {
@@ -191,93 +232,113 @@ const CustomerSignup = () => {
               </div>
             )}
             
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  required
-                />
-              </div>
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              <FormField
+                id="name"
+                name="name"
+                label="Full Name"
+                value={formData.name}
+                onChange={handleInputChange}
+                onBlur={() => handleBlur('name')}
+                required
+                icon={<User className="h-5 w-5" />}
+                error={errors.name}
+                autoComplete="name"
+              />
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  required
-                />
-              </div>
+              <FormField
+                id="email"
+                name="email"
+                label="Email Address"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                onBlur={() => handleBlur('email')}
+                required
+                icon={<Mail className="h-5 w-5" />}
+                error={errors.email}
+                autoComplete="email"
+              />
 
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                />
-              </div>
+              <FormField
+                id="phone"
+                name="phone"
+                label="Phone Number"
+                type="tel"
+                value={formData.phone}
+                onChange={handleInputChange}
+                icon={<Phone className="h-5 w-5" />}
+                helpText="Optional, but recommended for booking notifications"
+                autoComplete="tel"
+              />
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
+              <div className="relative">
+                <FormField
                   id="password"
                   name="password"
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  onBlur={() => handleBlur('password')}
                   required
+                  icon={<Lock className="h-5 w-5" />}
+                  error={errors.password}
+                  autoComplete="new-password"
+                  helpText="Must be at least 6 characters"
+                  inputClassName="pr-10"
                 />
-                <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters</p>
+                <button 
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
 
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
+              <div className="relative">
+                <FormField
                   id="confirmPassword"
                   name="confirmPassword"
+                  label="Confirm Password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  onBlur={() => handleBlur('confirmPassword')}
                   required
+                  icon={<Lock className="h-5 w-5" />}
+                  error={errors.confirmPassword}
+                  autoComplete="new-password"
+                  inputClassName="pr-10"
                 />
+                <button 
+                  type="button"
+                  onClick={toggleConfirmPasswordVisibility}
+                  className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600"
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
 
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-all duration-300 flex justify-center items-center"
+                disabled={isSubmitting || !isValid}
+                aria-busy={isSubmitting}
+                className={`w-full py-3 rounded-md transition-all duration-300 flex justify-center items-center mt-6
+                  ${isSubmitting || !isValid 
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     Creating Account...
                   </>
-                ) : 'Sign Up'}
+                ) : 'Create Account'}
               </button>
             </form>
 

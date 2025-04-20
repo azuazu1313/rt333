@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Phone, Mail, Save, AlertTriangle, Loader2 } from 'lucide-react';
+import { User, Phone, Mail, Save, AlertTriangle, Loader2, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Header from '../components/Header';
 import Sitemap from '../components/Sitemap';
 import { useAuth } from '../contexts/AuthContext';
+import FormField from '../components/ui/form-field';
+import useFormValidation from '../hooks/useFormValidation';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -19,6 +21,27 @@ const Profile = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Define validation rules
+  const validationRules = {
+    name: [
+      { required: true, message: 'Please enter your name' }
+    ],
+    phone: [
+      { 
+        pattern: /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/,
+        message: 'Please enter a valid phone number'
+      }
+    ]
+  };
+
+  const {
+    errors,
+    isValid,
+    validateAllFields,
+    handleBlur,
+    resetForm
+  } = useFormValidation(formData, validationRules);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -54,6 +77,13 @@ const Profile = () => {
     setError(null);
     setSuccessMessage(null);
     
+    // Validate all fields before submitting
+    const isFormValid = validateAllFields();
+    
+    if (!isFormValid) {
+      return;
+    }
+    
     if (!user) {
       setError('You must be logged in to update your profile');
       return;
@@ -71,10 +101,10 @@ const Profile = () => {
 
       setSuccessMessage('Profile updated successfully!');
       
-      // Clear success message after 3 seconds
+      // Clear success message after 5 seconds
       setTimeout(() => {
         setSuccessMessage(null);
-      }, 3000);
+      }, 5000);
     } catch (error: any) {
       console.error('Error updating profile:', error);
       setError(error.message || 'Failed to update profile');
@@ -129,7 +159,7 @@ const Profile = () => {
                   </div>
                   <h2 className="text-xl font-bold">{userData?.name || 'User'}</h2>
                   {shouldShowRole(userData?.user_role) && (
-                    <p className="text-gray-600 capitalize">{userData?.user_role}</p>
+                    <p className="text-gray-700 capitalize">{userData?.user_role}</p>
                   )}
                 </div>
 
@@ -147,7 +177,7 @@ const Profile = () => {
                 <hr className="my-6" />
 
                 <div className="space-y-2">
-                  <a href="#" className="block py-2 text-blue-600 hover:text-blue-700">
+                  <a href="/bookings" className="block py-2 text-blue-600 hover:text-blue-700">
                     My Bookings
                   </a>
                   <a href="#" className="block py-2 text-blue-600 hover:text-blue-700">
@@ -170,83 +200,87 @@ const Profile = () => {
               <h2 className="text-xl font-bold mb-6">Edit Profile</h2>
 
               {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-md mb-6 flex items-start">
+                <div 
+                  className="bg-red-50 text-red-600 p-4 rounded-md mb-6 flex items-start"
+                  role="alert"
+                  aria-live="assertive"
+                >
                   <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0" />
                   <p className="ml-2">{error}</p>
                 </div>
               )}
 
               {successMessage && (
-                <div className="bg-green-50 text-green-600 p-4 rounded-md mb-6">
-                  {successMessage}
+                <div 
+                  className="bg-green-50 text-green-600 p-4 rounded-md mb-6 flex items-center"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  <p>{successMessage}</p>
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  />
-                </div>
+              <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+                <FormField
+                  id="name"
+                  name="name"
+                  label="Full Name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  onBlur={() => handleBlur('name')}
+                  required
+                  error={errors.name}
+                  autoComplete="name"
+                />
 
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    disabled
-                    className="w-full px-4 py-2 border border-gray-200 rounded-md bg-gray-50 cursor-not-allowed"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Email cannot be changed
-                  </p>
-                </div>
+                <FormField
+                  id="email"
+                  name="email"
+                  label="Email Address"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  disabled
+                  helpText="Email cannot be changed"
+                  autoComplete="email"
+                />
 
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  />
-                </div>
+                <FormField
+                  id="phone"
+                  name="phone"
+                  label="Phone Number"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  onBlur={() => handleBlur('phone')}
+                  error={errors.phone}
+                  autoComplete="tel"
+                  helpText="Enter your phone number with country code"
+                />
 
-                <div className="pt-4">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all duration-300 flex items-center"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-5 h-5 mr-2" />
-                        Save Changes
-                      </>
-                    )}
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !isValid}
+                  aria-busy={isSubmitting}
+                  className={`px-6 py-3 rounded-md transition-all duration-300 flex items-center mt-4
+                    ${isSubmitting || !isValid 
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-5 h-5 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </button>
               </form>
             </motion.div>
           </div>

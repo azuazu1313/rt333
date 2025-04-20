@@ -82,6 +82,10 @@ const Login = () => {
     navigate('/partners#partner-form');
   };
 
+  const redirectToPartnerPortal = () => {
+    window.location.href = 'https://app.royaltransfer.eu/partner';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header hideSignIn />
@@ -140,11 +144,17 @@ const Login = () => {
             {isDriver ? (
               <div className="text-center py-4">
                 <h2 className="text-xl font-semibold mb-4">Driver Portal</h2>
-                <p className="text-gray-600 mb-6">
+                <p className="text-gray-700 mb-6">
                   Please sign in through our partner portal to access the driver dashboard.
                 </p>
                 <button
                   onClick={handlePartnerClick}
+                  className="w-full border-2 border-blue-600 bg-white text-blue-600 px-6 py-3 rounded-md hover:bg-blue-50 transition-all duration-300 mb-4"
+                >
+                  Become a Partner
+                </button>
+                <button
+                  onClick={redirectToPartnerPortal}
                   className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-all duration-300 w-full"
                 >
                   Go to Partner Portal
@@ -195,14 +205,10 @@ const Login = () => {
                   ) : 'Sign In'}
                 </button>
 
-                <div className="mt-6 text-center">
-                  <Link
-                    to="/customer-signup"
-                    className="inline-flex items-center justify-center w-full bg-gray-100 text-gray-700 px-6 py-3 rounded-md hover:bg-gray-200 transition-all duration-300"
-                  >
-                    Sign Up as Customer
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Link>
+                <div className="text-center mt-3">
+                  <a href="#" className="text-sm text-blue-600 hover:text-blue-700">
+                    Forgot your password?
+                  </a>
                 </div>
               </form>
             )}
@@ -219,8 +225,19 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Help Link */}
+          {/* Sign Up Link */}
           <div className="text-center mt-6">
+            <Link
+              to="/customer-signup"
+              className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Sign up
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Link>
+          </div>
+
+          {/* Help Link */}
+          <div className="text-center mt-3">
             <Link
               to="/contact"
               className="text-blue-600 hover:text-blue-700 font-medium"
