@@ -33,23 +33,6 @@ export interface Database {
           is_suspended?: boolean | null
         }
       }
-      user_preferences: {
-        Row: {
-          id: string
-          user_id: string
-          two_fa_enabled: boolean | null
-        }
-        Insert: {
-          id?: string
-          user_id?: string
-          two_fa_enabled?: boolean | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          two_fa_enabled?: boolean | null
-        }
-      }
       email_verifications: {
         Row: {
           id: string

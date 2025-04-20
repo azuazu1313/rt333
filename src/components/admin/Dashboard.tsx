@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, TrendingUp, Settings, ShieldCheck, Loader2 } from 'lucide-react';
+import { Users, TrendingUp, Settings, ShieldCheck, Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../ui/use-toast';
@@ -12,28 +12,57 @@ const Dashboard = () => {
     supportCount: 0,
     loading: true
   });
-  const { userData } = useAuth();
+  const { userData, refreshSession } = useAuth();
   const { toast } = useToast();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    if (userData?.user_role === 'admin') {
+    if (userData?.user_role === 'admin' || userData?.user_role === 'support') {
       fetchStats();
     }
   }, [userData]);
 
+  const refreshData = async () => {
+    setIsRefreshing(true);
+    try {
+      // Refresh the session to update JWT claims
+      await refreshSession();
+      // Then fetch stats with updated JWT
+      await fetchStats();
+      toast({
+        title: "Success",
+        description: "Data refreshed successfully",
+      });
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to refresh data. Please try again.",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const fetchStats = async () => {
     try {
       // Verify admin role before querying
-      if (userData?.user_role !== 'admin') {
-        throw new Error('Admin permissions required');
+      if (userData?.user_role !== 'admin' && userData?.user_role !== 'support') {
+        throw new Error('Admin or support permissions required');
       }
 
+      console.log('Fetching dashboard stats...');
+      
       // Fetch total users
       const { count: userCount, error: userError } = await supabase
         .from('users')
         .select('*', { count: 'exact' });
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error('Error fetching user count:', userError);
+        throw userError;
+      }
 
       // Fetch active users (non-suspended)
       const { count: activeUserCount, error: activeUserError } = await supabase
@@ -41,7 +70,10 @@ const Dashboard = () => {
         .select('*', { count: 'exact' })
         .eq('is_suspended', false);
 
-      if (activeUserError) throw activeUserError;
+      if (activeUserError) {
+        console.error('Error fetching active user count:', activeUserError);
+        throw activeUserError;
+      }
 
       // Fetch admin count
       const { count: adminCount, error: adminError } = await supabase
@@ -49,7 +81,10 @@ const Dashboard = () => {
         .select('*', { count: 'exact' })
         .eq('user_role', 'admin');
 
-      if (adminError) throw adminError;
+      if (adminError) {
+        console.error('Error fetching admin count:', adminError);
+        throw adminError;
+      }
 
       // Fetch support count
       const { count: supportCount, error: supportError } = await supabase
@@ -57,7 +92,17 @@ const Dashboard = () => {
         .select('*', { count: 'exact' })
         .eq('user_role', 'support');
 
-      if (supportError) throw supportError;
+      if (supportError) {
+        console.error('Error fetching support count:', supportError);
+        throw supportError;
+      }
+
+      console.log('Stats fetched successfully:', {
+        totalUsers: userCount || 0,
+        activeUsers: activeUserCount || 0,
+        adminCount: adminCount || 0,
+        supportCount: supportCount || 0
+      });
 
       setStats({
         totalUsers: userCount || 0,
@@ -87,7 +132,17 @@ const Dashboard = () => {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-6">Dashboard</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">Dashboard</h2>
+        <button 
+          onClick={refreshData}
+          disabled={isRefreshing}
+          className="flex items-center text-blue-600 hover:text-blue-700 py-2 px-3 rounded-md hover:bg-blue-50"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh Data
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Users */}

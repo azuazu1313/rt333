@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react';
 import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Users, Calendar, BarChart2, Settings, PenTool as Tool, AlertTriangle, ArrowLeft, Menu } from 'lucide-react';
+import { Users, Calendar, BarChart2, Settings, PenTool as Tool, AlertTriangle, ArrowLeft, Menu, Bug } from 'lucide-react';
 import Header from '../components/Header';
 import UserManagement from '../components/admin/UserManagement';
 import BookingsManagement from '../components/admin/BookingsManagement';
 import Dashboard from '../components/admin/Dashboard';
 import PlatformSettings from '../components/admin/PlatformSettings';
 import DevTools from '../components/admin/DevTools';
+import DebugPanel from '../components/admin/DebugPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { Toaster } from '../components/ui/toaster';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -39,7 +40,8 @@ const AdminLayout = () => {
     { id: 'users', label: 'User Management', icon: Users, path: '/admin/users', allowedRoles: ['admin'] },
     { id: 'bookings', label: 'Bookings', icon: Calendar, path: '/admin/bookings', allowedRoles: ['admin', 'support', 'partner'] },
     { id: 'settings', label: 'Settings', icon: Settings, path: '/admin/settings', allowedRoles: ['admin'] },
-    { id: 'devtools', label: 'Dev Tools', icon: Tool, path: '/admin/dev-tools', allowedRoles: ['admin'] }
+    { id: 'devtools', label: 'Dev Tools', icon: Tool, path: '/admin/dev-tools', allowedRoles: ['admin'] },
+    { id: 'debug', label: 'Debug JWT', icon: Bug, path: '/admin/debug', allowedRoles: ['admin'] }
   ];
 
   const tabs = getAllTabs().filter(tab => 
@@ -50,7 +52,7 @@ const AdminLayout = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p>Loading admin portal...</p>
         </div>
       </div>
@@ -138,6 +140,7 @@ const AdminLayout = () => {
                 <Route path="bookings" element={<BookingsManagement />} />
                 <Route path="settings" element={<PlatformSettings />} />
                 <Route path="dev-tools" element={<DevTools />} />
+                <Route path="debug" element={<DebugPanel />} />
               </Routes>
             </div>
           </div>

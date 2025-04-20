@@ -44,13 +44,29 @@ const UserManagement = () => {
   const [showSuspendConfirm, setShowSuspendConfirm] = useState<{userId: string, suspend: boolean} | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const { toast } = useToast();
-  const { userData } = useAuth();
+  const { userData, refreshSession } = useAuth();
+  const initLoadDone = useRef(false);
 
+  // When component mounts, ensure the session is refreshed to get updated JWT claims
   useEffect(() => {
-    if (userData?.user_role === 'admin') {
+    const initData = async () => {
+      if (userData?.user_role === 'admin' && !initLoadDone.current) {
+        // Refresh session to ensure JWT claims are up to date
+        await refreshSession();
+        initLoadDone.current = true;
+        fetchUsers();
+      }
+    };
+    
+    initData();
+  }, [userData]);
+
+  // When page changes, re-fetch data
+  useEffect(() => {
+    if (initLoadDone.current && userData?.user_role === 'admin') {
       fetchUsers();
     }
-  }, [currentPage, roleFilter, statusFilter, userData]);
+  }, [currentPage, roleFilter, statusFilter]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -60,6 +76,8 @@ const UserManagement = () => {
         throw new Error('Admin permissions required');
       }
 
+      console.log('Fetching users with JWT claims:', supabase.auth.getSession());
+      
       // Start with a base query
       let query = supabase
         .from('users')
@@ -93,12 +111,15 @@ const UserManagement = () => {
         .order('created_at', { ascending: false })
         .range((currentPage - 1) * usersPerPage, currentPage * usersPerPage - 1);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching users list:', error);
+        throw error;
+      }
       
-      console.log('Fetched users:', data);
+      console.log('Fetched users:', data?.length || 0);
       setUsers(data || []);
     } catch (error: any) {
-      console.error('Error fetching users:', error);
+      console.error('Error in fetchUsers:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -259,7 +280,7 @@ const UserManagement = () => {
     }
   };
 
-  if (loading) {
+  if (loading && !users.length) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
@@ -323,6 +344,13 @@ const UserManagement = () => {
           </button>
         </div>
       </div>
+
+      {loading && users.length > 0 && (
+        <div className="text-center p-4">
+          <Loader2 className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
+          <p className="mt-2 text-gray-600">Refreshing...</p>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
@@ -421,7 +449,7 @@ const UserManagement = () => {
               ) : (
                 <tr>
                   <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
-                    No users found
+                    {loading ? 'Loading users...' : 'No users found'}
                   </td>
                 </tr>
               )}

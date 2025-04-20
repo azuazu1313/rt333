@@ -15,9 +15,10 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateUserData: (updates: Partial<Omit<UserData, 'id' | 'email' | 'created_at'>>) => 
     Promise<{ error: Error | null, data: UserData | null }>;
+  refreshSession: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
@@ -47,6 +48,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Unexpected error fetching user data:', error);
       return null;
+    }
+  };
+
+  // Refresh the session to update JWT claims
+  const refreshSession = async () => {
+    try {
+      console.log('Refreshing session...');
+      const { data: { session: newSession }, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error('Error refreshing session:', error);
+        return;
+      }
+      
+      if (newSession) {
+        console.log('Session refreshed successfully');
+        setSession(newSession);
+        setUser(newSession.user);
+        
+        if (newSession.user) {
+          await fetchUserData(newSession.user.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error in refreshSession:', error);
     }
   };
 
@@ -350,7 +376,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signIn,
     signOut,
-    updateUserData
+    updateUserData,
+    refreshSession
   };
 
   return (
