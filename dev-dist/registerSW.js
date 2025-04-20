@@ -1,1 +1,2 @@
-if('serviceWorker' in navigator) navigator.serviceWorker.register('/dev-sw.js?dev-sw', { scope: '/', type: 'classic' })
+// Service Worker registration disabled for StackBlitz environment
+console.log('Service Worker is not supported in this environment');

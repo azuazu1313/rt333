@@ -2,12 +2,14 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
+import Partner from './pages/Partner';
 import NotFound from './pages/NotFound';
 import { BookingProvider } from './contexts/BookingContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useAuth } from './contexts/AuthContext';
 import InstallPWA from './components/InstallPWA';
+import MobileInstallPrompt from './components/MobileInstallPrompt';
 import DynamicPWAManifest from './components/DynamicPWAManifest';
 
 // Route observer component to handle page-specific classes
@@ -63,6 +65,11 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
       return <Navigate to="/admin" replace />;
     }
     
+    // If user has partner role, redirect to partner page
+    if (userData?.user_role === 'partner') {
+      return <Navigate to="/partner" replace />;
+    }
+    
     // Otherwise redirect to login (which will handle customer redirects)
     return <Navigate to="/login" replace />;
   }
@@ -100,6 +107,14 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route 
+          path="/partner/*" 
+          element={
+            <ProtectedRoute>
+              <Partner />
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
@@ -114,6 +129,7 @@ function App() {
           <BrowserRouter>
             <AppRoutes />
             <InstallPWA />
+            <MobileInstallPrompt />
           </BrowserRouter>
         </BookingProvider>
       </AuthProvider>

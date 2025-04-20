@@ -1,7 +1,8 @@
 import { Workbox } from 'workbox-window';
 
 export function registerSW() {
-  if ('serviceWorker' in navigator) {
+  // Check if in StackBlitz environment - Don't register service worker in StackBlitz
+  if ('serviceWorker' in navigator && !window.location.hostname.includes('stackblitz')) {
     const wb = new Workbox('/service-worker.js');
 
     wb.addEventListener('installed', (event) => {
@@ -34,7 +35,7 @@ export function registerSW() {
         console.error('Service Worker registration failed:', error);
       });
   } else {
-    console.log('Service Worker is not supported in this browser');
+    console.log('Service Worker is not supported or disabled in this environment');
   }
 }
 

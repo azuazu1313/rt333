@@ -1,14 +1,14 @@
 import React, { useEffect } from 'react';
 import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Users, Calendar, BarChart2, Settings, PenTool as Tool, AlertTriangle, ArrowLeft, Menu, Bug } from 'lucide-react';
+import { Users, Calendar, BarChart2, Settings, Link2, AlertTriangle, ArrowLeft, Menu, Bug, Database, LayoutDashboard } from 'lucide-react';
 import Header from '../components/Header';
 import UserManagement from '../components/admin/UserManagement';
 import BookingsManagement from '../components/admin/BookingsManagement';
 import Dashboard from '../components/admin/Dashboard';
 import PlatformSettings from '../components/admin/PlatformSettings';
-import DevTools from '../components/admin/DevTools';
 import DebugPanel from '../components/admin/DebugPanel';
 import ThemeToggle from '../components/ThemeToggle';
+import AdminDeveloperTools from '../components/admin/AdminDeveloperTools';
 import { useAuth } from '../contexts/AuthContext';
 import { Toaster } from '../components/ui/toaster';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,11 +37,11 @@ const AdminLayout = () => {
 
   // Filter tabs based on user role
   const getAllTabs = () => [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart2, path: '/admin', allowedRoles: ['admin', 'support'] },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin', allowedRoles: ['admin', 'support'] },
     { id: 'users', label: 'User Management', icon: Users, path: '/admin/users', allowedRoles: ['admin'] },
     { id: 'bookings', label: 'Bookings', icon: Calendar, path: '/admin/bookings', allowedRoles: ['admin', 'support', 'partner'] },
     { id: 'settings', label: 'Settings', icon: Settings, path: '/admin/settings', allowedRoles: ['admin'] },
-    { id: 'devtools', label: 'Dev Tools', icon: Tool, path: '/admin/dev-tools', allowedRoles: ['admin'] },
+    { id: 'admin-tools', label: 'Developer Tools', icon: Database, path: '/admin/admin-tools', allowedRoles: ['admin'] },
     { id: 'debug', label: 'Debug JWT', icon: Bug, path: '/admin/debug', allowedRoles: ['admin'] }
   ];
 
@@ -143,7 +143,7 @@ const AdminLayout = () => {
                 <Route path="users" element={<UserManagement />} />
                 <Route path="bookings" element={<BookingsManagement />} />
                 <Route path="settings" element={<PlatformSettings />} />
-                <Route path="dev-tools" element={<DevTools />} />
+                <Route path="admin-tools" element={<AdminDeveloperTools />} />
                 <Route path="debug" element={<DebugPanel />} />
               </Routes>
             </div>
