@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, Save, ChevronLeft, ChevronRight, MoreVertical, Edit, UserX, UserCheck, AlertTriangle } from 'lucide-react';
+import { Search, Loader2, Save, ChevronLeft, ChevronRight, MoreVertical, Edit, UserX, UserCheck, AlertTriangle, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
@@ -42,7 +42,9 @@ const UserManagement = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showSuspendConfirm, setShowSuspendConfirm] = useState<{userId: string, suspend: boolean} | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const { userData, refreshSession } = useAuth();
   const initLoadDone = useRef(false);
@@ -158,6 +160,65 @@ const UserManagement = () => {
     }));
     
     setShowSuspendConfirm(null);
+  };
+
+  const confirmDeleteUser = (userId: string) => {
+    setShowDeleteConfirm(userId);
+  };
+
+  const executeDeleteUser = async () => {
+    if (!showDeleteConfirm) return;
+    
+    const userId = showDeleteConfirm;
+    setIsDeleting(true);
+    
+    try {
+      // Get the current session for the JWT token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Authentication required');
+      }
+
+      // Use the Supabase Edge Function to delete the user completely
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/delete-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ userId })
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete user');
+      }
+      
+      // Update the local state to remove the deleted user
+      setUsers(users.filter(user => user.id !== userId));
+      
+      // Show success notification
+      toast({
+        title: "User Deleted",
+        description: result.message || "The user has been permanently deleted.",
+      });
+      
+      // Update total count
+      setTotalCount(prev => prev - 1);
+      
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast({
+        variant: "destructive",
+        title: "Deletion Failed",
+        description: error.message || "There was an error deleting this user. They may have related records.",
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(null);
+    }
   };
 
   const handleEditUser = (user: User) => {
@@ -440,6 +501,14 @@ const UserManagement = () => {
                                 </>
                               )}
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => confirmDeleteUser(user.id)}
+                              className="text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete User
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -602,6 +671,54 @@ const UserManagement = () => {
                 className={`px-4 py-2 rounded-md text-white ${showSuspendConfirm.suspend ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
               >
                 {showSuspendConfirm.suspend ? 'Yes, Suspend User' : 'Yes, Reactivate User'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex items-start mb-4">
+              <div className="flex-shrink-0 text-red-600">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-semibold text-red-600">Delete User</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Are you sure you want to permanently delete this user? This action cannot be undone.
+                </p>
+                <p className="mt-2 text-sm font-medium text-red-600">
+                  Warning: This will delete all associated data and cannot be recovered.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-4">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeDeleteUser}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Yes, Delete User
+                  </>
+                )}
               </button>
             </div>
           </div>
