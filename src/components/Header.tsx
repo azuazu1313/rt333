@@ -136,16 +136,16 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
               trackEvent('Navigation', 'Logo Click', 'Header');
               navigate('/');
             }}
-            className="flex items-center focus:outline-none h-[70px] py-[4px]"
+            className="flex items-center focus:outline-none h-16 py-2"
             aria-label="Royal Transfer EU Homepage"
           >
             <OptimizedImage
               src="https://i.imgur.com/991MInn.png"
               webp="https://i.imghippo.com/files/cDgm3025PmI.webp"
               alt="Royal Transfer EU Logo - Professional airport transfers and taxi services across Europe"
-              className="h-full w-auto object-contain"
-              width={300}
-              height={70}
+              className="h-full w-auto object-contain max-h-16"
+              width={170}
+              height={64}
               loading="eager"
               fetchPriority="high"
             />
@@ -357,9 +357,9 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                     src="https://i.imgur.com/991MInn.png"
                     webp="https://i.imghippo.com/files/cDgm3025PmI.webp"
                     alt="Royal Transfer EU Logo - Professional taxi and transfer services"
-                    className="h-[62px] w-auto object-contain"
-                    width={250}
-                    height={62}
+                    className="h-12 w-auto object-contain"
+                    width={150}
+                    height={48}
                     loading="eager"
                   />
                 </div>
