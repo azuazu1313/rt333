@@ -1,12 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { XCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 import Header from '../components/Header';
 import Sitemap from '../components/Sitemap';
 import { motion } from 'framer-motion';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const BookingCancelled = () => {
   const navigate = useNavigate();
+  const { trackEvent } = useAnalytics();
+  
+  useEffect(() => {
+    // Track cancellation
+    trackEvent('Booking', 'Booking Cancelled', undefined, 0, true);
+  }, [trackEvent]);
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -22,7 +29,7 @@ const BookingCancelled = () => {
           >
             <div className="flex justify-center mb-6">
               <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
-                <XCircle className="w-10 h-10 text-red-600" />
+                <XCircle className="w-10 h-10 text-red-600" aria-hidden="true" />
               </div>
             </div>
             
@@ -40,18 +47,22 @@ const BookingCancelled = () => {
             
             <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
               <button
-                onClick={() => navigate('/')}
+                onClick={() => {
+                  trackEvent('Navigation', 'Post-Cancellation Click', 'Return to Home');
+                  navigate('/');
+                }}
                 className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-all duration-300 flex items-center justify-center"
               >
-                <ArrowLeft className="w-5 h-5 mr-2" />
+                <ArrowLeft className="w-5 h-5 mr-2" aria-hidden="true" />
                 Return to Home
               </button>
               <Link
                 to="/contact"
+                onClick={() => trackEvent('Navigation', 'Post-Cancellation Click', 'Contact Support')}
                 className="border border-black text-black px-6 py-3 rounded-md hover:bg-gray-50 transition-all duration-300 flex items-center justify-center"
               >
                 Contact Support
-                <ArrowRight className="w-5 h-5 ml-2" />
+                <ArrowRight className="w-5 h-5 ml-2" aria-hidden="true" />
               </Link>
             </div>
           </motion.div>

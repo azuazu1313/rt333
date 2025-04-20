@@ -11,6 +11,7 @@ interface BookingState {
   departureDate?: string;
   returnDate?: string;
   passengers?: number;
+  bookingReference?: string; // Added to store the booking reference
   personalDetails: {
     title: 'mr' | 'ms';
     firstName: string;

@@ -4,21 +4,65 @@ import { CheckCircle, ArrowRight } from 'lucide-react';
 import Header from '../components/Header';
 import Sitemap from '../components/Sitemap';
 import { motion } from 'framer-motion';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const BookingSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { trackEvent } = useAnalytics();
+  const [bookingReference, setBookingReference] = useState<string | null>(null);
+  const [bookingDetails, setBookingDetails] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // Get the session_id from the URL query parameters
+    // Get the booking reference from the URL query parameters
     const params = new URLSearchParams(location.search);
-    const id = params.get('session_id');
-    setSessionId(id);
     
-    // You could fetch the session details from your backend here
-    // if you need to display more information about the booking
-  }, [location]);
+    // Check for Stripe session_id first
+    const sessionId = params.get('session_id');
+    
+    // Then check for direct reference (for cash payments)
+    const reference = params.get('reference');
+    
+    // Use the first available reference
+    const bookingRef = reference || sessionId;
+    setBookingReference(bookingRef);
+    
+    if (bookingRef) {
+      fetchBookingDetails(bookingRef);
+    }
+    
+    // Track booking success
+    trackEvent('Booking', 'Booking Success', bookingRef || 'Unknown');
+    
+  }, [location, trackEvent]);
+  
+  const fetchBookingDetails = async (reference: string) => {
+    setLoading(true);
+    try {
+      // Try to find booking using reference
+      const { data, error } = await supabase
+        .from('trips')
+        .select('*')
+        .or(`booking_reference.eq.${reference},id.eq.${reference}`)
+        .limit(1);
+      
+      if (error) {
+        console.error('Error fetching booking details:', error);
+      }
+      
+      if (data && data.length > 0) {
+        setBookingDetails(data[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching booking details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Create confetti effect
   useEffect(() => {
@@ -107,7 +151,7 @@ const BookingSuccess = () => {
           >
             <div className="flex justify-center mb-6">
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-10 h-10 text-green-600" />
+                <CheckCircle className="w-10 h-10 text-green-600" aria-hidden="true" />
               </div>
             </div>
             
@@ -116,69 +160,144 @@ const BookingSuccess = () => {
               Thank you for booking with Royal Transfer EU. Your transfer has been successfully confirmed.
             </p>
             
-            {sessionId && (
+            {bookingReference && (
               <div className="mb-8 text-left bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-500 mb-2">Booking Reference:</p>
-                <p className="font-mono text-sm">{sessionId}</p>
+                <p className="font-mono text-base font-medium">{bookingReference}</p>
               </div>
             )}
             
             <div className="bg-gray-50 p-6 rounded-lg mb-8 text-left">
-              <h2 className="text-xl font-semibold mb-4">What's Next?</h2>
-              <div className="space-y-4">
-                <div className="flex items-start">
-                  <div className="bg-green-100 w-8 h-8 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <span className="font-semibold text-green-800">1</span>
+              <h2 className="text-xl font-semibold mb-4">Booking Details</h2>
+              {loading ? (
+                <div className="animate-pulse space-y-3">
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                </div>
+              ) : bookingDetails ? (
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">From:</span>
+                    <span className="font-medium">{bookingDetails.pickup_address}</span>
                   </div>
-                  <div>
-                    <h3 className="font-medium">Confirmation Email</h3>
-                    <p className="text-sm text-gray-600">
-                      Check your inbox for detailed booking information
-                    </p>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">To:</span>
+                    <span className="font-medium">{bookingDetails.dropoff_address}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Transfer Date:</span>
+                    <span className="font-medium">
+                      {new Date(bookingDetails.datetime).toLocaleDateString('en-UK', {
+                        day: '2-digit', 
+                        month: 'long', 
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Vehicle:</span>
+                    <span className="font-medium">{bookingDetails.vehicle_type}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Passengers:</span>
+                    <span className="font-medium">{bookingDetails.passengers}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Status:</span>
+                    <span className="font-medium text-green-600">Confirmed</span>
                   </div>
                 </div>
-                
-                <div className="flex items-start">
-                  <div className="bg-green-100 w-8 h-8 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <span className="font-semibold text-green-800">2</span>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Driver Assignment</h3>
-                    <p className="text-sm text-gray-600">
-                      You'll receive driver details 24 hours before pickup
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start">
-                  <div className="bg-green-100 w-8 h-8 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <span className="font-semibold text-green-800">3</span>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Ready to Go</h3>
-                    <p className="text-sm text-gray-600">
-                      Your driver will meet you at the specified location
-                    </p>
-                  </div>
-                </div>
-              </div>
+              ) : (
+                <p className="text-gray-600">No detailed booking information available.</p>
+              )}
             </div>
             
-            <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-              <button
-                onClick={() => navigate('/bookings')}
-                className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-all duration-300 flex items-center justify-center"
+            <div className="space-y-4 mb-8">
+              <p className="text-gray-700">
+                A confirmation email has been sent to your email address with all the details of your booking.
+              </p>
+              <p className="text-gray-700">
+                If you have any questions or need to modify your booking, please contact our customer support team.
+              </p>
+            </div>
+            
+            <div className="flex flex-col md:flex-row gap-4 justify-center">
+              <button 
+                onClick={() => {
+                  trackEvent('Navigation', 'Post-Booking Click', 'View My Bookings');
+                  navigate('/bookings');
+                }}
+                className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-all duration-300"
               >
                 View My Bookings
               </button>
               <button
-                onClick={() => navigate('/')}
-                className="border border-black text-black px-6 py-3 rounded-md hover:bg-gray-50 transition-all duration-300"
+                onClick={() => {
+                  trackEvent('Navigation', 'Post-Booking Click', 'Return to Home');
+                  navigate('/');
+                }}
+                className="border border-gray-300 px-6 py-3 rounded-md hover:bg-gray-50 transition-all duration-300 flex items-center justify-center"
               >
                 Return to Home
               </button>
             </div>
           </motion.div>
+
+          <div className="mt-12 bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold text-center mb-6">What's Next?</h2>
+            
+            <div className="space-y-4">
+              <div className="flex items-start">
+                <div className="bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                  <span className="font-semibold">1</span>
+                </div>
+                <div>
+                  <h3 className="font-medium">Confirmation Email</h3>
+                  <p className="text-sm text-gray-600">
+                    Check your inbox for detailed booking information
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <div className="bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                  <span className="font-semibold">2</span>
+                </div>
+                <div>
+                  <h3 className="font-medium">Driver Assignment</h3>
+                  <p className="text-sm text-gray-600">
+                    You'll receive driver details 24 hours before pickup
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <div className="bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                  <span className="font-semibold">3</span>
+                </div>
+                <div>
+                  <h3 className="font-medium">Ready to Go</h3>
+                  <p className="text-sm text-gray-600">
+                    Your driver will meet you at the specified location
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-8 text-center">
+              <a 
+                href="/contact" 
+                className="inline-flex items-center text-black hover:text-gray-700"
+                onClick={() => trackEvent('Navigation', 'Post-Booking Click', 'Contact Support')}
+              >
+                Need help? Contact support
+                <ArrowRight className="w-4 h-4 ml-1" aria-hidden="true" />
+              </a>
+            </div>
+          </div>
         </div>
       </main>
 

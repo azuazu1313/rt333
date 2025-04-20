@@ -174,7 +174,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, trackEvent
         
         if (data.expires_at && new Date(data.expires_at) < new Date()) {
           // Mark as expired
-          await supabase
+          const { error: updateError } = await supabase
             .from('invite_links')
             .update({ status: 'expired' })
             .eq('id', data.id);

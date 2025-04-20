@@ -1,19 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, CreditCard, Banknote, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../../contexts/BookingContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAnalytics } from '../../hooks/useAnalytics';
 import BookingLayout from './BookingLayout';
+import { supabase } from '../../lib/supabase';
+import { generateBookingReference } from '../../utils/bookingHelper';
 
 const PaymentDetails = () => {
   const { bookingState, setBookingState } = useBooking();
   const { user, userData } = useAuth();
+  const { trackEvent } = useAnalytics();
+  const navigate = useNavigate();
+  
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
   const [showDiscount, setShowDiscount] = useState(false);
   const [discountCode, setDiscountCode] = useState('');
   const [showPriceDetails, setShowPriceDetails] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bookingReference, setBookingReference] = useState<string>('');
+
+  // Generate booking reference on component mount
+  useEffect(() => {
+    setBookingReference(generateBookingReference());
+  }, []);
 
   const handleStripeCheckout = async () => {
     try {
@@ -33,8 +46,12 @@ const PaymentDetails = () => {
         throw new Error("Invalid email address. Please enter a valid email in your profile or booking details.");
       }
 
+      // Store the booking in database first
+      await createTripRecord(bookingReference);
+
       // Prepare booking data for the checkout session
       const bookingData = {
+        booking_reference: bookingReference,
         trip: {
           from: bookingState.from || bookingState.personalDetails?.pickup || 'Unknown location',
           to: bookingState.to || bookingState.personalDetails?.dropoff || 'Unknown location',
@@ -46,14 +63,18 @@ const PaymentDetails = () => {
         vehicle: bookingState.selectedVehicle,
         customer: {
           ...bookingState.personalDetails,
-          email: customerEmail
+          email: customerEmail,
+          user_id: user?.id || null
         },
         extras: Array.from(bookingState.personalDetails?.selectedExtras || []),
-        amount: calculateTotal(), // We'll multiply by 100 in the function
+        amount: calculateTotal(), 
         discountCode: discountCode || null
       };
 
       console.log("Sending booking data:", bookingData);
+
+      // Track attempt to create stripe checkout
+      trackEvent('Payment', 'Stripe Checkout Initiated', bookingReference, calculateTotal());
 
       // Call the Supabase Edge Function to create a checkout session
       const response = await fetch(
@@ -75,13 +96,72 @@ const PaymentDetails = () => {
 
       const { sessionUrl } = await response.json();
       
+      // Track successful Stripe checkout creation
+      trackEvent('Payment', 'Stripe Checkout Created', bookingReference, calculateTotal());
+      
       // Redirect to Stripe Checkout
       window.location.href = sessionUrl;
     } catch (error: any) {
       console.error('Error creating checkout session:', error);
-      setError(`All payment gateway connection attempts failed:\n\n${error.message}`);
-    } finally {
+      trackEvent('Payment', 'Payment Error', error.message, 0, true);
+      setError(`Payment gateway error:\n\n${error.message}`);
       setIsProcessing(false);
+    }
+  };
+
+  // Create a trip record in the database
+  const createTripRecord = async (bookingRef: string) => {
+    try {
+      if (!user && !bookingState.personalDetails?.email) {
+        throw new Error('User information is required to create a booking');
+      }
+
+      // Prepare trip data
+      const tripData = {
+        user_id: user?.id || null,
+        booking_reference: bookingRef,
+        pickup_address: bookingState.from || '',
+        dropoff_address: bookingState.to || '',
+        estimated_distance_km: 0, // Will be calculated by admin
+        estimated_duration_min: 0, // Will be calculated by admin
+        estimated_price: calculateTotal(),
+        datetime: bookingState.departureDate || new Date().toISOString(),
+        is_scheduled: true,
+        status: 'pending',
+        vehicle_type: bookingState.selectedVehicle?.name || '',
+        passengers: bookingState.passengers || 1,
+        customer_name: `${bookingState.personalDetails?.title || ''} ${bookingState.personalDetails?.firstName || ''} ${bookingState.personalDetails?.lastName || ''}`.trim(),
+        customer_email: bookingState.personalDetails?.email || userData?.email || '',
+        customer_phone: bookingState.personalDetails?.phone || userData?.phone || '',
+        is_return: bookingState.isReturn || false,
+        return_datetime: bookingState.returnDate || null,
+        extra_items: Array.from(bookingState.personalDetails?.selectedExtras || []).join(','),
+        payment_method: paymentMethod,
+        notes: ''
+      };
+
+      console.log('Creating trip record:', tripData);
+
+      // Insert into trips table
+      const { data, error } = await supabase
+        .from('trips')
+        .insert([tripData])
+        .select();
+
+      if (error) {
+        console.error('Error creating trip record:', error);
+        throw error;
+      }
+
+      console.log('Trip record created:', data);
+      
+      // Track successful trip creation
+      trackEvent('Booking', 'Trip Record Created', bookingRef);
+
+      return data;
+    } catch (error) {
+      console.error('Error creating trip record:', error);
+      throw error;
     }
   };
 
@@ -90,22 +170,41 @@ const PaymentDetails = () => {
     return emailRegex.test(email);
   };
 
-  const handleBook = () => {
+  const handleBook = async () => {
     if (paymentMethod === 'card') {
       handleStripeCheckout();
     } else {
       // Handle cash payment
-      setBookingState(prev => ({
-        ...prev,
-        step: 3,
-        paymentDetails: {
-          method: paymentMethod,
-          discountCode
-        }
-      }));
-      
-      // Navigate to success page for cash payment
-      window.location.href = '/booking-success';
+      try {
+        setIsProcessing(true);
+        setError(null);
+        
+        // First, create the trip record in the database
+        await createTripRecord(bookingReference);
+        
+        // Update booking state
+        setBookingState(prev => ({
+          ...prev,
+          step: 3,
+          paymentDetails: {
+            method: paymentMethod,
+            discountCode
+          },
+          bookingReference
+        }));
+        
+        // Track successful cash booking
+        trackEvent('Booking', 'Cash Payment Booking', bookingReference, calculateTotal());
+        
+        // Navigate to success page for cash payment using React Router
+        // This prevents page reload and maintains scroll position
+        navigate(`/booking-success?reference=${bookingReference}`, { replace: true });
+      } catch (error: any) {
+        console.error('Error processing cash booking:', error);
+        trackEvent('Booking', 'Cash Booking Error', error.message, 0, true);
+        setError(`Failed to create booking: ${error.message}`);
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -148,6 +247,7 @@ const PaymentDetails = () => {
       onNext={handleBook}
       nextButtonText={isProcessing ? "Processing..." : "Complete Booking"}
       showNewsletter={true}
+      preventScrollOnNext={true}
     >
       <div className="max-w-3xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Payment Details</h1>
@@ -156,6 +256,13 @@ const PaymentDetails = () => {
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
             <p className="font-medium">Payment Error</p>
             <p className="text-sm whitespace-pre-line">{error}</p>
+          </div>
+        )}
+
+        {bookingReference && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-6">
+            <p className="font-medium">Booking Reference</p>
+            <p className="text-sm font-mono">{bookingReference}</p>
           </div>
         )}
 
@@ -173,7 +280,7 @@ const PaymentDetails = () => {
                   onChange={() => setPaymentMethod('card')}
                   className="h-5 w-5 text-black"
                 />
-                <CreditCard className="w-6 h-6 text-gray-500" />
+                <CreditCard className="w-6 h-6 text-gray-500" aria-hidden="true" />
                 <div>
                   <div className="font-medium">Pay in full now</div>
                   <div className="text-sm text-gray-500">
@@ -192,7 +299,7 @@ const PaymentDetails = () => {
                   onChange={() => setPaymentMethod('cash')}
                   className="h-5 w-5 text-black"
                 />
-                <Banknote className="w-6 h-6 text-gray-500" />
+                <Banknote className="w-6 h-6 text-gray-500" aria-hidden="true" />
                 <div>
                   <div className="font-medium">Pay in cash</div>
                   <div className="text-sm text-gray-500">
@@ -209,8 +316,9 @@ const PaymentDetails = () => {
           <button
             onClick={() => setShowDiscount(!showDiscount)}
             className="flex items-center text-black hover:text-gray-600"
+            aria-expanded={showDiscount}
           >
-            <Tag className="w-5 h-5 mr-2" />
+            <Tag className="w-5 h-5 mr-2" aria-hidden="true" />
             Got a Discount Code?
           </button>
 
@@ -230,9 +338,13 @@ const PaymentDetails = () => {
                     onChange={(e) => setDiscountCode(e.target.value)}
                     placeholder="Enter code"
                     className="flex-1 px-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                    aria-label="Discount code"
                   />
                   <button
                     className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
+                    onClick={() => {
+                      trackEvent('Payment', 'Apply Discount', discountCode);
+                    }}
                   >
                     Apply
                   </button>
@@ -249,12 +361,14 @@ const PaymentDetails = () => {
             <button
               onClick={() => setShowPriceDetails(!showPriceDetails)}
               className="text-black hover:text-gray-700 flex items-center"
+              aria-expanded={showPriceDetails}
             >
               {showPriceDetails ? 'Hide' : 'Show'} details
               <ChevronDown
                 className={`w-5 h-5 ml-1 transform transition-transform ${
                   showPriceDetails ? 'rotate-180' : ''
                 }`}
+                aria-hidden="true"
               />
             </button>
           </div>
@@ -286,7 +400,7 @@ const PaymentDetails = () => {
 
           <div className="mt-6 text-sm text-gray-500">
             By clicking 'Complete Booking' you acknowledge that you have read and
-            agree to our Terms & Conditions and Privacy Policy.
+            agree to our <a href="/terms" className="underline hover:text-black">Terms & Conditions</a> and <a href="/privacy" className="underline hover:text-black">Privacy Policy</a>.
           </div>
         </section>
       </div>

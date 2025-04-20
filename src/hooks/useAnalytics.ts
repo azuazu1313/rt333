@@ -1,86 +1,101 @@
-import { useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useCallback, useEffect } from 'react';
 import ReactGA from 'react-ga4';
+import { useLocation } from 'react-router-dom';
 
-// Initialize GA with Measurement ID from environment variables
-const MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID as string;
+// Initialize Google Analytics
+const initializeGA = () => {
+  const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
+  
+  if (measurementId) {
+    ReactGA.initialize(measurementId, {
+      gaOptions: {
+        debug_mode: import.meta.env.DEV,
+        send_page_view: false
+      }
+    });
+  }
+};
 
 export const useAnalytics = () => {
   const location = useLocation();
-  const initialized = ReactGA.isInitialized;
 
-  // Initialize GA only once
+  // Initialize analytics on first render
   useEffect(() => {
-    if (!initialized && MEASUREMENT_ID) {
-      ReactGA.initialize(MEASUREMENT_ID, {
-        gtagOptions: {
-          send_page_view: false // We'll handle this manually
-        }
-      });
-      console.log('Google Analytics initialized with ID:', MEASUREMENT_ID);
-    }
-  }, [initialized]);
+    initializeGA();
+  }, []);
 
   // Track page views when location changes
   useEffect(() => {
-    if (initialized) {
-      const pagePath = location.pathname + location.search;
-      ReactGA.send({ 
-        hitType: 'pageview', 
-        page: pagePath,
-        title: document.title
+    if (window.gtag) {
+      window.gtag('event', 'page_view', {
+        page_path: location.pathname + location.search,
+        page_title: document.title
       });
-      console.log('Page view tracked:', pagePath);
     }
-  }, [location, initialized]);
+    
+    ReactGA.send({
+      hitType: "pageview",
+      page: location.pathname + location.search,
+      title: document.title
+    });
+  }, [location]);
 
-  // Custom event tracking function
-  const trackEvent = useCallback((category: string, action: string, label?: string, value?: number, nonInteraction: boolean = false) => {
-    if (initialized) {
-      ReactGA.event({
-        category,
-        action,
-        label,
-        value,
-        nonInteraction
-      });
-      console.log('Event tracked:', { category, action, label, value });
-    } else {
-      console.warn('Cannot track event: Google Analytics not initialized');
+  // Function to track events
+  const trackEvent = useCallback((
+    category: string, 
+    action: string,
+    label?: string,
+    value?: number,
+    nonInteraction: boolean = false
+  ) => {
+    // Log to console in development
+    console.log(`Analytics Event: ${category} - ${action}${label ? ` - ${label}` : ''}${value !== undefined ? ` - ${value}` : ''}${nonInteraction ? ' (Non-interaction)' : ''}`);
+    
+    // Track with React GA4
+    ReactGA.event({
+      category,
+      action,
+      label,
+      value,
+      nonInteraction
+    });
+    
+    // Also track with gtag if available
+    try {
+      if (typeof window !== 'undefined' && window.gtag) {
+        window.gtag('event', action, {
+          'event_category': category,
+          'event_label': label,
+          'value': value,
+          'non_interaction': nonInteraction
+        });
+      }
+    } catch (error) {
+      console.error('Error tracking with gtag:', error);
     }
-  }, [initialized]);
+  }, []);
 
-  // User identification (can be used after login)
-  const setUserId = useCallback((userId: string) => {
-    if (initialized) {
-      ReactGA.set({ userId });
-      console.log('User ID set:', userId);
+  // Function to set user ID
+  const setUserId = useCallback((id: string) => {
+    if (!id) return;
+    
+    // Set for React GA4
+    ReactGA.set({ userId: id });
+    
+    // Set for gtag if available
+    try {
+      if (window.gtag) {
+        window.gtag('set', { 'user_id': id });
+      }
+    } catch (error) {
+      console.error('Error setting user ID with gtag:', error);
     }
-  }, [initialized]);
+  }, []);
 
-  // Set user properties
-  const setUserProperties = useCallback((properties: Record<string, any>) => {
-    if (initialized) {
-      ReactGA.gtag('set', 'user_properties', properties);
-      console.log('User properties set:', properties);
-    }
-  }, [initialized]);
-
-  // Exception tracking
-  const trackException = useCallback((description: string, fatal: boolean = false) => {
-    if (initialized) {
-      ReactGA.exception({
-        description,
-        fatal
-      });
-      console.log('Exception tracked:', { description, fatal });
-    }
-  }, [initialized]);
-
-  return {
+  return { 
     trackEvent,
-    setUserId,
-    setUserProperties,
-    trackException
+    setUserId
   };
 };
+
+export default useAnalytics;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../Header';
@@ -8,6 +8,7 @@ import Newsletter from '../Newsletter';
 import BookingTopBar from './BookingTopBar';
 import ProgressBar from './ProgressBar';
 import { useBooking } from '../../contexts/BookingContext';
+import { useAnalytics } from '../../hooks/useAnalytics';
 
 interface BookingLayoutProps {
   children: React.ReactNode;
@@ -18,6 +19,7 @@ interface BookingLayoutProps {
   nextButtonText?: string;
   showNewsletter?: boolean;
   modalOpen?: boolean;
+  preventScrollOnNext?: boolean;
 }
 
 const BookingLayout: React.FC<BookingLayoutProps> = ({
@@ -28,12 +30,14 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
   onNext,
   nextButtonText = 'Next Step',
   showNewsletter = true,
-  modalOpen = false
+  modalOpen = false,
+  preventScrollOnNext = false
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { from, to, type, date, returnDate, passengers } = useParams();
   const { bookingState, setBookingState } = useBooking();
+  const { trackEvent } = useAnalytics();
   
   // Refs for scroll calculations
   const priceBarRef = useRef<HTMLDivElement>(null);
@@ -163,6 +167,9 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
   }, [currentStep]);
 
   const handleBack = () => {
+    // Track back button click
+    trackEvent('Booking Flow', 'Navigate Back', `From Step ${currentStep}`);
+    
     // Scroll to top first
     window.scrollTo(0, 0);
     
@@ -181,8 +188,13 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
   };
 
   const handleNext = () => {
-    // Scroll to top first
-    window.scrollTo(0, 0);
+    // Track next button click
+    trackEvent('Booking Flow', 'Navigate Next', `From Step ${currentStep}`);
+    
+    // Only scroll to top if preventScrollOnNext is false
+    if (!preventScrollOnNext) {
+      window.scrollTo(0, 0);
+    }
     
     if (onNext) {
       onNext();
@@ -282,8 +294,9 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
                 onClick={handleBack}
                 className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
                 disabled={isModalActive && isFloating === false}
+                aria-label="Go back to previous step"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
+                <ArrowLeft className="w-5 h-5 text-gray-600" aria-hidden="true" />
               </button>
 
               <div className="flex items-center space-x-6">
