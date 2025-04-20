@@ -1,7 +1,17 @@
-import React from 'react';
-import { Phone, Mail, MapPin, Facebook, Instagram, MessageCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Phone, Mail, MapPin, Facebook, Instagram, MessageCircle, Settings } from 'lucide-react';
+import CookieSettings from './CookieSettings';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const Sitemap = () => {
+  const [cookieSettingsOpen, setCookieSettingsOpen] = useState(false);
+  const { trackEvent } = useAnalytics();
+
+  const openCookieSettings = () => {
+    setCookieSettingsOpen(true);
+    trackEvent('Engagement', 'Open Cookie Settings', 'Footer');
+  };
+
   return (
     <footer className="bg-white border-t">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -93,6 +103,15 @@ const Sitemap = () => {
               <li><a href="/payment-info" className="text-gray-600 hover:text-blue-600">Payment Information</a></li>
               <li><a href="/terms" className="text-gray-600 hover:text-blue-600">Terms & Conditions</a></li>
               <li><a href="/privacy" className="text-gray-600 hover:text-blue-600">Privacy Policy</a></li>
+              <li>
+                <button 
+                  onClick={openCookieSettings} 
+                  className="text-gray-600 hover:text-blue-600 flex items-center"
+                >
+                  <Settings className="h-4 w-4 mr-1" aria-hidden="true" />
+                  Cookie Settings
+                </button>
+              </li>
             </ul>
           </div>
         </div>
@@ -128,6 +147,12 @@ const Sitemap = () => {
           <p className="text-sm text-gray-500">© 2025 Royal Transfer EU. All rights reserved.</p>
         </div>
       </div>
+
+      {/* Cookie Settings Dialog */}
+      <CookieSettings 
+        isOpen={cookieSettingsOpen}
+        onClose={() => setCookieSettingsOpen(false)}
+      />
     </footer>
   );
 };
