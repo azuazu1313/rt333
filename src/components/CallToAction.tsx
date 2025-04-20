@@ -1,12 +1,18 @@
 import React from 'react';
 import { smoothScrollTo } from '../utils/smoothScroll';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const CallToAction = () => {
+  const { trackEvent } = useAnalytics();
+  
   const scrollToBooking = () => {
     const bookingForm = document.getElementById('booking-form');
     if (bookingForm) {
       const isMobile = window.innerWidth < 768;
       const offset = 70; // Adjustable offset in pixels
+      
+      // Track CTA click
+      trackEvent('Engagement', 'CTA Click', 'Book Your Ride');
       
       // On desktop, scroll to top of the hero section
       if (!isMobile) {

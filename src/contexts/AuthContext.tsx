@@ -19,7 +19,13 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface AuthProviderProps {
+  children: React.ReactNode;
+  trackEvent: (category: string, action: string, label?: string, value?: number, nonInteraction?: boolean) => void;
+  setUserId: (id: string) => void;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children, trackEvent, setUserId }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -61,9 +67,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSession(currentSession);
           setUser(currentSession.user);
           
+          // Track signed in user
+          setUserId(currentSession.user.id);
+          
           // Fetch user data and update JWT claims if needed
           const userData = await fetchUserData(currentSession.user.id);
           if (userData?.user_role) {
+            // Set user properties in GA
+            trackEvent('Authentication', 'Auto Sign In', userData.user_role);
+            
             // Refresh session to get updated JWT claims
             const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
             if (!refreshError && newSession) {
@@ -80,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     initializeAuth();
-  }, []);
+  }, [setUserId, trackEvent]);
 
   // Listen for auth changes
   useEffect(() => {
@@ -93,16 +105,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(null);
         setUser(null);
         setUserData(null);
+        
+        // Track sign out in GA
+        trackEvent('Authentication', 'Sign Out');
+        setUserId(''); // Clear the user ID
       } else if (currentSession?.user) {
         setSession(currentSession);
         setUser(currentSession.user);
         
+        // Track event in GA
+        if (event === 'SIGNED_IN') {
+          trackEvent('Authentication', 'Sign In Success');
+          setUserId(currentSession.user.id);
+        }
+        
         if (!userData || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           const userData = await fetchUserData(currentSession.user.id);
           if (userData?.user_role) {
+            // Track user role
+            trackEvent('Authentication', 'User Role', userData.user_role);
+            
             // Refresh session to get updated JWT claims
             const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
             if (!refreshError && newSession) {
+              // Set the new session with updated claims
               setSession(newSession);
             }
           }
@@ -118,11 +144,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe();
       authStateChangeSubscribed.current = false;
     };
-  }, [userData]);
+  }, [userData, trackEvent, setUserId]);
 
   const signUp = async (email: string, password: string, name: string, phone?: string, inviteCode?: string) => {
     try {
       setLoading(true);
+      
+      // Track signup attempt
+      trackEvent('Authentication', 'Sign Up Attempt', inviteCode ? 'With Invite' : 'Standard');
       
       // Log for debugging
       console.log('Signup with invite code:', inviteCode);
@@ -139,6 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
         if (error) {
           console.error('Error validating invite code:', error);
+          trackEvent('Authentication', 'Sign Up Error', 'Invalid invite code');
           throw new Error('Invalid or expired invite code');
         }
         
@@ -148,7 +178,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .from('invite_links')
             .update({ status: 'expired' })
             .eq('id', data.id);
-            
+          
+          trackEvent('Authentication', 'Sign Up Error', 'Expired invite code');
           throw new Error('This invite link has expired');
         }
         
@@ -180,12 +211,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Supabase signup error:', error);
+        trackEvent('Authentication', 'Sign Up Error', error.message);
         throw error;
       }
       
       if (!data.user) {
+        trackEvent('Authentication', 'Sign Up Error', 'User creation failed');
         throw new Error('User creation failed');
       }
+      
+      // Track successful signup
+      trackEvent('Authentication', 'Sign Up Success', inviteData?.role || 'customer');
       
       // Update invite link status if an invite code was used
       // NOTE: Using the authenticated user's context, not signing out
@@ -246,22 +282,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
+      // Track sign in attempt
+      trackEvent('Authentication', 'Sign In Attempt');
+      
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email, 
         password 
       });
       
-      if (error) throw error;
+      if (error) {
+        trackEvent('Authentication', 'Sign In Error', error.message);
+        throw error;
+      }
 
+      // Track successful sign in
+      trackEvent('Authentication', 'Sign In Success');
+      
       // Immediately update local state
       if (data.session) {
         setSession(data.session);
         setUser(data.session.user);
         
+        // Set user ID in GA
+        setUserId(data.session.user.id);
+        
         // Fetch user data
         const userData = await fetchUserData(data.session.user.id);
         
         if (userData?.user_role) {
+          // Track user role
+          trackEvent('Authentication', 'User Role', userData.user_role);
+          
           // Refresh session to get updated JWT claims
           const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
           if (!refreshError && newSession) {
@@ -284,10 +335,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
+      // Track sign out in GA
+      trackEvent('Authentication', 'Sign Out Initiated');
+      
       // Clear all auth state before making the signOut request
       setSession(null);
       setUser(null);
       setUserData(null);
+      
+      // Clear user ID in GA
+      setUserId('');
 
       // Now attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut();
@@ -307,6 +364,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+      // Track profile update attempt
+      trackEvent('User', 'Profile Update Attempt');
+      
       const { data, error } = await supabase
         .from('users')
         .update(updates)
@@ -316,6 +376,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
+      // Track successful profile update
+      trackEvent('User', 'Profile Update Success');
+      
       setUserData(data);
       
       // Refresh session to update JWT claims if user_role was updated
@@ -329,6 +392,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: null, data };
     } catch (error) {
       console.error('Error updating user data:', error);
+      // Track profile update error
+      trackEvent('User', 'Profile Update Error', (error as Error).message);
       return { error: error as Error, data: null };
     }
   };

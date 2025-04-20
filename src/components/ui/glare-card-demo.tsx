@@ -7,7 +7,7 @@ export function GlareCardDemo() {
         <img
           className="absolute inset-0 w-full h-full object-cover"
           src="https://i.imgur.com/BUpN7Wn.jpeg"
-          alt="Experience Royal Transfer EU"
+          alt="Trusted Service - Luxury sedan driving on a scenic road, showcasing Royal Transfer EU's reliable transportation service"
         />
         <div className="relative z-10">
         <h2 className="font-bold text-white text-2xl text-left [text-shadow:_0_2px_2px_rgb(0_0_0_/_80%)]">Trusted Service</h2>
@@ -20,7 +20,7 @@ export function GlareCardDemo() {
         <img
           className="absolute inset-0 w-full h-full object-cover"
           src="https://i.imgur.com/DKdfE4r.jpeg"
-          alt="Experience Royal Transfer EU"
+          alt="Professional Drivers - Well-dressed chauffeur standing next to a premium vehicle, representing Royal Transfer EU's experienced and courteous drivers"
         />
         <div className="relative z-10">
           <h2 className="font-bold text-white text-2xl text-left [text-shadow:_0_2px_2px_rgb(0_0_0_/_80%)]">Professional Drivers</h2>
@@ -33,7 +33,7 @@ export function GlareCardDemo() {
         <img
           className="absolute inset-0 w-full h-full object-cover"
           src="https://i.imgur.com/0jlOuEe.jpeg"
-          alt="Experience Royal Transfer EU"
+          alt="Premium Experience - Interior of a luxury vehicle with elegant leather seats, showcasing Royal Transfer EU's commitment to comfort and high-quality transportation"
         />
         <div className="relative z-10">
         <h2 className="font-bold text-white text-2xl text-left [text-shadow:_0_1px_1px_rgb(0_0_0_/_80%)]">Premium Experience</h2>

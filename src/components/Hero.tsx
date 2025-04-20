@@ -54,7 +54,7 @@ const Hero = () => {
           {/* Fallback Image */}
           <img
             src="https://i.imgur.com/4U5ngny.jpeg"
-            alt="Royal Transfer EU Hero"
+            alt="Luxury sedan transfer service by Royal Transfer EU - professional driver waiting by an elegant black car on a scenic European road"
             className="w-full h-full object-cover"
             fetchpriority="high"
             loading="eager"

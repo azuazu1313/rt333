@@ -132,7 +132,7 @@ const FeaturedDestinations = () => {
                   <source srcSet={destination.images.webp} type="image/webp" />
                   <img
                     src={destination.images.fallback}
-                    alt={`Scenic view of ${destination.city}, ${destination.country}`}
+                    alt={`Scenic view of ${destination.city}, ${destination.country} - a popular destination for Royal Transfer EU services`}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     loading="lazy"
                   />
@@ -147,11 +147,11 @@ const FeaturedDestinations = () => {
                 <h4 className="text-xl font-semibold mb-2">{destination.city}</h4>
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center">
-                    <span className="mr-2 text-lg">{destination.flag}</span>
+                    <span className="mr-2 text-lg" aria-hidden="true">{destination.flag}</span>
                     <span className="text-gray-600">{destination.country}</span>
                   </div>
                   <div className="flex items-center">
-                    <div className="flex items-center">
+                    <div className="flex items-center" aria-label={`Rating: ${destination.rating} out of 5 stars`}>
                       {renderStars(destination.rating)}
                     </div>
                     <span className="ml-2 text-gray-600">

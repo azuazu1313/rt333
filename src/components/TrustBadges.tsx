@@ -27,7 +27,7 @@ const TrustBadges = () => {
               <div className="h-12 md:h-16 mb-2 relative">
                 <img 
                   src="https://logos-world.net/wp-content/uploads/2020/11/Tripadvisor-Logo.png" 
-                  alt="Tripadvisor Logo" 
+                  alt="Tripadvisor Rating and Reviews Logo - Royal Transfer EU is highly rated on Tripadvisor"
                   className="h-full w-auto object-contain"
                   style={{ aspectRatio: '700/394' }}
                 />
@@ -58,7 +58,7 @@ const TrustBadges = () => {
                 <div className="flex justify-center">
                   <img 
                     src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" 
-                    alt="Visa" 
+                    alt="Visa payment logo - Royal Transfer EU accepts Visa cards"
                     className="h-6 md:h-8"
                     style={{ aspectRatio: '3/1' }}
                   />
@@ -66,7 +66,7 @@ const TrustBadges = () => {
                 <div className="flex justify-center">
                   <img 
                     src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" 
-                    alt="MasterCard" 
+                    alt="MasterCard payment logo - Royal Transfer EU accepts MasterCard"
                     className="h-6 md:h-8"
                     style={{ aspectRatio: '1.6/1' }}
                   />
@@ -74,7 +74,7 @@ const TrustBadges = () => {
                 <div className="flex justify-center">
                   <img 
                     src="https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg" 
-                    alt="Google Pay" 
+                    alt="Google Pay logo - Royal Transfer EU accepts Google Pay"
                     className="h-6 md:h-8"
                     style={{ aspectRatio: '2.5/1' }}
                   />
@@ -82,7 +82,7 @@ const TrustBadges = () => {
                 <div className="flex justify-center">
                   <img 
                     src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Apple_Pay_logo.svg" 
-                    alt="Apple Pay" 
+                    alt="Apple Pay logo - Royal Transfer EU accepts Apple Pay"
                     className="h-6 md:h-8"
                     style={{ aspectRatio: '2.7/1' }}
                   />
@@ -90,14 +90,14 @@ const TrustBadges = () => {
                 <div className="flex justify-center">
                   <img 
                     src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" 
-                    alt="American Express" 
+                    alt="American Express payment logo - Royal Transfer EU accepts American Express cards"
                     className="h-8 md:h-12"
                   />
                 </div>
                 <div className="flex justify-center">
                   <img
                     src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg"
-                    alt="Stripe Payments"
+                    alt="Stripe secure payment processing logo - Royal Transfer EU uses Stripe for secure payments"
                     className="h-6 md:h-10"
                     style={{ aspectRatio: '2.5/1' }}
                   />

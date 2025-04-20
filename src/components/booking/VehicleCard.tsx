@@ -53,7 +53,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
       <div className="relative aspect-[16/9] mb-4">
         <img
           src={image}
-          alt={name}
+          alt={`${name} - ${seats}-passenger vehicle for Royal Transfer EU services with space for ${suitcases} suitcases`}
           className="w-full h-full object-contain"
         />
       </div>
@@ -65,6 +65,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
           <button
             onClick={onLearnMore}
             className="flex items-center text-gray-500 hover:text-black transition-colors p-2 hover:bg-gray-100 rounded-lg group"
+            aria-label={`Learn more about ${name}`}
           >
             <span className="mr-2 text-[10px] md:text-sm group-hover:text-black">Learn more</span>
             <Info className="w-5 h-5" />
@@ -73,7 +74,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
 
         {/* Rating */}
         <div className="flex items-center space-x-2">
-          <div className="flex">
+          <div className="flex" aria-label={`Rating: ${rating} out of 5 stars from ${reviews} reviews`}>
             {[...Array(5)].map((_, i) => (
               <Star
                 key={i}
@@ -116,6 +117,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
                 ? 'bg-gray-100 text-gray-600'
                 : 'bg-black text-white hover:bg-gray-800'
             }`}
+            aria-pressed={isSelected}
           >
             {isSelected ? 'Selected' : 'Choose'}
           </motion.button>

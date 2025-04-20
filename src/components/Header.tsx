@@ -130,7 +130,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
               <source srcSet="https://i.imghippo.com/files/cDgm3025PmI.webp" type="image/webp" />
               <img
                 src="https://i.imgur.com/991MInn.png"
-                alt="Royal Transfer EU Logo PNG"
+                alt="Royal Transfer EU Logo - Professional airport transfers and taxi services across Europe"
                 className="h-full w-auto object-contain"
               />
             </picture>
@@ -207,6 +207,8 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                     id="user-menu-button"
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                    aria-label="Open user menu"
+                    aria-expanded={showUserMenu ? "true" : "false"}
                   >
                     <User className="h-5 w-5" />
                   </button>
@@ -215,6 +217,9 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                     <div 
                       id="user-menu"
                       className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200"
+                      role="menu"
+                      aria-orientation="vertical"
+                      aria-labelledby="user-menu-button"
                     >
                       <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b">
                         {userData?.name || 'User'}
@@ -229,6 +234,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                           href="#" 
                           onClick={handleAdminPortalClick}
                           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
                         >
                           <Crown className="w-4 h-4 mr-2" />
                           Admin Portal
@@ -238,6 +244,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                         to="/profile" 
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={() => setShowUserMenu(false)}
+                        role="menuitem"
                       >
                         Your Profile
                       </Link>
@@ -245,12 +252,14 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                         to="/bookings" 
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={() => setShowUserMenu(false)}
+                        role="menuitem"
                       >
                         Your Bookings
                       </Link>
                       <button
                         onClick={handleLogout}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
                       >
                         Sign out
                       </button>
@@ -301,6 +310,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                 exit={{ opacity: 0 }}
                 className="absolute top-3 right-3 w-12 h-12 flex items-center justify-center"
                 onClick={() => setIsMenuOpen(false)}
+                aria-label="Close menu"
               >
                 <div className="w-6 h-6 relative">
                   <span className="absolute top-1/2 left-0 w-6 h-0.5 bg-gray-600 -translate-y-1/2 rotate-45"></span>
@@ -312,7 +322,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                 <div className="flex justify-center items-center p-4 border-b">
                   <img
                     src="https://i.imghippo.com/files/cDgm3025PmI.webp"
-                    alt="Royal Transfer EU Logo"
+                    alt="Royal Transfer EU Logo - Professional taxi and transfer services"
                     className="h-[62px] w-auto object-contain"
                   />
                 </div>
@@ -423,6 +433,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
         className="md:hidden fixed top-[22px] left-4 z-50 w-12 h-12 flex items-center justify-center"
         onClick={() => setIsMenuOpen(!isMenuOpen)}
         aria-label="Toggle menu"
+        aria-expanded={isMenuOpen ? "true" : "false"}
       >
         <div className="w-6 h-4 relative flex flex-col justify-between">
           <span 

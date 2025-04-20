@@ -4,6 +4,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { DatePicker } from './ui/date-picker';
 import { DateRangePicker } from './ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const formatDateForUrl = (date: Date) => {
   const year = date.getFullYear().toString().slice(-2);
@@ -41,6 +42,7 @@ const SearchForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
+  const { trackEvent } = useAnalytics();
 
   // Store original values for comparison and restoration
   const originalValuesRef = useRef({
@@ -111,11 +113,18 @@ const SearchForm = () => {
   };
 
   const handlePassengerChange = (increment: boolean) => {
-    setPassengers(prev => Math.max(1, Math.min(100, increment ? prev + 1 : prev - 1)));
+    const newValue = Math.max(1, Math.min(100, increment ? passengers + 1 : passengers - 1));
+    setPassengers(newValue);
+    
+    // Track passenger count changes
+    trackEvent('Search Form', 'Change Passenger Count', increment ? 'Increment' : 'Decrement', newValue);
   };
 
   const handleTripTypeChange = (oneWay: boolean) => {
     const newIsReturn = !oneWay;
+    
+    // Track trip type change
+    trackEvent('Search Form', 'Change Trip Type', newIsReturn ? 'Round Trip' : 'One Way');
     
     // If we're toggling back to the original trip type without saving changes,
     // restore the original values
@@ -181,6 +190,9 @@ const SearchForm = () => {
       : '0';
     
     const path = `/transfer/${encodedPickup}/${encodedDropoff}/${type}/${formattedDepartureDate}/${returnDateParam}/${passengers}/form`;
+    
+    // Track search form submission
+    trackEvent('Search Form', 'Form Submit', `${pickup} to ${dropoff}`, passengers);
     
     // Update original values to match the new state
     originalValuesRef.current = {
@@ -249,21 +261,32 @@ const SearchForm = () => {
           {isReturn ? (
             <DateRangePicker
               dateRange={formData.dateRange}
-              onDateRangeChange={(dateRange) => setFormData(prev => ({
-                ...prev,
-                dateRange,
-                departureDate: undefined
-              }))}
+              onDateRangeChange={(dateRange) => {
+                setFormData(prev => ({
+                  ...prev,
+                  dateRange,
+                  departureDate: undefined
+                }));
+                if (dateRange?.from && dateRange?.to) {
+                  trackEvent('Search Form', 'Select Date Range', 
+                    `${dateRange.from.toISOString()} to ${dateRange.to.toISOString()}`);
+                }
+              }}
               placeholder="Select departure & return dates"
             />
           ) : (
             <DatePicker
               date={formData.departureDate}
-              onDateChange={(date) => setFormData(prev => ({
-                ...prev,
-                departureDate: date,
-                dateRange: undefined
-              }))}
+              onDateChange={(date) => {
+                setFormData(prev => ({
+                  ...prev,
+                  departureDate: date,
+                  dateRange: undefined
+                }));
+                if (date) {
+                  trackEvent('Search Form', 'Select Date', date.toISOString());
+                }
+              }}
               placeholder="Select departure date"
             />
           )}
@@ -280,6 +303,7 @@ const SearchForm = () => {
                     passengers > 1 ? 'text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-gray-300'
                   }`}
                   disabled={passengers <= 1}
+                  aria-label="Decrease number of passengers"
                 >
                   <Minus className="h-4 w-4" />
                 </button>
@@ -289,6 +313,7 @@ const SearchForm = () => {
                     passengers < 100 ? 'text-blue-600 hover:bg-blue-50 active:bg-blue-100' : 'text-gray-300'
                   }`}
                   disabled={passengers >= 100}
+                  aria-label="Increase number of passengers"
                 >
                   <Plus className="h-4 w-4" />
                 </button>

@@ -88,7 +88,7 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
                     src={vehicle.image}
-                    alt={vehicle.name}
+                    alt={`${vehicle.name} - Detailed view of the premium transfer vehicle showing interior and exterior features`}
                     className="w-full h-auto rounded-lg"
                   />
                 </div>
@@ -125,7 +125,7 @@ const VehicleModal: React.FC<VehicleModalProps> = ({
                     >
                       <img
                         src={feature.icon}
-                        alt={feature.title}
+                        alt={`${feature.title} icon - ${feature.description}`}
                         className="w-8 h-8 mb-2"
                       />
                       <h4 className="font-medium mb-1">{feature.title}</h4>

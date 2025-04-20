@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             'react-vendor': ['react', 'react-dom'],
             'ui-vendor': ['lucide-react', 'framer-motion'],
+            'analytics-vendor': ['react-ga4'],
           },
         },
       },
@@ -24,6 +25,7 @@ export default defineConfig(({ mode }) => {
       'process.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL),
       'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY),
       'process.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(env.VITE_GOOGLE_MAPS_API_KEY),
+      'process.env.VITE_GA_MEASUREMENT_ID': JSON.stringify(env.VITE_GA_MEASUREMENT_ID),
     }
   };
 });

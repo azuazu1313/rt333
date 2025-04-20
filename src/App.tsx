@@ -20,19 +20,24 @@ import NotFound from './pages/NotFound';
 import { BookingProvider } from './contexts/BookingContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
+import { useAnalytics } from './hooks/useAnalytics';
 
 // Route observer component to handle page-specific classes
 const RouteObserver = () => {
   const location = useLocation();
+  const { trackEvent } = useAnalytics(); // Use the analytics hook
 
   useEffect(() => {
     const isBookingPage = location.pathname.startsWith('/transfer/');
     document.documentElement.classList.toggle('booking-page', isBookingPage);
     
+    // Track page transitions as events
+    trackEvent('Navigation', 'Page Transition', location.pathname);
+    
     return () => {
       document.documentElement.classList.remove('booking-page');
     };
-  }, [location]);
+  }, [location, trackEvent]);
 
   return null;
 };
@@ -40,6 +45,13 @@ const RouteObserver = () => {
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
+  const { trackEvent } = useAnalytics();
+  
+  useEffect(() => {
+    if (!loading && !user) {
+      trackEvent('Authentication', 'Access Denied', 'Protected Route', 0, true);
+    }
+  }, [user, loading, trackEvent]);
   
   if (loading) {
     return (
@@ -101,15 +113,24 @@ function AppRoutes() {
   );
 }
 
-function App() {
+// Wrapper component to provide analytics within Router context
+const AppWithAuth = () => {
+  const analytics = useAnalytics();
+  
   return (
-    <AuthProvider>
+    <AuthProvider trackEvent={analytics.trackEvent} setUserId={analytics.setUserId}>
       <BookingProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <AppRoutes />
       </BookingProvider>
     </AuthProvider>
+  );
+};
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppWithAuth />
+    </BrowserRouter>
   );
 }
 

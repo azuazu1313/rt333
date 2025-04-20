@@ -46,15 +46,15 @@ const Sitemap = () => {
             <h3 className="text-lg font-semibold mb-4 text-center">Contact Information</h3>
             <ul className="space-y-4 max-w-[250px] mx-auto md:max-w-none">
               <li className="flex items-start md:justify-center">
-                <MapPin className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
+                <MapPin className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" aria-hidden="true" />
                 <span className="text-gray-600 text-left">123 Transfer Street, EU 12345</span>
               </li>
               <li className="flex items-center md:justify-center">
-                <Phone className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0" />
+                <Phone className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0" aria-hidden="true" />
                 <span className="text-gray-600 text-left">24/7: +39 351 748 22 44</span>
               </li>
               <li className="flex items-center md:justify-center">
-                <Mail className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0" />
+                <Mail className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0" aria-hidden="true" />
                 <span className="text-gray-600 text-left">contact@royaltransfer.eu</span>
               </li>
             </ul>
@@ -64,23 +64,23 @@ const Sitemap = () => {
               <a 
                 href="#" 
                 className="p-3 bg-black rounded-full hover:bg-blue-600 transition-colors duration-300"
-                aria-label="Facebook"
+                aria-label="Facebook - Connect with Royal Transfer EU"
               >
-                <Facebook className="w-5 h-5 text-white" />
+                <Facebook className="w-5 h-5 text-white" aria-hidden="true" />
               </a>
               <a 
                 href="https://www.instagram.com/royaltransfer1991/" 
                 className="p-3 bg-black rounded-full hover:bg-blue-600 transition-colors duration-300"
-                aria-label="Instagram"
+                aria-label="Instagram - Follow Royal Transfer EU"
               >
-                <Instagram className="w-5 h-5 text-white" />
+                <Instagram className="w-5 h-5 text-white" aria-hidden="true" />
               </a>
               <a 
                 href="https://wa.me/3517482244" 
                 className="p-3 bg-black rounded-full hover:bg-blue-600 transition-colors duration-300"
-                aria-label="WhatsApp"
+                aria-label="WhatsApp - Message Royal Transfer EU"
               >
-                <MessageCircle className="w-5 h-5 text-white" />
+                <MessageCircle className="w-5 h-5 text-white" aria-hidden="true" />
               </a>
             </div>
           </div>
@@ -104,23 +104,23 @@ const Sitemap = () => {
             <a 
               href="#" 
               className="p-3 bg-black rounded-full hover:bg-blue-600 transition-colors duration-300"
-              aria-label="Facebook"
+              aria-label="Facebook - Connect with Royal Transfer EU"
             >
-              <Facebook className="w-5 h-5 text-white" />
+              <Facebook className="w-5 h-5 text-white" aria-hidden="true" />
             </a>
             <a 
               href="https://www.instagram.com/royaltransfer1991/" 
               className="p-3 bg-black rounded-full hover:bg-blue-600 transition-colors duration-300"
-              aria-label="Instagram"
+              aria-label="Instagram - Follow Royal Transfer EU"
             >
-              <Instagram className="w-5 h-5 text-white" />
+              <Instagram className="w-5 h-5 text-white" aria-hidden="true" />
             </a>
             <a 
               href="https://wa.me/3517482244" 
               className="p-3 bg-black rounded-full hover:bg-blue-600 transition-colors duration-300"
-              aria-label="WhatsApp"
+              aria-label="WhatsApp - Message Royal Transfer EU"
             >
-              <MessageCircle className="w-5 h-5 text-white" />
+              <MessageCircle className="w-5 h-5 text-white" aria-hidden="true" />
             </a>
           </div>
 

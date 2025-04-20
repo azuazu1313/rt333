@@ -6,6 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Royal Transfer EU</title>
 
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=%VITE_GA_MEASUREMENT_ID%"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '%VITE_GA_MEASUREMENT_ID%', { send_page_view: false });
+    </script>
+
     <!-- Resource Hints -->
     <link rel="preconnect" href="https://general-runtime.voiceflow.com" crossorigin>
     <link rel="preconnect" href="https://i.imgur.com" crossorigin>
@@ -14,6 +23,7 @@
     <link rel="preconnect" href="https://logos-world.net" crossorigin>
     <link rel="preconnect" href="https://cdn.voiceflow.com" crossorigin>
     <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
     
     <!-- DNS Prefetch -->
     <link rel="dns-prefetch" href="https://general-runtime.voiceflow.com">
@@ -23,6 +33,7 @@
     <link rel="dns-prefetch" href="https://logos-world.net">
     <link rel="dns-prefetch" href="https://cdn.voiceflow.com">
     <link rel="dns-prefetch" href="https://maps.googleapis.com">
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com">
 
     <!-- Preload Critical Images -->
     <link rel="preload" as="image" href="https://i.imghippo.com/files/cDgm3025PmI.webp" type="image/webp">
@@ -47,6 +58,7 @@
     <meta property="og:image" content="https://i.imgur.com/h301azv.jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Royal Transfer EU - Luxury transfer service with professional drivers and premium vehicles" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
@@ -54,6 +66,7 @@
     <meta property="twitter:title" content="Royal Transfer EU" />
     <meta property="twitter:description" content="Professional airport transfers and taxi services across Italy. Safe, reliable, and comfortable travel with 15+ years of experience." />
     <meta property="twitter:image" content="https://i.imgur.com/h301azv.jpeg" />
+    <meta property="twitter:image:alt" content="Royal Transfer EU - Luxury airport transfers and taxi services with experienced drivers" />
 
     <!-- WhatsApp -->
     <meta property="og:site_name" content="Royal Transfer EU" />
