@@ -6,6 +6,7 @@ import NotFound from './pages/NotFound';
 import { BookingProvider } from './contexts/BookingContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
+import InstallPWA from './components/InstallPWA';
 
 // Route observer component to handle page-specific classes
 const RouteObserver = () => {
@@ -106,6 +107,7 @@ function App() {
       <BookingProvider>
         <BrowserRouter>
           <AppRoutes />
+          <InstallPWA />
         </BrowserRouter>
       </BookingProvider>
     </AuthProvider>

@@ -7,15 +7,24 @@
 
     <title>RT EU Portal</title>
 
-    <!-- You can preload dashboard-specific assets here if needed -->
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Royal Transfer EU internal dashboard for staff and drivers" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RT Admin" />
     
-    <!-- Light Meta Tags (no SEO needed, this isn’t for Google indexing) -->
+    <!-- PWA Icons and Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    
+    <!-- Other Meta Tags -->
     <meta name="robots" content="noindex, nofollow" />
-    <meta name="description" content="Royal Transfer internal dashboard for staff and drivers" />
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <noscript>You need to enable JavaScript to run this application.</noscript>
   </body>
 </html>
