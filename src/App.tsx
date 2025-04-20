@@ -8,6 +8,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useAuth } from './contexts/AuthContext';
 import InstallPWA from './components/InstallPWA';
+import DynamicPWAManifest from './components/DynamicPWAManifest';
 
 // Route observer component to handle page-specific classes
 const RouteObserver = () => {
@@ -75,9 +76,12 @@ const IndexRedirect = () => {
 };
 
 function AppRoutes() {
+  const { userData } = useAuth();
+  
   return (
     <>
       <RouteObserver />
+      {userData && <DynamicPWAManifest />}
       <Routes>
         <Route path="/" element={<IndexRedirect />} />
         <Route 

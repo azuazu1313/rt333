@@ -37,3 +37,43 @@ export function registerSW() {
     console.log('Service Worker is not supported in this browser');
   }
 }
+
+// Add a function to dynamically generate the proper manifest URLs for the cache
+export function getCacheableIconsByRole(role: string | null): string[] {
+  // Default - cache both icon sets
+  const baseIcons = [
+    '/manifest.json',
+    '/manifest-admin.json',
+    '/manifest-partner.json'
+  ];
+  
+  // Add role-specific icons
+  if (role === 'partner') {
+    return [
+      ...baseIcons,
+      '/icons/partner/72x72.png',
+      '/icons/partner/96x96.png',
+      '/icons/partner/128x128.png',
+      '/icons/partner/144x144.png',
+      '/icons/partner/152x152.png',
+      '/icons/partner/192x192.png',
+      '/icons/partner/384x384.png',
+      '/icons/partner/512x512.png',
+      '/icons/partner/maskable-icon-512x512.png'
+    ];
+  } else {
+    // Admin, support, or unknown role
+    return [
+      ...baseIcons,
+      '/icons/admin/72x72.png',
+      '/icons/admin/96x96.png',
+      '/icons/admin/128x128.png',
+      '/icons/admin/144x144.png',
+      '/icons/admin/152x152.png',
+      '/icons/admin/192x192.png',
+      '/icons/admin/384x384.png',
+      '/icons/admin/512x512.png',
+      '/icons/admin/maskable-icon-512x512.png'
+    ];
+  }
+}

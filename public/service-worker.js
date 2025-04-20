@@ -5,8 +5,8 @@ const urlsToCache = [
   '/index.html',
   '/manifest.json',
   '/robots.txt',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
+  '/icons/admin/192x192.png',
+  '/icons/admin/512x512.png',
 ];
 
 // Install event - cache static assets

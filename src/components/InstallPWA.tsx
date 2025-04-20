@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { getAppName } from '../lib/iconUtils';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -10,6 +12,9 @@ const InstallPWA: React.FC = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const { userData } = useAuth();
+  
+  const appName = getAppName(userData);
 
   useEffect(() => {
     // Check if the app is already installed
@@ -32,13 +37,13 @@ const InstallPWA: React.FC = () => {
       setIsInstalled(true);
       setIsInstallable(false);
       setInstallPrompt(null);
-      console.log('PWA was installed');
+      console.log(`${appName} was installed`);
     });
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
-  }, []);
+  }, [appName]);
 
   const handleInstallClick = async () => {
     if (!installPrompt) {
