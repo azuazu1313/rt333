@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Loader2 } from 'lucide-react';
+import { User, Loader2, RefreshCw } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,6 +10,7 @@ interface HeaderProps {
 
 const Header = ({ hideSignIn = false }: HeaderProps) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, userData, loading, signOut } = useAuth();
@@ -24,6 +25,12 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
       setShowUserMenu(false);
       navigate('/login');
     }
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    // Refresh the current page
+    window.location.reload();
   };
 
   useEffect(() => {
@@ -66,6 +73,18 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* Refresh Button */}
+            {user && (
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                title="Refresh"
+              >
+                <RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            )}
+
             {!hideSignIn && (
               loading ? (
                 <div className="w-10 h-10 flex items-center justify-center">
