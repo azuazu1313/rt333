@@ -23,6 +23,22 @@ export function DateRangePicker({
   placeholder = "Pick a date range" 
 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false)
+  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>(dateRange)
+
+  const handleRangeSelect = (range: DateRange | undefined) => {
+    setSelectedRange(range)
+  }
+
+  const handleOkClick = () => {
+    onDateRangeChange(selectedRange)
+    setOpen(false)
+  }
+
+  const handleClearClick = () => {
+    setSelectedRange(undefined)
+    onDateRangeChange(undefined)
+    setOpen(false)
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -30,7 +46,7 @@ export function DateRangePicker({
         <Button
           variant={"outline"}
           className={cn(
-            "w-full justify-between bg-white hover:bg-white focus:ring-2 focus:ring-blue-600 h-[42px]",
+            "w-full justify-between bg-white hover:bg-white focus:ring-2 focus:ring-black h-[42px]",
             !dateRange?.from && "text-gray-500",
             className
           )}
@@ -54,11 +70,35 @@ export function DateRangePicker({
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="range"
-          selected={dateRange}
-          onSelect={onDateRangeChange}
+          selected={selectedRange}
+          onSelect={handleRangeSelect}
           initialFocus
-          defaultMonth={dateRange?.from}
+          defaultMonth={selectedRange?.from}
+          classNames={{
+            day_selected: "bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
+            day_today: "text-black font-semibold",
+            day_range_start: "day-range-start bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
+            day_range_end: "day-range-end bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
+            day_range_middle: "aria-selected:bg-gray-100 aria-selected:text-gray-900"
+          }}
         />
+        <div className="flex justify-between p-3 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearClick}
+            className="text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900"
+          >
+            Clear
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleOkClick}
+            className="bg-black text-white hover:bg-gray-800"
+          >
+            Confirm
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   )

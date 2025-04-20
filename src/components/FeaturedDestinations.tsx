@@ -19,7 +19,7 @@ const destinations: Destination[] = [
     city: 'Rome',
     country: 'Italy',
     images: {
-      webp: 'https://i.imghippo.com/files/LSM4166MeU.webp',
+      webp: 'https://i.imghippo.com/files/CFL9494KWE.webp',
       fallback: 'https://i.imghippo.com/files/lTA7682kU.jpg'
     },
     rating: 4.9,
@@ -30,7 +30,7 @@ const destinations: Destination[] = [
     city: 'Paris',
     country: 'France',
     images: {
-      webp: 'https://i.imghippo.com/files/cMh1488SI.webp',
+      webp: 'https://i.imghippo.com/files/sLs3440odc.webp',
       fallback: 'https://i.imghippo.com/files/IdwC2475VOg.jpg'
     },
     rating: 4.8,
@@ -41,7 +41,7 @@ const destinations: Destination[] = [
     city: 'Barcelona',
     country: 'Spain',
     images: {
-      webp: 'https://i.imghippo.com/files/pAwd1108IE.webp',
+      webp: 'https://i.imghippo.com/files/iqAp5725KnQ.webp',
       fallback: 'https://i.imghippo.com/files/IZqo3474CDQ.jpg'
     },
     rating: 4.9,
@@ -52,7 +52,7 @@ const destinations: Destination[] = [
     city: 'Milan',
     country: 'Italy',
     images: {
-      webp: 'https://i.imghippo.com/files/ZQ1034aY.webp',
+      webp: 'https://i.imghippo.com/files/ZqBO3169ko.webp',
       fallback: 'https://i.imghippo.com/files/rLX6532WHE.jpeg'
     },
     rating: 4.7,
@@ -134,6 +134,7 @@ const FeaturedDestinations = () => {
                     src={destination.images.fallback}
                     alt={`Scenic view of ${destination.city}, ${destination.country}`}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
                   />
                 </picture>
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">

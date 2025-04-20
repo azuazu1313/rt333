@@ -21,7 +21,7 @@ const destinationPosts: DestinationPost[] = [
     title: 'Exploring Rome: The Eternal City',
     summary: 'Discover the magic of Rome with our comprehensive guide to the city\'s most iconic landmarks and hidden gems.',
     images: {
-      webp: 'https://i.imghippo.com/files/LSM4166MeU.webp',
+      webp: 'https://i.imghippo.com/files/CFL9494KWE.webp',
       fallback: 'https://i.imghippo.com/files/lTA7682kU.jpg'
     },
     location: 'Rome, Italy'
@@ -31,7 +31,7 @@ const destinationPosts: DestinationPost[] = [
     title: 'Paris: City of Light and Love',
     summary: 'Experience the romance and charm of Paris through its architecture, cuisine, and cultural attractions.',
     images: {
-      webp: 'https://i.imghippo.com/files/cMh1488SI.webp',
+      webp: 'https://i.imghippo.com/files/sLs3440odc.webp',
       fallback: 'https://i.imghippo.com/files/IdwC2475VOg.jpg'
     },
     location: 'Paris, France'
@@ -41,7 +41,7 @@ const destinationPosts: DestinationPost[] = [
     title: 'Barcelona: Mediterranean Jewel',
     summary: 'From Gaudi\'s masterpieces to vibrant street life, explore the best of Barcelona.',
     images: {
-      webp: 'https://i.imghippo.com/files/pAwd1108IE.webp',
+      webp: 'https://i.imghippo.com/files/iqAp5725KnQ.webp',
       fallback: 'https://i.imghippo.com/files/IZqo3474CDQ.jpg'
     },
     location: 'Barcelona, Spain'
@@ -51,7 +51,7 @@ const destinationPosts: DestinationPost[] = [
     title: 'Milan: Fashion & Culture Capital',
     summary: 'Dive into the sophisticated world of Milan, where fashion meets historical grandeur.',
     images: {
-      webp: 'https://i.imghippo.com/files/ZQ1034aY.webp',
+      webp: 'https://i.imghippo.com/files/ZqBO3169ko.webp',
       fallback: 'https://i.imghippo.com/files/rLX6532WHE.jpeg'
     },
     location: 'Milan, Italy'
@@ -110,6 +110,7 @@ const BlogsDestinations = () => {
                       src={post.images.fallback}
                       alt={post.title}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
                     />
                   </picture>
                 </div>
