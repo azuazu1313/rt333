@@ -3,18 +3,26 @@ import SearchForm from './SearchForm';
 import { motion } from 'framer-motion';
 
 const Hero = () => {
-  // Preload images
+  // Preload critical images
   useEffect(() => {
+    // This is more of a backup since we're already using link preload in the HTML
     const imagesToPreload = [
       'https://i.imghippo.com/files/GSIu4447oeQ.webp',
-      'https://i.imghippo.com/files/MJSV1132ko.webp',
-      'https://i.imgur.com/pfnf4hc.jpeg',
-      'https://i.imgur.com/4U5ngny.jpeg'
+      'https://i.imghippo.com/files/MJSV1132ko.webp'
     ];
 
     imagesToPreload.forEach(src => {
-      const img = new Image();
-      img.src = src;
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = src;
+      link.type = 'image/webp';
+      document.head.appendChild(link);
+      
+      // Clean up when component unmounts
+      return () => {
+        document.head.removeChild(link);
+      };
     });
   }, []);
 
@@ -28,13 +36,13 @@ const Hero = () => {
             media="(max-width: 767px)"
             srcSet="https://i.imghippo.com/files/GSIu4447oeQ.webp"
             type="image/webp"
-            fetchpriority="high"
+            fetchPriority="high"
           />
           <source
             media="(max-width: 767px)"
             srcSet="https://i.imgur.com/pfnf4hc.jpeg"
             type="image/jpeg"
-            fetchpriority="high"
+            fetchPriority="high"
           />
           
           {/* Desktop Image */}
@@ -42,13 +50,13 @@ const Hero = () => {
             media="(min-width: 768px)"
             srcSet="https://i.imghippo.com/files/MJSV1132ko.webp"
             type="image/webp"
-            fetchpriority="high"
+            fetchPriority="high"
           />
           <source
             media="(min-width: 768px)"
             srcSet="https://i.imgur.com/4U5ngny.jpeg"
             type="image/jpeg"
-            fetchpriority="high"
+            fetchPriority="high"
           />
           
           {/* Fallback Image */}
@@ -56,8 +64,10 @@ const Hero = () => {
             src="https://i.imgur.com/4U5ngny.jpeg"
             alt="Luxury sedan transfer service by Royal Transfer EU - professional driver waiting by an elegant black car on a scenic European road"
             className="w-full h-full object-cover"
-            fetchpriority="high"
+            fetchPriority="high"
             loading="eager"
+            width="1920"
+            height="1080"
           />
         </picture>
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
