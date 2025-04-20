@@ -26,6 +26,7 @@ const CustomerSignup = () => {
   const [inviteLoading, setInviteLoading] = useState(!!inviteCode);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [formTouched, setFormTouched] = useState(false);
 
   // Define validation rules
   const validationRules = {
@@ -59,7 +60,8 @@ const CustomerSignup = () => {
     errors,
     isValid,
     validateAllFields,
-    handleBlur
+    handleBlur,
+    touchedFields
   } = useFormValidation(formData, validationRules);
 
   // Redirect if already authenticated
@@ -75,6 +77,13 @@ const CustomerSignup = () => {
       checkInviteValidity(inviteCode);
     }
   }, [inviteCode]);
+
+  // Set formTouched to true when any field is touched
+  useEffect(() => {
+    if (touchedFields.length > 0 && !formTouched) {
+      setFormTouched(true);
+    }
+  }, [touchedFields, formTouched]);
 
   const checkInviteValidity = async (code: string) => {
     setInviteLoading(true);
@@ -182,6 +191,12 @@ const CustomerSignup = () => {
     setShowConfirmPassword(prev => !prev);
   };
 
+  // Helper function to determine if the button should be disabled
+  const isButtonDisabled = () => {
+    // Only disable if the form has been touched and is invalid, or if submission is in progress
+    return (formTouched && !isValid) || isSubmitting;
+  };
+
   if (loading || inviteLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -229,6 +244,12 @@ const CustomerSignup = () => {
               <div className="bg-red-50 text-red-600 p-3 rounded-md mb-6 text-sm flex items-start">
                 <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
                 <span>{error}</span>
+              </div>
+            )}
+            
+            {!isValid && formTouched && (
+              <div className="bg-yellow-50 text-yellow-600 p-3 rounded-md mb-6 text-sm">
+                Please fill in all required fields correctly before submitting.
               </div>
             )}
             
@@ -287,6 +308,7 @@ const CustomerSignup = () => {
                   autoComplete="new-password"
                   helpText="Must be at least 6 characters"
                   inputClassName="pr-10"
+                  validateOnChange={true}
                 />
                 <button 
                   type="button"
@@ -312,6 +334,7 @@ const CustomerSignup = () => {
                   error={errors.confirmPassword}
                   autoComplete="new-password"
                   inputClassName="pr-10"
+                  validateOnChange={true}
                 />
                 <button 
                   type="button"
@@ -325,10 +348,10 @@ const CustomerSignup = () => {
 
               <button
                 type="submit"
-                disabled={isSubmitting || !isValid}
+                disabled={isButtonDisabled()}
                 aria-busy={isSubmitting}
                 className={`w-full py-3 rounded-md transition-all duration-300 flex justify-center items-center mt-6
-                  ${isSubmitting || !isValid 
+                  ${isButtonDisabled() 
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                   }`}

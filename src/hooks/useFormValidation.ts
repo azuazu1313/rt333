@@ -56,6 +56,26 @@ const useFormValidation = (
     setFieldStates(initialFieldStates);
   }, [validationRules]);
 
+  // Check initial validity on mount and whenever formState changes
+  useEffect(() => {
+    // Only run full validation if we have all required fields with values
+    const requiredFieldsComplete = Object.keys(validationRules).every(fieldName => {
+      const isRequired = validationRules[fieldName].some(rule => rule.required);
+      return !isRequired || (formState[fieldName] && formState[fieldName].trim() !== '');
+    });
+
+    // If we have values for all required fields, run validation
+    if (requiredFieldsComplete) {
+      const hasErrors = Object.keys(validationRules).some(fieldName => {
+        const value = formState[fieldName];
+        const errorMessage = validateField(fieldName, value);
+        return !!errorMessage;
+      });
+      
+      setIsValid(!hasErrors);
+    }
+  }, [formState]);
+
   const validateField = useCallback(
     (name: string, value: any): string | null => {
       if (!validationRules[name]) return null;
@@ -117,6 +137,14 @@ const useFormValidation = (
     setErrors(newErrors);
     setFieldStates(newFieldStates);
     setIsValid(formValid);
+    
+    // Log validation results for debugging
+    console.log('Form validation results:', {
+      formValid,
+      errors: newErrors,
+      fieldStates: newFieldStates
+    });
+    
     return formValid;
   }, [formState, validateField, validationRules, fieldStates]);
 
@@ -135,13 +163,26 @@ const useFormValidation = (
         [name]: errorMessage
       }));
 
-      // Update isValid state
-      const hasErrors = Object.values({ ...errors, [name]: errorMessage }).some(
-        (error) => error !== null && error !== undefined
-      );
-      setIsValid(!hasErrors);
+      // Check if all required fields that have been touched are valid
+      const touchedRequiredFields = Object.keys(validationRules).filter(fieldName => {
+        const isRequired = validationRules[fieldName].some(rule => rule.required);
+        return isRequired && newFieldStates[fieldName]?.touched;
+      });
+      
+      const touchedFieldsValid = touchedRequiredFields.every(fieldName => {
+        const error = fieldName === name ? errorMessage : errors[fieldName];
+        return !error;
+      });
+      
+      setIsValid(touchedFieldsValid);
+      
+      console.log('Field blur validation:', {
+        field: name,
+        isValid: touchedFieldsValid,
+        touchedRequiredFields
+      });
     },
-    [errors, fieldStates, formState, validateField]
+    [errors, fieldStates, formState, validateField, validationRules]
   );
 
   const resetField = useCallback(

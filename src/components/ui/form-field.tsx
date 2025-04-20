@@ -31,6 +31,7 @@ interface FormFieldProps {
   helpText?: string;
   isTextarea?: boolean;
   textareaRows?: number;
+  error?: string;
 }
 
 export const FormField: React.FC<FormFieldProps> = ({
@@ -55,11 +56,15 @@ export const FormField: React.FC<FormFieldProps> = ({
   helpText,
   isTextarea = false,
   textareaRows = 3,
+  error: externalError,
 }) => {
   const [touched, setTouched] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [internalError, setInternalError] = useState<string | null>(null);
   const errorId = `${id}-error`;
   const helpTextId = helpText ? `${id}-help` : undefined;
+  
+  // Use externally provided error if available, otherwise use internal error
+  const error = externalError || internalError;
 
   const validate = (inputValue: string) => {
     if (required && !inputValue.trim()) {
@@ -86,7 +91,7 @@ export const FormField: React.FC<FormFieldProps> = ({
     setTouched(true);
     if (validateOnBlur) {
       const validationError = validate(value);
-      setError(validationError);
+      setInternalError(validationError);
       if (onValidationChange) {
         onValidationChange(name, !validationError, validationError || undefined);
       }
@@ -95,9 +100,9 @@ export const FormField: React.FC<FormFieldProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     onChange(e);
-    if (touched && validateOnChange) {
+    if (validateOnChange) {
       const validationError = validate(e.target.value);
-      setError(validationError);
+      setInternalError(validationError);
       if (onValidationChange) {
         onValidationChange(name, !validationError, validationError || undefined);
       }
@@ -108,7 +113,7 @@ export const FormField: React.FC<FormFieldProps> = ({
   useEffect(() => {
     if (value === '' && touched) {
       setTouched(false);
-      setError(null);
+      setInternalError(null);
       if (onValidationChange) {
         onValidationChange(name, true, undefined);
       }
