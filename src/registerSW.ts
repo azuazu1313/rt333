@@ -2,7 +2,9 @@ import { Workbox } from 'workbox-window';
 
 export function registerSW() {
   // Check if in StackBlitz environment - Don't register service worker in StackBlitz
-  if ('serviceWorker' in navigator && !window.location.hostname.includes('stackblitz')) {
+  if ('serviceWorker' in navigator && 
+      !window.location.hostname.includes('stackblitz') && 
+      !window.location.origin.includes('stackblitz.io')) {
     const wb = new Workbox('/service-worker.js');
 
     wb.addEventListener('installed', (event) => {

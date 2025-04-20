@@ -11,8 +11,7 @@ import {
   ChevronDown, 
   ChevronUp,
   Copy,
-  Download,
-  Code
+  Download
 } from 'lucide-react';
 
 const DatabaseBrowser: React.FC = () => {
@@ -29,8 +28,6 @@ const DatabaseBrowser: React.FC = () => {
     page: 1,
     pageSize: 20,
   });
-  const [sqlView, setSqlView] = useState(false);
-  const [sqlQuery, setSqlQuery] = useState('');
 
   const { toast } = useToast();
   const { userData } = useAuth();
@@ -45,9 +42,7 @@ const DatabaseBrowser: React.FC = () => {
 
   useEffect(() => {
     if (selectedTable) {
-      const query = `SELECT * FROM ${selectedTable} LIMIT ${pagination.pageSize} OFFSET ${(pagination.page - 1) * pagination.pageSize}`;
-      setSqlQuery(query);
-      fetchTableData(query);
+      fetchTableData();
       fetchRowCount();
     }
   }, [selectedTable, pagination.page, pagination.pageSize]);
@@ -87,13 +82,13 @@ const DatabaseBrowser: React.FC = () => {
     }
   };
 
-  const fetchTableData = async (query: string = '') => {
+  const fetchTableData = async () => {
     if (!selectedTable) return;
     
     try {
       setDataLoading(true);
       
-      let finalQuery = query || `SELECT * FROM ${selectedTable} LIMIT ${pagination.pageSize} OFFSET ${(pagination.page - 1) * pagination.pageSize}`;
+      let query = `SELECT * FROM ${selectedTable} LIMIT ${pagination.pageSize} OFFSET ${(pagination.page - 1) * pagination.pageSize}`;
       
       if (searchQuery) {
         // Get columns for this table to build search query
@@ -116,16 +111,14 @@ const DatabaseBrowser: React.FC = () => {
             .join(' OR ');
             
           if (searchConditions) {
-            finalQuery = `SELECT * FROM ${selectedTable} WHERE ${searchConditions} LIMIT ${pagination.pageSize} OFFSET ${(pagination.page - 1) * pagination.pageSize}`;
+            query = `SELECT * FROM ${selectedTable} WHERE ${searchConditions} LIMIT ${pagination.pageSize} OFFSET ${(pagination.page - 1) * pagination.pageSize}`;
           }
         }
       }
       
-      const { data, error } = await supabase.rpc('run_sql_query', { sql_query: finalQuery });
+      const { data, error } = await supabase.rpc('run_sql_query', { sql_query: query });
       
       if (error) throw error;
-      
-      setSqlQuery(finalQuery);
       
       if (data && data.length > 0) {
         // Get column names from the first row
@@ -243,60 +236,6 @@ const DatabaseBrowser: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const handleExecuteQuery = async () => {
-    if (!sqlQuery.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Empty Query",
-        description: "Please enter a SQL query to execute.",
-      });
-      return;
-    }
-    
-    try {
-      setDataLoading(true);
-      
-      // Simple validation to ensure only SELECT queries are executed
-      const normalizedQuery = sqlQuery.trim().toLowerCase();
-      if (!normalizedQuery.startsWith('select ')) {
-        throw new Error("Only SELECT queries are allowed for security reasons.");
-      }
-      
-      const { data, error } = await supabase.rpc('run_sql_query', { sql_query: sqlQuery });
-      
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        // Get column names from the first row
-        setTableColumns(Object.keys(data[0]));
-        // Set table data
-        setTableData(data);
-      } else {
-        setTableColumns([]);
-        setTableData([]);
-        toast({
-          title: "Query Executed",
-          description: "The query returned no results.",
-        });
-      }
-    } catch (error: any) {
-      console.error('Error executing query:', error);
-      toast({
-        variant: "destructive",
-        title: "Query Error",
-        description: error.message || "Failed to execute SQL query.",
-      });
-    } finally {
-      setDataLoading(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      handleExecuteQuery();
-    }
-  };
-
   // Calculate total pages
   const totalPages = rowCount ? Math.ceil(rowCount / pagination.pageSize) : 0;
 
@@ -343,7 +282,7 @@ const DatabaseBrowser: React.FC = () => {
           <select
             value={selectedTable || ''}
             onChange={(e) => handleTableSelect(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 dark:text-white"
           >
             {tables.map(tableName => (
               <option key={tableName} value={tableName}>{tableName}</option>
@@ -366,7 +305,7 @@ const DatabaseBrowser: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="Search in string fields..."
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 dark:text-white"
             />
           </div>
         </div>
@@ -377,7 +316,7 @@ const DatabaseBrowser: React.FC = () => {
             <button
               onClick={handleRefresh}
               disabled={!selectedTable || dataLoading}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center disabled:opacity-50"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center justify-center disabled:opacity-50"
             >
               <RefreshCw className={`w-5 h-5 mr-2 ${dataLoading ? 'animate-spin' : ''}`} />
               Refresh
@@ -385,7 +324,7 @@ const DatabaseBrowser: React.FC = () => {
             <button
               onClick={exportTableData}
               disabled={!tableData.length || dataLoading}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center disabled:opacity-50"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center justify-center disabled:opacity-50"
             >
               <Download className="w-5 h-5 mr-2" />
               Export
@@ -393,74 +332,6 @@ const DatabaseBrowser: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Toggle between visual and SQL modes */}
-      <div className="mb-4 flex items-center space-x-4">
-        <button 
-          onClick={() => setSqlView(false)}
-          className={`px-4 py-2 rounded-md ${!sqlView 
-            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' 
-            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-        >
-          <TableIcon className="w-5 h-5 inline-block mr-2" />
-          Table View
-        </button>
-        <button 
-          onClick={() => setSqlView(true)}
-          className={`px-4 py-2 rounded-md ${sqlView 
-            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' 
-            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-        >
-          <Code className="w-5 h-5 inline-block mr-2" />
-          SQL View
-        </button>
-      </div>
-
-      {sqlView ? (
-        /* SQL Query View */
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border dark:border-gray-700 mb-6">
-          <div className="p-4 bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600 flex justify-between items-center">
-            <h3 className="font-medium text-gray-900 dark:text-white">SQL Query</h3>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => copyToClipboard(sqlQuery)}
-                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400"
-                title="Copy SQL"
-              >
-                <Copy className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-          <div className="p-4">
-            <textarea
-              value={sqlQuery}
-              onChange={(e) => setSqlQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Enter SQL query here (SELECT only)..."
-              className="w-full h-40 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <div className="mt-4 flex justify-between items-center">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Press Ctrl+Enter to execute query. Only SELECT queries are allowed.
-              </p>
-              <button
-                onClick={handleExecuteQuery}
-                disabled={dataLoading || !sqlQuery.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 flex items-center"
-              >
-                {dataLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Executing...
-                  </>
-                ) : (
-                  'Execute Query'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {/* Table Data */}
       {selectedTable && (

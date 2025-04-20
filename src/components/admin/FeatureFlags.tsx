@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/use-toast';
-import { useAuth } from '../../contexts/AuthContext';
 import { 
   Loader2, 
   PlusCircle, 
@@ -49,20 +48,14 @@ const FeatureFlags: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const { toast } = useToast();
-  const { userData } = useAuth();
-
+  
   useEffect(() => {
-    if (userData?.user_role === 'admin') {
-      fetchFlags();
-    }
-  }, [userData]);
+    fetchFlags();
+  }, []);
 
   const fetchFlags = async () => {
     try {
       setRefreshing(true);
-      
-      // First check if the table exists
-      await ensureFeatureFlagsTableExists();
       
       const { data, error } = await supabase
         .from('feature_flags')
@@ -82,163 +75,6 @@ const FeatureFlags: React.FC = () => {
     } finally {
       setLoading(false);
       setRefreshing(false);
-    }
-  };
-
-  const ensureFeatureFlagsTableExists = async () => {
-    try {
-      // Check if the feature_flags table exists
-      const { data, error } = await supabase
-        .rpc('run_sql_query', { 
-          sql_query: `
-            SELECT EXISTS (
-              SELECT FROM information_schema.tables 
-              WHERE table_name = 'feature_flags'
-            );
-          ` 
-        });
-      
-      if (error) throw error;
-      
-      // If table doesn't exist, create it - breaking into separate queries
-      if (data && data.length > 0 && !data[0].exists) {
-        // Create the table
-        const { error: createTableError } = await supabase
-          .rpc('run_sql_query', { 
-            sql_query: `
-              CREATE TABLE public.feature_flags (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                key TEXT UNIQUE NOT NULL,
-                name TEXT NOT NULL,
-                description TEXT,
-                is_enabled BOOLEAN DEFAULT false,
-                scope TEXT CHECK (scope IN ('global', 'admin', 'partner', 'customer')),
-                created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-                updated_at TIMESTAMP WITH TIME ZONE
-              );
-            ` 
-          });
-          
-        if (createTableError) throw createTableError;
-        
-        // Enable RLS
-        const { error: rlsError } = await supabase
-          .rpc('run_sql_query', { 
-            sql_query: `ALTER TABLE public.feature_flags ENABLE ROW LEVEL SECURITY;`
-          });
-          
-        if (rlsError) throw rlsError;
-        
-        // Create RLS policies - one by one
-        const policies = [
-          {
-            name: "Admins can view all feature flags",
-            sql: `
-              CREATE POLICY "Admins can view all feature flags" 
-              ON public.feature_flags
-              FOR SELECT
-              TO authenticated
-              USING (EXISTS (
-                SELECT 1 FROM users
-                WHERE users.id = auth.uid() 
-                AND users.user_role = 'admin'
-              ));
-            `
-          },
-          {
-            name: "Admins can insert feature flags",
-            sql: `
-              CREATE POLICY "Admins can insert feature flags" 
-              ON public.feature_flags
-              FOR INSERT
-              TO authenticated
-              WITH CHECK (EXISTS (
-                SELECT 1 FROM users
-                WHERE users.id = auth.uid() 
-                AND users.user_role = 'admin'
-              ));
-            `
-          },
-          {
-            name: "Admins can update feature flags",
-            sql: `
-              CREATE POLICY "Admins can update feature flags" 
-              ON public.feature_flags
-              FOR UPDATE
-              TO authenticated
-              USING (EXISTS (
-                SELECT 1 FROM users
-                WHERE users.id = auth.uid() 
-                AND users.user_role = 'admin'
-              ));
-            `
-          },
-          {
-            name: "Admins can delete feature flags",
-            sql: `
-              CREATE POLICY "Admins can delete feature flags" 
-              ON public.feature_flags
-              FOR DELETE
-              TO authenticated
-              USING (EXISTS (
-                SELECT 1 FROM users
-                WHERE users.id = auth.uid() 
-                AND users.user_role = 'admin'
-              ));
-            `
-          }
-        ];
-        
-        // Execute each policy creation separately
-        for (const policy of policies) {
-          const { error: policyError } = await supabase
-            .rpc('run_sql_query', { sql_query: policy.sql });
-            
-          if (policyError) {
-            console.error(`Error creating policy "${policy.name}":`, policyError);
-            // Continue with other policies instead of throwing
-          }
-        }
-        
-        // Insert initial feature flags one by one
-        const initialFlags = [
-          {
-            key: 'enable_dark_mode',
-            name: 'Dark Mode',
-            description: 'Enable dark mode support across the application',
-            is_enabled: true,
-            scope: 'global'
-          },
-          {
-            key: 'maintenance_mode',
-            name: 'Maintenance Mode',
-            description: 'Put the application in maintenance mode',
-            is_enabled: false,
-            scope: 'global'
-          },
-          {
-            key: 'beta_features',
-            name: 'Beta Features',
-            description: 'Enable beta features for testing',
-            is_enabled: false,
-            scope: 'admin'
-          }
-        ];
-        
-        for (const flag of initialFlags) {
-          const { error: insertError } = await supabase
-            .from('feature_flags')
-            .insert([flag]);
-            
-          if (insertError) {
-            console.error(`Error inserting flag "${flag.key}":`, insertError);
-            // Continue with other inserts instead of throwing
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error ensuring feature_flags table exists:', error);
-      throw error;
     }
   };
 
@@ -482,7 +318,7 @@ const FeatureFlags: React.FC = () => {
           <button
             onClick={fetchFlags}
             disabled={refreshing}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center"
           >
             <RefreshCw className={`w-5 h-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -607,7 +443,7 @@ const FeatureFlags: React.FC = () => {
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 mr-2"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 mr-2"
               >
                 Cancel
               </button>

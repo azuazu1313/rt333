@@ -7,6 +7,7 @@ import NotFound from './pages/NotFound';
 import { BookingProvider } from './contexts/BookingContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { FeatureFlagProvider } from './components/FeatureFlagProvider';
 import { useAuth } from './contexts/AuthContext';
 import InstallPWA from './components/InstallPWA';
 import MobileInstallPrompt from './components/MobileInstallPrompt';
@@ -83,12 +84,9 @@ const IndexRedirect = () => {
 };
 
 function AppRoutes() {
-  const { userData } = useAuth();
-  
   return (
     <>
       <RouteObserver />
-      {userData && <DynamicPWAManifest />}
       <Routes>
         <Route path="/" element={<IndexRedirect />} />
         <Route 
@@ -125,13 +123,16 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BookingProvider>
-          <BrowserRouter>
-            <AppRoutes />
-            <InstallPWA />
-            <MobileInstallPrompt />
-          </BrowserRouter>
-        </BookingProvider>
+        <FeatureFlagProvider>
+          <BookingProvider>
+            <BrowserRouter>
+              <DynamicPWAManifest />
+              <AppRoutes />
+              <InstallPWA />
+              <MobileInstallPrompt />
+            </BrowserRouter>
+          </BookingProvider>
+        </FeatureFlagProvider>
       </AuthProvider>
     </ThemeProvider>
   );
