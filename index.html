@@ -40,6 +40,14 @@
     <link rel="preload" as="image" href="https://i.imghippo.com/files/MJSV1132ko.webp" type="image/webp" media="(min-width: 768px)">
     <link rel="preload" as="image" href="https://i.imghippo.com/files/GSIu4447oeQ.webp" type="image/webp" media="(max-width: 767px)">
 
+    <!-- Preload Critical JS -->
+    <link rel="modulepreload" href="/src/main.tsx">
+    <link rel="modulepreload" href="/src/App.tsx">
+    <link rel="modulepreload" href="/src/pages/Home.tsx">
+    <link rel="modulepreload" href="/src/components/Header.tsx">
+    <link rel="modulepreload" href="/src/components/Hero.tsx">
+    <link rel="modulepreload" href="/src/components/SearchForm.tsx">
+
     <!-- Google Maps Script -->
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=%VITE_GOOGLE_MAPS_API_KEY%&libraries=places"></script>
 
@@ -80,22 +88,22 @@
     <div id="voiceflow-chat-container">
       <script type="text/javascript">
         (function(d, t) {
-            setTimeout(function() {
-                var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
-                v.onload = function() {
-                  window.voiceflow.chat.load({
-                    verify: { projectID: '67d817b721b78ba30f3baa7d' },
-                    url: 'https://general-runtime.voiceflow.com',
-                    versionID: 'production',
-                    voice: {
-                      url: "https://runtime-api.voiceflow.com"
-                    }
-                  });
+            var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
+            v.onload = function() {
+              window.voiceflow.chat.load({
+                verify: { projectID: '67d817b721b78ba30f3baa7d' },
+                url: 'https://general-runtime.voiceflow.com',
+                versionID: 'production',
+                voice: {
+                  url: "https://runtime-api.voiceflow.com"
                 }
-                v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs"; 
-                v.type = "text/javascript";
-                s.parentNode.insertBefore(v, s);
-            }, 5000); // 5 second delay
+              });
+            }
+            v.src = "https://cdn.voiceflow.com/widget-next/bundle.mjs"; 
+            v.type = "text/javascript";
+            v.setAttribute('async', '');
+            v.setAttribute('defer', '');
+            s.parentNode.insertBefore(v, s);
         })(document, 'script');
       </script>
     </div>
