@@ -35,7 +35,7 @@ Deno.serve(async (req: Request) => {
   
   try {
     // Get environment variables
-    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || 'sk_test_51•••••Yg1';
+    const stripeSecretKey = "sk_test_51PoZUCBf2yTNcRUo1QV8kTiBasytVelePrLdEchzzQJp1odHA4FmL9RA0Aq24OM9CLT8k2CdrrQirwAphQsEgXe600U7I5pYg1";
     
     // Initialize Stripe
     const stripe = new Stripe(stripeSecretKey, {
