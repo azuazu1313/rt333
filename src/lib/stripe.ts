@@ -4,8 +4,14 @@ let stripePromise: Promise<Stripe | null>;
 
 export const getStripe = () => {
   if (!stripePromise) {
-    // Use a public key for the frontend
-    const STRIPE_PUBLISHABLE_KEY = 'pk_test_TYooMQauvdEDq54NiTphI7jx';
+    // Get publishable key from environment variables
+    const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+    
+    // Validate publishable key exists
+    if (!STRIPE_PUBLISHABLE_KEY) {
+      throw new Error('Stripe publishable key is missing from environment variables.');
+    }
+    
     stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
   }
   

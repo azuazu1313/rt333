@@ -5,6 +5,12 @@ interface BookingState {
   step: 1 | 2 | 3;
   previousStep?: 1 | 2 | 3; // Added to track previous step for animations
   selectedVehicle: typeof vehicles[0];
+  from?: string;
+  to?: string;
+  isReturn?: boolean;
+  departureDate?: string;
+  returnDate?: string;
+  passengers?: number;
   personalDetails: {
     title: 'mr' | 'ms';
     firstName: string;
