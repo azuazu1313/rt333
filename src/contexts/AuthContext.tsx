@@ -27,6 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const initialStateLoadedRef = useRef(false);
   const authStateChangeSubscribed = useRef(false);
+  const tokenAuthAttemptedRef = useRef(false);
 
   // Function to fetch user data
   const fetchUserData = async (userId: string) => {
@@ -76,11 +77,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Function to handle token authentication
+  const handleTokenAuth = async () => {
+    // Only attempt token auth once
+    if (tokenAuthAttemptedRef.current) return;
+    tokenAuthAttemptedRef.current = true;
+    
+    try {
+      // Extract token from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      
+      if (!token) return;
+      
+      console.log('Found token in URL, attempting to sign in...');
+      setLoading(true);
+      
+      // Sign in with the token
+      const { data, error } = await supabase.auth.setSession({
+        access_token: token,
+        refresh_token: '', // No refresh token available from the URL
+      });
+      
+      if (error) {
+        console.error('Error signing in with token:', error);
+        return;
+      }
+      
+      if (data.session) {
+        console.log('Successfully signed in with token');
+        setSession(data.session);
+        setUser(data.session.user);
+        
+        // Fetch user data
+        if (data.session.user) {
+          await fetchUserData(data.session.user.id);
+        }
+      }
+      
+      // Remove token from URL for security (replace current URL without the query param)
+      const url = new URL(window.location.href);
+      url.searchParams.delete('token');
+      window.history.replaceState({}, document.title, url.toString());
+      
+    } catch (error) {
+      console.error('Unexpected error in token auth:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Initialize auth state
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Get session with JWT claims
+        // First check for token auth
+        await handleTokenAuth();
+        
+        // Then check for existing session
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         if (currentSession?.user) {
