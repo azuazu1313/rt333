@@ -21,18 +21,61 @@ const FeatureFlagContext = createContext<{
   setFeatureFlag: () => {},
 });
 
+// Helper function to get cookies by name
+const getCookie = (name: string): string | null => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop()?.split(';').shift() || null;
+  }
+  return null;
+};
+
+// Helper function to set cookies with domain attribute
+const setCookie = (name: string, value: string, days: number = 365): void => {
+  const date = new Date();
+  date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+  
+  // Get top-level domain for cross-domain compatibility
+  let domain = window.location.hostname;
+  
+  // Extract top-level domain (e.g., example.com from subdomain.example.com)
+  // This handles basic cases - for more complex scenarios, you might need to adjust this
+  const parts = domain.split('.');
+  if (parts.length > 2) {
+    // If we have a subdomain, use the top two parts
+    domain = parts.slice(-2).join('.');
+  }
+  
+  // Set the cookie with domain attribute to share across subdomains
+  document.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/; domain=.${domain}`;
+};
+
 interface FeatureFlagProviderProps {
   children: React.ReactNode;
 }
 
 export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({ children }) => {
   const [flags, setFlags] = useState<FeatureFlags>(() => {
-    // Try to load flags from localStorage
+    // Try to load flags from cookies first
     try {
+      const cookieValue = getCookie('featureFlags');
+      if (cookieValue) {
+        return { ...defaultFeatureFlags, ...JSON.parse(cookieValue) };
+      }
+      
+      // Fall back to localStorage for backward compatibility
       const savedFlags = localStorage.getItem('featureFlags');
-      return savedFlags ? { ...defaultFeatureFlags, ...JSON.parse(savedFlags) } : defaultFeatureFlags;
+      if (savedFlags) {
+        const parsedFlags = JSON.parse(savedFlags);
+        // Save to cookie for future cross-domain access
+        setCookie('featureFlags', savedFlags);
+        return { ...defaultFeatureFlags, ...parsedFlags };
+      }
+      
+      return defaultFeatureFlags;
     } catch (error) {
-      console.error('Error loading feature flags from localStorage:', error);
+      console.error('Error loading feature flags:', error);
       return defaultFeatureFlags;
     }
   });
@@ -49,39 +92,26 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({ childr
           const shouldShow = showBanner === '1' || showBanner.toLowerCase() === 'true';
           setFlags(prev => ({ ...prev, showCookieBanner: shouldShow }));
         }
-        
-        // This could be replaced with a real API call to fetch from the admin system
-        // For now, we're just using localStorage and URL parameters
       } catch (error) {
         console.error('Error fetching feature flags:', error);
       }
     };
 
     fetchFlags();
-    
-    // Optional: Set up event listener for cross-tab communication
-    window.addEventListener('storage', (event) => {
-      if (event.key === 'featureFlags') {
-        try {
-          const newFlags = JSON.parse(event.newValue || '{}');
-          setFlags(prev => ({ ...prev, ...newFlags }));
-        } catch (error) {
-          console.error('Error parsing feature flags from storage event:', error);
-        }
-      }
-    });
-    
-    return () => {
-      window.removeEventListener('storage', () => {});
-    };
   }, []);
 
-  // Save flags to localStorage when they change
+  // Save flags to cookies and localStorage when they change
   useEffect(() => {
     try {
-      localStorage.setItem('featureFlags', JSON.stringify(flags));
+      const flagsJson = JSON.stringify(flags);
+      
+      // Set as cookie with domain attribute for cross-domain sharing
+      setCookie('featureFlags', flagsJson);
+      
+      // Also save to localStorage for backward compatibility
+      localStorage.setItem('featureFlags', flagsJson);
     } catch (error) {
-      console.error('Error saving feature flags to localStorage:', error);
+      console.error('Error saving feature flags:', error);
     }
   }, [flags]);
 
