@@ -117,7 +117,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
   }, [showUserMenu]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
+    <header className="fixed top-0 left-0 right-0 bg-white shadow-md z-[60]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <div className="md:hidden w-12 h-12" />
@@ -142,56 +142,56 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
               className="relative py-2 text-gray-700 group"
             >
               Home
-              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-blue-600 group-hover:w-full group-active:bg-blue-700 transition-all duration-300 -translate-x-1/2"></span>
+              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
             </a>
             <a 
               href="/about" 
               className="relative py-2 text-gray-700 group"
             >
               About Us
-              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-blue-600 group-hover:w-full group-active:bg-blue-700 transition-all duration-300 -translate-x-1/2"></span>
+              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
             </a>
             <a 
               href="/services" 
               className="relative py-2 text-gray-700 group"
             >
               Services
-              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-blue-600 group-hover:w-full group-active:bg-blue-700 transition-all duration-300 -translate-x-1/2"></span>
+              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
             </a>
             <a 
               href="/blogs/destinations" 
               className="relative py-2 text-gray-700 group"
             >
               Destinations
-              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-blue-600 group-hover:w-full group-active:bg-blue-700 transition-all duration-300 -translate-x-1/2"></span>
+              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
             </a>
             <a 
               href="/faq" 
               className="relative py-2 text-gray-700 group"
             >
               FAQs
-              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-blue-600 group-hover:w-full group-active:bg-blue-700 transition-all duration-300 -translate-x-1/2"></span>
+              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
             </a>
             <a 
               href="/partners" 
               className="relative py-2 text-gray-700 group"
             >
               Partners
-              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-blue-600 group-hover:w-full group-active:bg-blue-700 transition-all duration-300 -translate-x-1/2"></span>
+              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
             </a>
             <a 
               href="/rent" 
               className="relative py-2 text-gray-700 group"
             >
               Rent a Car
-              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-blue-600 group-hover:w-full group-active:bg-blue-700 transition-all duration-300 -translate-x-1/2"></span>
+              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
             </a>
             <a 
               href="/contact" 
               className="relative py-2 text-gray-700 group"
             >
               Contact
-              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-blue-600 group-hover:w-full group-active:bg-blue-700 transition-all duration-300 -translate-x-1/2"></span>
+              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
             </a>
           </nav>
 
@@ -199,7 +199,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             {!hideSignIn && (
               loading ? (
                 <div className="w-10 h-10 flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                  <Loader2 className="w-5 h-5 text-black animate-spin" />
                 </div>
               ) : user ? (
                 <div className="relative">
@@ -260,7 +260,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
               ) : (
                 <a 
                   href="/login"
-                  className="hidden md:inline-flex border border-blue-600 text-blue-600 px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-blue-50 transition-all duration-300 box-border"
+                  className="hidden md:inline-flex border border-black text-black px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-gray-50 transition-all duration-300 box-border"
                 >
                   Sign In
                 </a>
@@ -268,7 +268,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             )}
             <button 
               onClick={handleCTAClick}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-all duration-300"
+              className="bg-black text-white px-6 py-2 rounded-md hover:bg-gray-800 transition-all duration-300"
             >
               Book Now
             </button>
@@ -336,7 +336,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                           onClick={() => setIsMenuOpen(false)}
                         >
                           <span>{link.label}</span>
-                          <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
+                          <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-black group-hover:w-full transition-all duration-300"></span>
                         </a>
                       </div>
                     ))}
@@ -354,7 +354,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                               }}
                             >
                               <span>Admin Portal</span>
-                              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
+                              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-black group-hover:w-full transition-all duration-300"></span>
                             </a>
                           </div>
                         )}
@@ -365,7 +365,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                             onClick={() => setIsMenuOpen(false)}
                           >
                             <span>Your Profile</span>
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
+                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-black group-hover:w-full transition-all duration-300"></span>
                           </a>
                         </div>
                         <div className="flex">
@@ -375,7 +375,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                             onClick={() => setIsMenuOpen(false)}
                           >
                             <span>Your Bookings</span>
-                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
+                            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-black group-hover:w-full transition-all duration-300"></span>
                           </a>
                         </div>
                       </>
@@ -387,12 +387,12 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                   {!hideSignIn && (
                     loading ? (
                       <div className="flex justify-center">
-                        <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                        <Loader2 className="w-5 h-5 text-black animate-spin" />
                       </div>
                     ) : user ? (
                       <button
                         onClick={handleLogout}
-                        className="block w-full border border-blue-600 text-blue-600 px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-blue-50 transition-all duration-300 text-center box-border"
+                        className="block w-full border border-black text-black px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-gray-50 transition-all duration-300 text-center box-border"
                       >
                         Sign Out
                       </button>
@@ -400,7 +400,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                       <a
                         href="/login"
                         onClick={() => setIsMenuOpen(false)}
-                        className="block w-full border border-blue-600 text-blue-600 px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-blue-50 transition-all duration-300 text-center box-border"
+                        className="block w-full border border-black text-black px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-gray-50 transition-all duration-300 text-center box-border"
                       >
                         Sign In
                       </a>
@@ -408,7 +408,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                   )}
                   <button 
                     onClick={handleCTAClick}
-                    className="w-full bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-all duration-300"
+                    className="w-full bg-black text-white px-6 py-2 rounded-md hover:bg-gray-800 transition-all duration-300"
                   >
                     Book Now
                   </button>

@@ -251,7 +251,7 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
           <div ref={contentEndRef} className="h-8"></div>
         </div>
 
-        {/* Floating/Docked Price Bar - Always visible now */}
+        {/* Floating/Docked Price Bar */}
         <div 
           ref={priceBarRef}
           className={`
@@ -259,9 +259,9 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
             left-0 right-0 px-4 sm:px-6 lg:px-8 price-bar-container 
             ${isModalActive 
               ? isFloating 
-                  ? 'z-[50]' // Keep high z-index but visible when not fixed to bottom
-                  : 'z-[50] opacity-0 pointer-events-none' // Hide when fixed to bottom and modal is open
-              : 'z-[50]'
+                  ? 'z-[40]' // Lower z-index but still visible when not fixed to bottom
+                  : 'z-[40] opacity-0 pointer-events-none' // Hide when fixed to bottom and modal is open
+              : 'z-[40]'
             }
             transition-opacity duration-300
           `}
@@ -294,7 +294,6 @@ const BookingLayout: React.FC<BookingLayoutProps> = ({
                   </div>
                 </div>
 
-                {/* Button is always shown regardless of payment method */}
                 <button
                   onClick={handleNext}
                   disabled={isModalActive && isFloating === false}
