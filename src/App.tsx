@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy, useState } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 
@@ -27,6 +27,8 @@ const BookingCancelled = lazy(() => import('./pages/BookingCancelled'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Bookings = lazy(() => import('./pages/Bookings'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const CookiePolicy = lazy(() => import('./pages/CookiePolicy'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -104,6 +106,8 @@ function AppRoutes() {
           <Route path="/customer-signup" element={<CustomerSignup />} />
           <Route path="/booking-success" element={<BookingSuccess />} />
           <Route path="/booking-cancelled" element={<BookingCancelled />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route 
             path="/profile" 
             element={
@@ -127,6 +131,10 @@ function AppRoutes() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
+      <CookieConsent 
+        privacyPolicyUrl="/privacy" 
+        cookiePolicyUrl="/cookie-policy" 
+      />
     </>
   );
 }
@@ -145,15 +153,9 @@ const AppWithAuth = () => {
 };
 
 function App() {
-  const [showCookieConsentBanner, setShowCookieConsentBanner] = useState(true);
-  
   return (
     <BrowserRouter>
       <AppWithAuth />
-      <CookieConsent 
-        privacyPolicyUrl="/privacy" 
-        cookiePolicyUrl="/terms" 
-      />
     </BrowserRouter>
   );
 }
