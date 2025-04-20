@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, Clock, Car, FileText, BarChart2, Settings, ArrowLeft, Menu, User, MessageSquare, Disc, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, Car, FileText, BarChart2, Settings, ArrowLeft, Menu, User, MessageSquare, AlertTriangle } from 'lucide-react';
 import Header from '../components/Header';
 import TodayJobs from '../components/partner/TodayJobs';
 import JobCalendar from '../components/partner/JobCalendar';
@@ -23,15 +23,25 @@ const Partner = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAvailable, setIsAvailable] = useState<boolean>(false);
+  const [isAdminView, setIsAdminView] = useState<boolean>(false);
 
-  // Redirect if not partner
+  // Setup admin view flag
   useEffect(() => {
     if (!loading && userData) {
-      if (userData.user_role !== 'partner') {
-        // Redirect to appropriate page based on role
-        if (userData.user_role === 'admin' || userData.user_role === 'support') {
-          navigate('/admin', { replace: true });
-        } else if (userData.user_role === 'customer') {
+      // Check if this is admin viewing the partner portal
+      if (userData.user_role === 'admin') {
+        setIsAdminView(true);
+        console.log('Admin viewing partner portal');
+      }
+    }
+  }, [userData, loading]);
+  
+  // Only redirect non-partner/non-admin users
+  useEffect(() => {
+    if (!loading && userData) {
+      // Only redirect if user is neither admin nor partner
+      if (userData.user_role !== 'admin' && userData.user_role !== 'partner') {
+        if (userData.user_role === 'customer') {
           // Redirect customer to main website
           window.location.href = 'https://royaltransfer.eu/customer-dashboard';
         } else {
@@ -92,17 +102,32 @@ const Partner = () => {
                 <span className="text-sm">Main site</span>
               </a>
               
-              <h1 className="text-xl md:text-2xl font-bold dark:text-white flex items-center">
-                <Car className="mr-2 h-6 w-6" /> 
-                Driver Portal
-              </h1>
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold dark:text-white flex items-center">
+                  <Car className="mr-2 h-6 w-6" /> 
+                  Driver Portal
+                </h1>
+                {isAdminView && (
+                  <div className="mt-1 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded-md inline-flex items-center">
+                    <span>Admin View Mode</span>
+                    <Link 
+                      to="/admin" 
+                      className="ml-2 underline hover:text-purple-900 dark:hover:text-purple-200"
+                    >
+                      Return to Admin
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="flex items-center mt-4 md:mt-0 space-x-3">
-              <DriverAvailabilityToggle 
-                isAvailable={isAvailable}
-                onChange={setIsAvailable}
-              />
+              {!isAdminView && (
+                <DriverAvailabilityToggle 
+                  isAvailable={isAvailable}
+                  onChange={setIsAvailable}
+                />
+              )}
               <ThemeToggle />
             </div>
           </div>

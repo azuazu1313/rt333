@@ -17,6 +17,17 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
   const { user, userData, loading, signOut } = useAuth();
   const { theme } = useTheme();
 
+  // Get page title based on current route
+  const getPageTitle = () => {
+    const path = location.pathname;
+    if (path.startsWith('/admin')) {
+      return 'Admin Portal';
+    } else if (path.startsWith('/partner')) {
+      return 'Driver Portal';
+    }
+    return '';
+  };
+
   const handleLogout = async () => {
     try {
       await signOut();
@@ -55,7 +66,7 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center space-x-4">
             <button 
-              onClick={() => navigate('/admin')}
+              onClick={() => navigate(userData?.user_role === 'admin' ? '/admin' : '/partner')}
               className="flex items-center focus:outline-none h-[70px] py-[4px]"
             >
               {/* Light mode logo */}
@@ -84,7 +95,7 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
             </button>
             {userData && (
               <div className="hidden md:block text-gray-700 dark:text-gray-200">
-                <span className="font-semibold">Admin Portal</span>
+                <span className="font-semibold">{getPageTitle()}</span>
               </div>
             )}
           </div>
@@ -130,6 +141,37 @@ const Header = ({ hideSignIn = false }: HeaderProps) => {
                           </div>
                         )}
                       </div>
+                      
+                      {/* Add portal switcher for admins */}
+                      {userData?.user_role === 'admin' && (
+                        <>
+                          <div className="pt-1 pb-1 px-3 text-xs font-medium text-gray-500 dark:text-gray-400">
+                            Switch Portal
+                          </div>
+                          <button
+                            onClick={() => navigate('/admin')}
+                            className={`block w-full text-left px-4 py-2 text-sm ${
+                              location.pathname.startsWith('/admin') 
+                                ? 'bg-gray-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400' 
+                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            Admin Portal
+                          </button>
+                          <button
+                            onClick={() => navigate('/partner')}
+                            className={`block w-full text-left px-4 py-2 text-sm ${
+                              location.pathname.startsWith('/partner') 
+                                ? 'bg-gray-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400' 
+                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            Driver Portal
+                          </button>
+                          <div className="my-1 border-t dark:border-gray-700"></div>
+                        </>
+                      )}
+                      
                       <button
                         onClick={handleLogout}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"

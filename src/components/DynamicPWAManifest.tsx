@@ -8,8 +8,16 @@ const DynamicPWAManifest: React.FC = () => {
   useEffect(() => {
     if (!userData) return;
     
-    // Determine which icon set to use based on user role
-    const roleFolder = userData.user_role === 'partner' ? 'partner' : 'admin';
+    // Get the current URL path
+    const currentPath = window.location.pathname;
+    
+    // Determine which icon set to use based on path or user role
+    let roleFolder = 'admin'; // Default
+    
+    // If we're in the partner section or user is a partner (not an admin in partner view)
+    if (currentPath.startsWith('/partner') || (userData.user_role === 'partner')) {
+      roleFolder = 'partner';
+    }
     
     // Get the current manifest link element
     const existingManifest = document.querySelector('link[rel="manifest"]');
@@ -36,8 +44,8 @@ const DynamicPWAManifest: React.FC = () => {
     newAppleIcon.href = `/icons/${roleFolder}/192x192.png`;
     document.head.appendChild(newAppleIcon);
     
-    console.log(`PWA manifest updated for role: ${userData.user_role}, using ${roleFolder} icons`);
-  }, [userData]);
+    console.log(`PWA manifest updated for path: ${currentPath}, using ${roleFolder} icons`);
+  }, [userData, window.location.pathname]);
   
   return null; // This component doesn't render anything
 };

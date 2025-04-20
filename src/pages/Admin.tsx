@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Users, Calendar, BarChart2, Settings, Link2, AlertTriangle, ArrowLeft, Menu, Bug, Database, LayoutDashboard } from 'lucide-react';
+import { Users, Calendar, BarChart2, Settings, Database, AlertTriangle, ArrowLeft, Menu, Bug, LayoutDashboard, Car } from 'lucide-react';
 import Header from '../components/Header';
 import UserManagement from '../components/admin/UserManagement';
 import BookingsManagement from '../components/admin/BookingsManagement';
@@ -29,6 +29,7 @@ const AdminLayout = () => {
         return;
       }
       
+      // Only redirect if not admin or support role (partners can be handled separately)
       if (userData.user_role !== 'admin' && userData.user_role !== 'support' && userData.user_role !== 'partner') {
         navigate('/login', { replace: true });
       }
@@ -80,13 +81,26 @@ const AdminLayout = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Back to Site Button and Theme Toggle */}
           <div className="mb-8 flex items-center justify-between">
-            <a
-              href="https://royaltransfer.eu/"
-              className="flex items-center text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Back to main site
-            </a>
+            <div className="flex items-center space-x-4">
+              <a
+                href="https://royaltransfer.eu/"
+                className="flex items-center text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                Back to main site
+              </a>
+              
+              {/* Partner Portal Button */}
+              {userData?.user_role === 'admin' && (
+                <Link
+                  to="/partner"
+                  className="flex items-center text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors"
+                >
+                  <Car className="w-5 h-5 mr-2" />
+                  View Partner Portal
+                </Link>
+              )}
+            </div>
             <ThemeToggle />
           </div>
 

@@ -5,7 +5,7 @@ import FeatureFlagAdmin from './FeatureFlagAdmin';
 import SystemStatus from './SystemStatus';
 import ToastSimulator from './ToastSimulator';
 import ConsoleLogStream from './ConsoleLogStream';
-import { Database, Flag, Settings, Link, Activity, MessageSquare, BarChart } from 'lucide-react';
+import { Database, Flag, Settings, Link, Activity, MessageSquare, BarChart, ArrowLeft } from 'lucide-react';
 
 const tabs = [
   { id: 'database', label: 'Database Browser', icon: Database },
@@ -19,6 +19,10 @@ const tabs = [
 const AdminDeveloperTools: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string | null>(null);
 
+  const handleBackToMenu = () => {
+    setActiveTab(null);
+  };
+
   return (
     <div>
       <div className="mb-8">
@@ -28,40 +32,32 @@ const AdminDeveloperTools: React.FC = () => {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-6">
-        <div className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`py-3 px-4 flex items-center text-sm font-medium border-b-2 whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400'
-                  : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
-            >
-              <tab.icon className="w-5 h-5 mr-2" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Tab Content */}
-      {activeTab === 'database' && <DatabaseBrowser />}
-      {activeTab === 'feature-flags' && <FeatureFlagAdmin />}
-      {activeTab === 'invite-links' && <InviteLinks />}
-      {activeTab === 'system-status' && <SystemStatus />}
-      {activeTab === 'toast-simulator' && <ToastSimulator />}
-      {activeTab === 'log-stream' && <ConsoleLogStream />}
+      {activeTab && (
+        <div className="mb-6">
+          <button
+            onClick={handleBackToMenu}
+            className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Tools Menu
+          </button>
+          
+          {activeTab === 'database' && <DatabaseBrowser />}
+          {activeTab === 'feature-flags' && <FeatureFlagAdmin />}
+          {activeTab === 'invite-links' && <InviteLinks />}
+          {activeTab === 'system-status' && <SystemStatus />}
+          {activeTab === 'toast-simulator' && <ToastSimulator />}
+          {activeTab === 'log-stream' && <ConsoleLogStream />}
+        </div>
+      )}
 
       {/* Initial state - no tab selected */}
       {!activeTab && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border dark:border-gray-700">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Developer Tools Dashboard</h3>
           <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
-            Select a tool from the tabs above to get started. These tools help you manage your application,
+            Select a tool below to get started. These tools help you manage your application,
             debug issues, and configure system settings.
           </p>
           

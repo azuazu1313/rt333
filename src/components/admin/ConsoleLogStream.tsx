@@ -186,9 +186,9 @@ const ConsoleLogStream: React.FC = () => {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(log => 
         log.message.toLowerCase().includes(query) ||
-        log.userName?.toLowerCase().includes(query) ||
-        log.userId?.toLowerCase().includes(query) ||
-        log.url?.toLowerCase().includes(query) ||
+        (log.userName?.toLowerCase() || '').includes(query) ||
+        (log.userId?.toLowerCase() || '').includes(query) ||
+        (log.url?.toLowerCase() || '').includes(query) ||
         (log.additionalData && JSON.stringify(log.additionalData).toLowerCase().includes(query))
       );
     }
