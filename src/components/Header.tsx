@@ -5,6 +5,8 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { useAnalytics } from '../hooks/useAnalytics';
+import OptimizedImage from './OptimizedImage';
 
 interface HeaderProps {
   isAboutPage?: boolean;
@@ -17,10 +19,13 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
   const location = useLocation();
   const { user, userData, loading, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const { trackEvent } = useAnalytics();
   const isAdmin = userData?.user_role === 'admin';
 
   const handleCTAClick = () => {
     setIsMenuOpen(false);
+    trackEvent('Navigation', 'Book Now Click', 'Header');
+
     if (location.pathname !== '/') {
       navigate('/');
       setTimeout(() => {
@@ -63,12 +68,14 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
 
   const handleLogout = async () => {
     try {
+      trackEvent('Authentication', 'Logout Initiated', 'Header');
       await signOut();
       setShowUserMenu(false);
       setIsMenuOpen(false);
       navigate('/');
     } catch (error) {
       console.error('Error during logout:', error);
+      trackEvent('Authentication', 'Logout Error', JSON.stringify(error));
       setShowUserMenu(false);
       setIsMenuOpen(false);
       navigate('/');
@@ -77,6 +84,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
 
   const handleAdminPortalClick = async (e: React.MouseEvent) => {
     e.preventDefault();
+    trackEvent('Navigation', 'Admin Portal Click');
     
     try {
       // Get current session and extract token
@@ -94,6 +102,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
       window.open(`https://app.royaltransfer.eu?token=${encodedToken}`, '_blank');
     } catch (error) {
       console.error('Error preparing admin portal redirect:', error);
+      trackEvent('Error', 'Admin Portal Redirect Error', JSON.stringify(error));
       // Fallback to regular link if something goes wrong
       window.open('https://app.royaltransfer.eu', '_blank');
     }
@@ -123,23 +132,30 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
           <div className="md:hidden w-12 h-12" />
 
           <button 
-            onClick={() => navigate('/')}
+            onClick={() => {
+              trackEvent('Navigation', 'Logo Click', 'Header');
+              navigate('/');
+            }}
             className="flex items-center focus:outline-none h-[70px] py-[4px]"
+            aria-label="Royal Transfer EU Homepage"
           >
-            <picture className="h-full w-auto">
-              <source srcSet="https://i.imghippo.com/files/cDgm3025PmI.webp" type="image/webp" />
-              <img
-                src="https://i.imgur.com/991MInn.png"
-                alt="Royal Transfer EU Logo - Professional airport transfers and taxi services across Europe"
-                className="h-full w-auto object-contain"
-              />
-            </picture>
+            <OptimizedImage
+              src="https://i.imgur.com/991MInn.png"
+              webp="https://i.imghippo.com/files/cDgm3025PmI.webp"
+              alt="Royal Transfer EU Logo - Professional airport transfers and taxi services across Europe"
+              className="h-full w-auto object-contain"
+              width={300}
+              height={70}
+              loading="eager"
+              fetchPriority="high"
+            />
           </button>
           
           <nav className="hidden md:flex space-x-6 lg:space-x-8">
             <a 
               href="/" 
               className="relative py-2 text-gray-700 group"
+              onClick={() => trackEvent('Navigation', 'Menu Click', 'Home')}
             >
               Home
               <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
@@ -147,6 +163,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             <a 
               href="/about" 
               className="relative py-2 text-gray-700 group"
+              onClick={() => trackEvent('Navigation', 'Menu Click', 'About Us')}
             >
               About Us
               <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
@@ -154,6 +171,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             <a 
               href="/services" 
               className="relative py-2 text-gray-700 group"
+              onClick={() => trackEvent('Navigation', 'Menu Click', 'Services')}
             >
               Services
               <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
@@ -161,6 +179,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             <a 
               href="/blogs/destinations" 
               className="relative py-2 text-gray-700 group"
+              onClick={() => trackEvent('Navigation', 'Menu Click', 'Destinations')}
             >
               Destinations
               <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
@@ -168,6 +187,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             <a 
               href="/faq" 
               className="relative py-2 text-gray-700 group"
+              onClick={() => trackEvent('Navigation', 'Menu Click', 'FAQs')}
             >
               FAQs
               <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
@@ -175,6 +195,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             <a 
               href="/partners" 
               className="relative py-2 text-gray-700 group"
+              onClick={() => trackEvent('Navigation', 'Menu Click', 'Partners')}
             >
               Partners
               <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
@@ -182,6 +203,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             <a 
               href="/rent" 
               className="relative py-2 text-gray-700 group"
+              onClick={() => trackEvent('Navigation', 'Menu Click', 'Rent a Car')}
             >
               Rent a Car
               <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
@@ -189,6 +211,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             <a 
               href="/contact" 
               className="relative py-2 text-gray-700 group"
+              onClick={() => trackEvent('Navigation', 'Menu Click', 'Contact')}
             >
               Contact
               <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
@@ -199,18 +222,21 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             {!hideSignIn && (
               loading ? (
                 <div className="w-10 h-10 flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 text-black animate-spin" />
+                  <Loader2 className="w-5 h-5 text-black animate-spin" aria-hidden="true" />
                 </div>
               ) : user ? (
                 <div className="relative">
                   <button
                     id="user-menu-button"
-                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    onClick={() => {
+                      setShowUserMenu(!showUserMenu);
+                      trackEvent('Navigation', 'User Menu Toggle', showUserMenu ? 'Close' : 'Open');
+                    }}
                     className="flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
                     aria-label="Open user menu"
                     aria-expanded={showUserMenu ? "true" : "false"}
                   >
-                    <User className="h-5 w-5" />
+                    <User className="h-5 w-5" aria-hidden="true" />
                   </button>
                   
                   {showUserMenu && (
@@ -236,14 +262,17 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                           className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           role="menuitem"
                         >
-                          <Crown className="w-4 h-4 mr-2" />
+                          <Crown className="w-4 h-4 mr-2" aria-hidden="true" />
                           Admin Portal
                         </a>
                       )}
                       <Link 
                         to="/profile" 
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setShowUserMenu(false)}
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          trackEvent('Navigation', 'Menu Click', 'Profile');
+                        }}
                         role="menuitem"
                       >
                         Your Profile
@@ -251,7 +280,10 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                       <Link 
                         to="/bookings" 
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setShowUserMenu(false)}
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          trackEvent('Navigation', 'Menu Click', 'Bookings');
+                        }}
                         role="menuitem"
                       >
                         Your Bookings
@@ -270,6 +302,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                 <a 
                   href="/login"
                   className="hidden md:inline-flex border border-black text-black px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-gray-50 transition-all duration-300 box-border"
+                  onClick={() => trackEvent('Navigation', 'Sign In Click', 'Header')}
                 >
                   Sign In
                 </a>
@@ -320,10 +353,14 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
 
               <div className="flex flex-col h-full">
                 <div className="flex justify-center items-center p-4 border-b">
-                  <img
-                    src="https://i.imghippo.com/files/cDgm3025PmI.webp"
+                  <OptimizedImage
+                    src="https://i.imgur.com/991MInn.png"
+                    webp="https://i.imghippo.com/files/cDgm3025PmI.webp"
                     alt="Royal Transfer EU Logo - Professional taxi and transfer services"
                     className="h-[62px] w-auto object-contain"
+                    width={250}
+                    height={62}
+                    loading="eager"
                   />
                 </div>
 
@@ -343,7 +380,10 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                         <a
                           href={link.href}
                           className="relative py-2 text-gray-700 group"
-                          onClick={() => setIsMenuOpen(false)}
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            trackEvent('Navigation', 'Mobile Menu Click', link.label);
+                          }}
                         >
                           <span>{link.label}</span>
                           <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-black group-hover:w-full transition-all duration-300"></span>
@@ -361,6 +401,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                               onClick={(e) => {
                                 handleAdminPortalClick(e);
                                 setIsMenuOpen(false);
+                                trackEvent('Navigation', 'Mobile Menu Click', 'Admin Portal');
                               }}
                             >
                               <span>Admin Portal</span>
@@ -372,7 +413,10 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                           <a
                             href="/profile"
                             className="relative py-2 text-gray-700 group"
-                            onClick={() => setIsMenuOpen(false)}
+                            onClick={() => {
+                              setIsMenuOpen(false);
+                              trackEvent('Navigation', 'Mobile Menu Click', 'Your Profile');
+                            }}
                           >
                             <span>Your Profile</span>
                             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-black group-hover:w-full transition-all duration-300"></span>
@@ -382,7 +426,10 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                           <a
                             href="/bookings"
                             className="relative py-2 text-gray-700 group"
-                            onClick={() => setIsMenuOpen(false)}
+                            onClick={() => {
+                              setIsMenuOpen(false);
+                              trackEvent('Navigation', 'Mobile Menu Click', 'Your Bookings');
+                            }}
                           >
                             <span>Your Bookings</span>
                             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-black group-hover:w-full transition-all duration-300"></span>
@@ -397,7 +444,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                   {!hideSignIn && (
                     loading ? (
                       <div className="flex justify-center">
-                        <Loader2 className="w-5 h-5 text-black animate-spin" />
+                        <Loader2 className="w-5 h-5 text-black animate-spin" aria-hidden="true" />
                       </div>
                     ) : user ? (
                       <button
@@ -409,7 +456,10 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                     ) : (
                       <a
                         href="/login"
-                        onClick={() => setIsMenuOpen(false)}
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          trackEvent('Navigation', 'Mobile Menu Click', 'Sign In');
+                        }}
                         className="block w-full border border-black text-black px-[calc(1.5rem-1px)] py-[calc(0.5rem-1px)] rounded-md hover:bg-gray-50 transition-all duration-300 text-center box-border"
                       >
                         Sign In
@@ -431,7 +481,10 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
 
       <button 
         className="md:hidden fixed top-[22px] left-4 z-50 w-12 h-12 flex items-center justify-center"
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        onClick={() => {
+          setIsMenuOpen(!isMenuOpen);
+          trackEvent('Navigation', 'Mobile Menu Toggle', isMenuOpen ? 'Close' : 'Open');
+        }}
         aria-label="Toggle menu"
         aria-expanded={isMenuOpen ? "true" : "false"}
       >
