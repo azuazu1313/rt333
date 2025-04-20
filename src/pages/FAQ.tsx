@@ -252,7 +252,7 @@ const FAQ = () => {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
           <h1 className="text-4xl font-bold mb-6 text-center">Frequently Asked Questions</h1>
 
-          <p className="text-lg text-gray-600 mb-8 text-center">
+          <p className="text-lg text-gray-700 mb-8 text-center">
             We know your travel plans are important, and questions may arise. At Royal Transfer EU, 
             our goal is your peace of mind. Below are answers to the most frequently asked questions. 
             Don't see your question here? Feel free to contact our 24/7 customer support team anytime!
@@ -323,7 +323,7 @@ const FAQ = () => {
                                     exit={{ height: 0, opacity: 0 }}
                                     transition={{ duration: 0.2 }}
                                   >
-                                    <p className="px-4 pb-4 text-gray-600">{item.answer}</p>
+                                    <p className="px-4 pb-4 text-gray-700">{item.answer}</p>
                                   </motion.div>
                                 )}
                               </AnimatePresence>
@@ -343,7 +343,7 @@ const FAQ = () => {
         <div className="w-full bg-white py-16">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
             <h2 className="text-2xl font-bold mb-4">Still Have a Question?</h2>
-            <p className="text-gray-600 mb-6">Our friendly team is available around the clock.</p>
+            <p className="text-gray-700 mb-6">Our friendly team is available around the clock.</p>
             <div className="flex flex-col items-center space-y-4">
               <button
                 onClick={() => setIsContactDialogOpen(true)}
@@ -353,7 +353,7 @@ const FAQ = () => {
               </button>
               <button
                 onClick={openAIChat}
-                className="bg-[#FFD166] text-white px-8 py-3 rounded-md hover:opacity-90 transition-all duration-300 flex items-center justify-center w-64"
+                className="bg-[#E6AB00] text-white px-8 py-3 rounded-md hover:opacity-90 transition-all duration-300 flex items-center justify-center w-64"
               >
                 <MessageCircle className="w-6 h-6 mr-2" />
                 Speak to us Instantly!

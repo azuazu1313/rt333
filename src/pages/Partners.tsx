@@ -144,7 +144,7 @@ const Partners = () => {
             Become a Partner: Empower Your Business with Royal Transfer EU
           </motion.h1>
           <motion.p 
-            className="text-xl text-gray-600 mb-8"
+            className="text-xl text-gray-700 mb-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -195,7 +195,7 @@ const Partners = () => {
               <div key={index} className="text-center p-6">
                 <Car className="w-12 h-12 text-blue-600 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">{benefit.title}</h3>
-                <p className="text-gray-600">{benefit.description}</p>
+                <p className="text-gray-700">{benefit.description}</p>
               </div>
             ))}
           </div>
@@ -220,21 +220,21 @@ const Partners = () => {
                 <CheckCircle2 className="w-6 h-6 text-blue-600 mr-3 flex-shrink-0 mt-1" />
                 <div>
                   <h3 className="text-xl font-semibold mb-2">Flexible Scheduling</h3>
-                  <p className="text-gray-600">Full control over your availability.</p>
+                  <p className="text-gray-700">Full control over your availability.</p>
                 </div>
               </div>
               <div className="flex items-start">
                 <CheckCircle2 className="w-6 h-6 text-blue-600 mr-3 flex-shrink-0 mt-1" />
                 <div>
                   <h3 className="text-xl font-semibold mb-2">Increased Earnings</h3>
-                  <p className="text-gray-600">Say goodbye to empty miles, hello to maximum returns.</p>
+                  <p className="text-gray-700">Say goodbye to empty miles, hello to maximum returns.</p>
                 </div>
               </div>
               <div className="flex items-start">
                 <CheckCircle2 className="w-6 h-6 text-blue-600 mr-3 flex-shrink-0 mt-1" />
                 <div>
                   <h3 className="text-xl font-semibold mb-2">User-Friendly App</h3>
-                  <p className="text-gray-600">Easy-to-follow app for smooth transfers every time.</p>
+                  <p className="text-gray-700">Easy-to-follow app for smooth transfers every time.</p>
                 </div>
               </div>
             </div>
@@ -282,7 +282,7 @@ const Partners = () => {
                   {step.step}
                 </div>
                 <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
-                <p className="text-gray-600 mb-4">{step.description}</p>
+                <p className="text-gray-700 mb-4">{step.description}</p>
                 <button 
                   onClick={scrollToForm}
                   className="border-2 border-blue-600 text-blue-600 px-6 py-2 rounded-md hover:bg-blue-50 transition-all duration-300"
@@ -313,10 +313,10 @@ const Partners = () => {
                   <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
                 ))}
               </div>
-              <p className="text-lg text-gray-600 mb-6">"{testimonials[currentTestimonial].text}"</p>
+              <p className="text-lg text-gray-700 mb-6">"{testimonials[currentTestimonial].text}"</p>
               <p className="font-semibold">
                 {testimonials[currentTestimonial].author}
-                <span className="text-gray-500"> • {testimonials[currentTestimonial].company}</span>
+                <span className="text-gray-600"> • {testimonials[currentTestimonial].company}</span>
               </p>
             </div>
 
@@ -452,7 +452,7 @@ const Partners = () => {
                   className="overflow-hidden"
                 >
                   <div className="px-6 pb-4">
-                    <p className="text-gray-600">{faq.answer}</p>
+                    <p className="text-gray-700">{faq.answer}</p>
                   </div>
                 </motion.div>
               </div>

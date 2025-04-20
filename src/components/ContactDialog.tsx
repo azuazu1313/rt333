@@ -86,7 +86,7 @@ const ContactDialog = ({ isOpen, onClose }: ContactDialogProps) => {
 
                 <button
                   onClick={openAIChat}
-                  className="w-full flex items-center p-4 bg-[#FFD166] rounded-lg hover:opacity-90 transition-colors text-white"
+                  className="w-full flex items-center p-4 bg-[#E6AB00] rounded-lg hover:opacity-90 transition-colors text-white"
                 >
                   <MessageCircle className="w-6 h-6 mr-3" />
                   <div className="text-left">

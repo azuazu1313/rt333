@@ -30,7 +30,7 @@ function Calendar({
     nav_button_next: "absolute right-1",
     table: "w-full border-collapse space-y-1",
     head_row: "flex w-full",
-    head_cell: "text-slate-500 w-9 font-normal text-[0.8rem] text-center",
+    head_cell: "text-slate-700 w-9 font-normal text-[0.8rem] text-center", /* Darker text for better contrast */
     row: "flex w-full mt-2",
     cell: cn(
       "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
@@ -46,8 +46,8 @@ function Calendar({
     day_range_end: "day-range-end bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
     day_selected: "bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
     day_today: "text-black font-semibold",
-    day_outside: "text-slate-500 opacity-50",
-    day_disabled: "text-slate-500 opacity-50",
+    day_outside: "text-slate-700 opacity-50", /* Darker text for better contrast */
+    day_disabled: "text-slate-700 opacity-50", /* Darker text for better contrast */
     day_range_middle: "aria-selected:bg-gray-100 aria-selected:text-gray-900",
     day_hidden: "invisible",
     ...classNames,

@@ -10,7 +10,7 @@ export default {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "#2563eb",
+          DEFAULT: "#1d4ed8", /* Darker blue for better contrast */
           foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
@@ -38,7 +38,7 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         blue: {
-          600: '#2563eb',
+          600: '#1d4ed8', /* Darker blue (was #2563eb) */
         },
         gray: {
           100: '#dde1ea',
