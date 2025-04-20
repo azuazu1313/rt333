@@ -19,6 +19,35 @@ const defaultFlags: FeatureFlag[] = [
   // Add more feature flags as needed
 ];
 
+// Helper function to get cookies by name
+const getCookie = (name: string): string | null => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop()?.split(';').shift() || null;
+  }
+  return null;
+};
+
+// Helper function to set cookies with domain attribute
+const setCookie = (name: string, value: string, days: number = 365): void => {
+  const date = new Date();
+  date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+  
+  // Get top-level domain for cross-domain compatibility
+  let domain = window.location.hostname;
+  
+  // Extract top-level domain (e.g., example.com from subdomain.example.com)
+  const parts = domain.split('.');
+  if (parts.length > 2) {
+    // If we have a subdomain, use the top two parts
+    domain = parts.slice(-2).join('.');
+  }
+  
+  // Set the cookie with domain attribute to share across subdomains
+  document.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/; domain=.${domain}`;
+};
+
 const FeatureFlagAdmin: React.FC = () => {
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,12 +58,12 @@ const FeatureFlagAdmin: React.FC = () => {
     const loadFlags = () => {
       setLoading(true);
       try {
-        // Try to load from localStorage first
-        const savedFlags = localStorage.getItem('featureFlags');
-        if (savedFlags) {
-          const parsedFlags = JSON.parse(savedFlags);
+        // Try to load from cookies first
+        const cookieValue = getCookie('featureFlags');
+        if (cookieValue) {
+          const parsedFlags = JSON.parse(cookieValue);
           
-          // Map from camelCase (localStorage) to snake_case (admin UI)
+          // Map from camelCase (cookie) to snake_case (admin UI)
           const mappedFlags = defaultFlags.map(flag => {
             if (flag.key === 'show_cookies_banner') {
               return {
@@ -48,7 +77,27 @@ const FeatureFlagAdmin: React.FC = () => {
           
           setFlags(mappedFlags);
         } else {
-          setFlags(defaultFlags);
+          // Fall back to localStorage for backward compatibility
+          const savedFlags = localStorage.getItem('featureFlags');
+          if (savedFlags) {
+            const parsedFlags = JSON.parse(savedFlags);
+            
+            // Map from camelCase to snake_case
+            const mappedFlags = defaultFlags.map(flag => {
+              if (flag.key === 'show_cookies_banner') {
+                return {
+                  ...flag,
+                  enabled: parsedFlags.showCookieBanner ?? flag.enabled
+                };
+              }
+              // Add mappings for other flags
+              return flag;
+            });
+            
+            setFlags(mappedFlags);
+          } else {
+            setFlags(defaultFlags);
+          }
         }
       } catch (error) {
         console.error('Error loading feature flags:', error);
@@ -73,7 +122,25 @@ const FeatureFlagAdmin: React.FC = () => {
     setSaveStatus('saving');
     
     try {
-      // Update flags in main site using the global function
+      // Create an object with camelCase keys for storage
+      const flagsObj: Record<string, any> = {};
+      
+      flags.forEach(flag => {
+        if (flag.key === 'show_cookies_banner') {
+          flagsObj.showCookieBanner = flag.enabled;
+        }
+        // Add handling for other flags
+      });
+      
+      const flagsJson = JSON.stringify(flagsObj);
+      
+      // Set as cookie with domain attribute for cross-domain sharing
+      setCookie('featureFlags', flagsJson);
+      
+      // Also save to localStorage for backward compatibility
+      localStorage.setItem('featureFlags', flagsJson);
+      
+      // Update flags in main site using the global function if available
       flags.forEach(flag => {
         if (window.setFeatureFlag) {
           if (flag.key === 'show_cookies_banner') {
@@ -107,7 +174,7 @@ const FeatureFlagAdmin: React.FC = () => {
   return (
     <div className="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold dark:text-white">Feature Flags</h2>
+        <h2 className="text-xl font-bold dark:text-white">Feature Flags (Client-Side)</h2>
         <button
           onClick={saveChanges}
           disabled={saveStatus === 'saving'}
@@ -162,72 +229,16 @@ const FeatureFlagAdmin: React.FC = () => {
           </div>
         ))}
       </div>
+      
+      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+        <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">Cross-Domain Features</h3>
+        <p className="text-sm text-blue-700 dark:text-blue-400">
+          These feature flags are stored in cookies with a domain attribute set to your top-level domain.
+          This allows settings to be shared between different subdomains (e.g., admin.example.com and app.example.com).
+        </p>
+      </div>
     </div>
   );
 };
 
 export default FeatureFlagAdmin;
-
-/**
- * Helper function to toggle a feature flag value in the main application.
- * This can be called from the admin panel.
- * 
- * @param key The feature flag key (snake_case format)
- * @param value The new value for the feature flag
- * @returns Boolean indicating success or failure
- */
-export const setFeatureFlag = (key: string, value: boolean): boolean => {
-  if (window.setFeatureFlag) {
-    return window.setFeatureFlag(key, value);
-  }
-  
-  // If the global function isn't available, try to update localStorage directly
-  try {
-    const featureFlagsStr = localStorage.getItem('featureFlags');
-    const featureFlags = featureFlagsStr ? JSON.parse(featureFlagsStr) : {};
-    
-    // Map from snake_case to camelCase
-    let camelCaseKey = key;
-    if (key === 'show_cookies_banner') {
-      camelCaseKey = 'showCookieBanner';
-    }
-    // Add more mappings as needed
-    
-    featureFlags[camelCaseKey] = value;
-    localStorage.setItem('featureFlags', JSON.stringify(featureFlags));
-    
-    // Dispatch storage event to notify other tabs
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: 'featureFlags',
-      newValue: JSON.stringify(featureFlags),
-    }));
-    
-    return true;
-  } catch (error) {
-    console.error('Error updating feature flag:', error);
-    return false;
-  }
-};
-
-/**
- * Get current feature flag values
- * 
- * @returns Object with all feature flags
- */
-export const getFeatureFlags = () => {
-  try {
-    const featureFlagsStr = localStorage.getItem('featureFlags');
-    return featureFlagsStr ? JSON.parse(featureFlagsStr) : {};
-  } catch (error) {
-    console.error('Error loading feature flags:', error);
-    return {};
-  }
-};
-
-/**
- * Reset all feature flags to default values
- */
-export const resetFeatureFlags = () => {
-  localStorage.removeItem('featureFlags');
-  window.location.reload();
-};
