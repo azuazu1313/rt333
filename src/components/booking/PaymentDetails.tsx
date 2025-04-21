@@ -43,6 +43,9 @@ const PaymentDetails = () => {
       // Generate booking reference right before checkout
       const bookingReference = generateBookingReference();
 
+      // First, create the trip record in the database to ensure it exists
+      await createTripRecord(bookingReference);
+
       // Prepare booking data for the checkout session
       const bookingData = {
         booking_reference: bookingReference,

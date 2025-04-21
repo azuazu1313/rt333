@@ -35,7 +35,10 @@ const BookingSuccess = () => {
     setBookingReference(bookingRef);
     
     if (bookingRef) {
-      fetchBookingDetails(bookingRef);
+      // Small delay to ensure data is inserted in DB
+      setTimeout(() => {
+        fetchBookingDetails(bookingRef);
+      }, 1000);
     }
     
     // Track booking success
@@ -48,44 +51,66 @@ const BookingSuccess = () => {
     try {
       console.log('Fetching booking details for reference:', reference);
       
-      // Try to find booking using reference with proper parameter binding
+      // Try to find booking using reference with proper query format
       const { data, error } = await supabase
         .from('trips')
         .select('*')
-        .or(`booking_reference.eq."${reference}",id.eq."${reference}"`)
-        .limit(1);
+        .eq('booking_reference', reference)
+        .single();
       
       if (error) {
         console.error('Error fetching booking details:', error);
+        
+        // Fall back to a more permissive query if the exact match fails
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('trips')
+          .select('*')
+          .ilike('booking_reference', `%${reference}%`)
+          .limit(1);
+        
+        if (fallbackError || !fallbackData || fallbackData.length === 0) {
+          throw new Error('Could not find booking with reference: ' + reference);
+        }
+        
+        setBookingDetails(fallbackData[0]);
+        console.log('Booking data found with fallback query:', fallbackData[0]);
+        
+        // Check for existing user with this email
+        checkForExistingUser(fallbackData[0]);
+        
+        return;
       }
       
       console.log('Booking data result:', data);
       
-      if (data && data.length > 0) {
-        setBookingDetails(data[0]);
-        
-        // If we have a booking and the user is not logged in, check if the email matches an existing account
-        if (!user && data[0].customer_email) {
-          const { data: existingUserData } = await supabase
-            .from('users')
-            .select('id')
-            .eq('email', data[0].customer_email)
-            .limit(1);
-            
-          const hasExistingAccount = existingUserData && existingUserData.length > 0;
-          setExistingUserWithSameEmail(hasExistingAccount);
-          
-          // Only show the sign-up modal if there's no existing account with this email
-          if (!hasExistingAccount && !data[0].user_id) {
-            // Small delay to let the success screen be visible first
-            setTimeout(() => setShowSignUpModal(true), 3000);
-          }
-        }
+      if (data) {
+        setBookingDetails(data);
+        // Check for existing user with this email
+        checkForExistingUser(data);
       }
     } catch (error) {
       console.error('Error fetching booking details:', error);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const checkForExistingUser = async (bookingData: any) => {
+    if (!user && bookingData?.customer_email) {
+      const { data: existingUserData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', bookingData.customer_email)
+        .limit(1);
+        
+      const hasExistingAccount = existingUserData && existingUserData.length > 0;
+      setExistingUserWithSameEmail(hasExistingAccount);
+      
+      // Only show the sign-up modal if there's no existing account with this email
+      if (!hasExistingAccount && !bookingData.user_id) {
+        // Small delay to let the success screen be visible first
+        setTimeout(() => setShowSignUpModal(true), 3000);
+      }
     }
   };
   
@@ -302,7 +327,9 @@ const BookingSuccess = () => {
                 <button
                   onClick={() => {
                     trackEvent('Navigation', 'Post-Booking Click', 'Sign In To Manage Booking');
-                    navigate('/login');
+                    navigate('/login', {
+                      state: { bookingReference }
+                    });
                   }}
                   className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-all duration-300"
                 >
