@@ -54,10 +54,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user is admin or support
+    // Check if user is admin, support, or partner
     const { data: userData, error: userError } = await supabaseAdmin
       .from("users")
-      .select("user_role")
+      .select("user_role, id")
       .eq("id", user.id)
       .single();
       
@@ -71,9 +71,13 @@ Deno.serve(async (req) => {
       );
     }
     
-    if (userData?.user_role !== "admin" && userData?.user_role !== "support") {
+    // Allow partners to access the endpoint, in addition to admins and support
+    const isAdminOrSupport = userData?.user_role === "admin" || userData?.user_role === "support";
+    const isPartner = userData?.user_role === "partner";
+    
+    if (!isAdminOrSupport && !isPartner) {
       return new Response(
-        JSON.stringify({ error: "Admin or support permissions required" }),
+        JSON.stringify({ error: "Insufficient permissions" }),
         {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -81,14 +85,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1. Fetch all drivers with their user data
-    const { data: existingDrivers, error: driversError } = await supabaseAdmin
-      .from("drivers")
-      .select(`
-        *,
-        user:users!drivers_user_id_fkey(id, name, email, phone, user_role)
-      `)
-      .order("created_at", { ascending: false });
+    // For partners, only allow access to their own driver data
+    let driversQuery = supabaseAdmin.from("drivers").select(`
+      *,
+      user:users!drivers_user_id_fkey(id, name, email, phone, user_role)
+    `);
+    
+    // If user is a partner, restrict to only their own driver data
+    if (isPartner) {
+      driversQuery = driversQuery.eq("user_id", userData.id);
+    }
+    
+    // Order results
+    driversQuery = driversQuery.order("created_at", { ascending: false });
+    
+    // Execute the query
+    const { data: existingDrivers, error: driversError } = await driversQuery;
 
     if (driversError) {
       console.error("Error fetching drivers:", driversError);
@@ -101,56 +113,61 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Find all users with "partner" role
-    const { data: partnerUsers, error: partnerError } = await supabaseAdmin
-      .from("users")
-      .select(`
-        id, name, email, phone, created_at, user_role, updated_at
-      `)
-      .eq("user_role", "partner")
-      .order("created_at", { ascending: false });
+    // For admin/support users, also include partners without driver profiles
+    let combinedResults = [...(existingDrivers || [])];
+    
+    if (isAdminOrSupport) {
+      // 2. Find all users with "partner" role
+      const { data: partnerUsers, error: partnerError } = await supabaseAdmin
+        .from("users")
+        .select(`
+          id, name, email, phone, created_at, user_role, updated_at
+        `)
+        .eq("user_role", "partner")
+        .order("created_at", { ascending: false });
 
-    if (partnerError) {
-      console.error("Error fetching partner users:", partnerError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch partner users", details: partnerError }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+      if (partnerError) {
+        console.error("Error fetching partner users:", partnerError);
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch partner users", details: partnerError }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // 3. Create a set of user IDs who already have driver profiles
+      const existingDriverUserIds = new Set(
+        (existingDrivers || []).map(driver => driver.user_id)
       );
+
+      // 4. Find partners without driver profiles
+      const partnersWithoutDrivers = (partnerUsers || [])
+        .filter(user => !existingDriverUserIds.has(user.id))
+        .map(user => ({
+          id: `pending_${user.id}`, // Add a prefix to avoid ID conflicts
+          user_id: user.id,
+          verification_status: 'unverified',
+          is_available: false,
+          created_at: user.created_at,
+          _isPartnerWithoutProfile: true, // Add a flag to identify these records
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone
+          }
+        }));
+
+      // 5. Combine existing drivers and partners without driver profiles
+      combinedResults = [
+        ...combinedResults,
+        ...partnersWithoutDrivers
+      ];
     }
 
-    // 3. Create a set of user IDs who already have driver profiles
-    const existingDriverUserIds = new Set(
-      (existingDrivers || []).map(driver => driver.user_id)
-    );
-
-    // 4. Find partners without driver profiles
-    const partnersWithoutDrivers = (partnerUsers || [])
-      .filter(user => !existingDriverUserIds.has(user.id))
-      .map(user => ({
-        id: `pending_${user.id}`, // Add a prefix to avoid ID conflicts
-        user_id: user.id,
-        verification_status: 'unverified',
-        is_available: false,
-        created_at: user.created_at,
-        _isPartnerWithoutProfile: true, // Add a flag to identify these records
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone
-        }
-      }));
-
-    // 5. Combine existing drivers and partners without driver profiles
-    const combinedResults = [
-      ...(existingDrivers || []),
-      ...partnersWithoutDrivers
-    ];
-
-    // Get document counts for existing drivers
+    // Get document counts for drivers
     const driversWithDocCounts = await Promise.all(combinedResults.map(async (driver) => {
       // Only query document counts for real drivers (not pending partners)
       if (driver._isPartnerWithoutProfile) {
