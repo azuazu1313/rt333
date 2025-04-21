@@ -1,4 +1,5 @@
 import Stripe from "npm:stripe@12.0.0";
+import { createClient } from "npm:@supabase/supabase-js@2.41.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +18,8 @@ Deno.serve(async (req) => {
 
   try {
     // Get the Stripe secret key from environment variables
-    const stripeSecretKey = "sk_test_51PoZUCBf2yTNcRUo1QV8kTiBasytVelePrLdEchzzQJp1odHA4FmL9RA0Aq24OM9CLT8k2CdrrQirwAphQsEgXe600U7I5pYg1";
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || 
+      "sk_test_51PoZUCBf2yTNcRUo1QV8kTiBasytVelePrLdEchzzQJp1odHA4FmL9RA0Aq24OM9CLT8k2CdrrQirwAphQsEgXe600U7I5pYg1";
     
     if (!stripeSecretKey) {
       throw new Error("Stripe secret key is missing from environment variables.");
@@ -28,11 +30,17 @@ Deno.serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://phcqdnzuicgmlhkmnpxc.supabase.co";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "PLACEHOLDER_SERVICE_ROLE_KEY";
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     // Parse the request body
-    const { trip, vehicle, customer, extras, amount, discountCode } = await req.json();
+    const { booking_reference, trip, vehicle, customer, extras, amount, discountCode } = await req.json();
 
     // Validate required fields
-    if (!trip || !vehicle || !customer || !customer.email) {
+    if (!trip || !vehicle || !customer || !customer.email || !booking_reference) {
       throw new Error("Missing required booking information");
     }
 
@@ -43,6 +51,7 @@ Deno.serve(async (req) => {
     }
 
     console.log("Creating checkout session with data:", { 
+      booking_reference,
       trip, 
       vehicle: vehicle.name, 
       customerEmail: customer.email,
@@ -66,16 +75,17 @@ Deno.serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.headers.get("origin")}/booking-success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${req.headers.get("origin")}/booking-success?reference=${booking_reference}`,
       cancel_url: `${req.headers.get("origin")}/booking-cancelled`,
       customer_email: customer.email,
       metadata: {
+        booking_reference: booking_reference,
         trip_from: trip.from,
         trip_to: trip.to,
         trip_type: trip.type,
         trip_date: new Date(trip.date).toISOString(),
         trip_return_date: trip.returnDate ? new Date(trip.returnDate).toISOString() : "",
-        trip_passengers: trip.passengers.toString(),
+        trip_passengers: String(trip.passengers),
         vehicle_id: vehicle.id,
         vehicle_name: vehicle.name,
         customer_name: `${customer.firstName || ""} ${customer.lastName || ""}`.trim(),
@@ -84,6 +94,42 @@ Deno.serve(async (req) => {
         discount_code: discountCode || "",
       },
     });
+
+    // When payment is successful via Stripe, insert the trip into the database
+    // Prepare trip data for database insertion
+    const tripData = {
+      user_id: customer.user_id || null,
+      booking_reference: booking_reference,
+      pickup_address: trip.from,
+      dropoff_address: trip.to,
+      estimated_distance_km: 0, // Will be calculated by admin
+      estimated_duration_min: 0, // Will be calculated by admin
+      estimated_price: amount,
+      datetime: trip.date || new Date().toISOString(),
+      is_scheduled: true,
+      status: 'pending', // Initially pending until assigned
+      vehicle_type: vehicle.name || '',
+      passengers: trip.passengers || 1,
+      customer_name: `${customer.title || ''} ${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
+      customer_email: customer.email,
+      customer_phone: customer.phone || '',
+      is_return: trip.type === 'round-trip',
+      return_datetime: trip.returnDate || null,
+      extra_items: extras.join(','),
+      payment_method: 'card', // Since this is Stripe checkout
+      notes: ''
+    };
+
+    // Insert the trip record when Stripe session is created
+    // This will be updated later when payment completes via webhook
+    const { data, error } = await supabase
+      .from('trips')
+      .insert([tripData]);
+
+    if (error) {
+      console.error('Error creating trip record:', error);
+      // Continue with checkout even if trip record fails - we'll handle this via webhook
+    }
 
     // Return the session URL
     return new Response(
