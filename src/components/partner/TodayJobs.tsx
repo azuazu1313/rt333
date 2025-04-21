@@ -3,21 +3,20 @@ import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { format, isToday, parseISO, addDays } from 'date-fns';
+import { Link } from 'react-router-dom';
 import { 
   Calendar, 
   Clock, 
-  MapPin, 
-  ChevronRight, 
+  Car, 
+  FileText, 
+  BarChart2, 
+  Settings, 
+  ArrowLeft, 
+  Menu, 
   User, 
-  CheckCircle, 
-  XCircle, 
-  RefreshCw, 
-  AlertCircle,
-  PhoneCall,
-  MessageSquare,
-  Loader2,
-  Timer,
-  AlertTriangle
+  MessageSquare, 
+  AlertTriangle,
+  FileSearch
 } from 'lucide-react';
 import IncidentReportForm from './IncidentReportForm';
 
@@ -60,6 +59,8 @@ const TodayJobs = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showReportForm, setShowReportForm] = useState<boolean>(false);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [driverProfileCreated, setDriverProfileCreated] = useState<boolean>(true); // Assume true initially
   const { toast } = useToast();
   const { userData } = useAuth();
 
@@ -84,25 +85,94 @@ const TodayJobs = () => {
     };
   }, [userData]);
 
+  const createDriverProfile = async (): Promise<string | null> => {
+    try {
+      setError(null);
+      
+      // Create driver profile
+      const { data, error } = await supabase
+        .from('drivers')
+        .insert({
+          user_id: userData?.id,
+          verification_status: 'unverified',
+          is_available: false
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('Error creating driver profile:', error);
+        setError('Could not create driver profile. Please complete your profile setup first.');
+        return null;
+      }
+
+      if (data?.id) {
+        setDriverProfileCreated(true);
+        return data.id;
+      }
+
+      return null;
+    } catch (err) {
+      console.error('Unexpected error creating driver profile:', err);
+      setError('An unexpected error occurred. Please try again or contact support.');
+      return null;
+    }
+  };
+
+  const fetchDriverId = async (): Promise<string | null> => {
+    try {
+      // Use RPC function to safely get driver ID if it exists
+      const { data, error } = await supabase
+        .rpc('get_user_driver_id', { p_user_id: userData?.id });
+      
+      if (error) {
+        console.error('Error fetching driver ID:', error);
+        return null;
+      }
+      
+      if (!data) {
+        // Driver profile doesn't exist, attempt to create it
+        setDriverProfileCreated(false);
+        return null;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error in fetchDriverId:', error);
+      return null;
+    }
+  };
+
   const fetchTrips = async () => {
     try {
       setRefreshing(true);
-      // Get driver ID from the drivers table
-      const { data: driverData, error: driverError } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('user_id', userData?.id)
-        .single();
-
-      if (driverError || !driverData) {
-        console.error('Error fetching driver data:', driverError);
-        throw new Error('Could not fetch your driver profile');
+      setError(null);
+      
+      // First, check if driver profile exists
+      let driverId = await fetchDriverId();
+      
+      if (!driverId && !driverProfileCreated) {
+        // If no driver profile, let's try to create one
+        driverId = await createDriverProfile();
+        if (!driverId) {
+          // If we still can't get a driver ID, show appropriate error
+          setError('Could not fetch your driver profile. Please complete your profile setup first.');
+          setTrips([]);
+          return;
+        }
+      }
+      
+      if (!driverId) {
+        setError('Could not find your driver profile. Please complete your profile setup first.');
+        setTrips([]);
+        return;
       }
 
       // Fetch trips for the next 2 days
       const tomorrow = addDays(new Date(), 1);
       tomorrow.setHours(23, 59, 59);
 
+      // Use direct query with driver_id since we know the ID now
       const { data, error } = await supabase
         .from('trips')
         .select(`
@@ -111,21 +181,21 @@ const TodayJobs = () => {
           pickup_zone:zones!trips_pickup_zone_id_fkey(name),
           dropoff_zone:zones!trips_dropoff_zone_id_fkey(name)
         `)
-        .eq('driver_id', driverData.id)
+        .eq('driver_id', userData?.id) // Use user ID directly since trips are assigned to users
         .or(`status.eq.pending,status.eq.accepted,status.eq.in_progress,status.eq.completed,status.eq.cancelled`)
         .lte('datetime', tomorrow.toISOString())
         .order('datetime', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching trips:', error);
+        setError('Error fetching trips. Please try again later.');
+        return;
+      }
 
       setTrips(data || []);
     } catch (error: any) {
       console.error('Error fetching trips:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to fetch your scheduled trips.",
-      });
+      setError(error.message || "Failed to fetch your scheduled trips.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -135,6 +205,7 @@ const TodayJobs = () => {
   const acknowledgeTrip = async (tripId: string) => {
     try {
       setAcknowledging(tripId);
+      setError(null);
       
       // Update the trip to mark it as acknowledged by the driver
       const { error } = await supabase
@@ -168,6 +239,7 @@ const TodayJobs = () => {
   const startTrip = async (tripId: string) => {
     try {
       setStartingTrip(tripId);
+      setError(null);
       
       // Update trip status to in_progress
       const { error } = await supabase
@@ -204,6 +276,7 @@ const TodayJobs = () => {
   const completeTrip = async (tripId: string) => {
     try {
       setCompletingTrip(tripId);
+      setError(null);
       
       // Update trip status to completed
       const { error } = await supabase
@@ -285,8 +358,44 @@ const TodayJobs = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
-        <Loader2 className="w-10 h-10 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
         <p className="text-gray-600 dark:text-gray-400">Loading your trips...</p>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center border dark:border-gray-700">
+        <AlertTriangle className="h-12 w-12 text-yellow-500 dark:text-yellow-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">We encountered an issue</h3>
+        <p className="text-gray-500 dark:text-gray-400 mb-6">
+          {error}
+        </p>
+        <div className="flex justify-center space-x-4">
+          <button
+            onClick={fetchTrips}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+          >
+            <Car className="w-5 h-5 mr-2" />
+            Try Again
+          </button>
+          <Link 
+            to="/partner/documents" 
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
+          >
+            <User className="w-5 h-5 mr-2" />
+            Complete Profile
+          </Link>
+          <Link 
+            to="/partner/documents" 
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
+          >
+            <FileSearch className="w-5 h-5 mr-2" />
+            View Documents
+          </Link>
+        </div>
       </div>
     );
   }
@@ -339,7 +448,7 @@ const TodayJobs = () => {
             disabled={refreshing}
             className="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            <Clock className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
@@ -396,7 +505,7 @@ const TodayJobs = () => {
                       <div>
                         {trip.estimated_duration_min && (
                           <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                            <Timer className="h-4 w-4 mr-1" />
+                            <Clock className="h-4 w-4 mr-1" />
                             <span>{Math.round(trip.estimated_duration_min)} min</span>
                           </div>
                         )}
@@ -418,14 +527,14 @@ const TodayJobs = () => {
                                 href={`tel:${trip.user.phone}`}
                                 className="inline-flex items-center text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                               >
-                                <PhoneCall className="h-3 w-3 mr-1" />
+                                <span className="material-icons-outlined" style={{fontSize: "14px", marginRight: "4px"}}>call</span>
                                 Call
                               </a>
                               <a 
                                 href={`sms:${trip.user.phone}`}
                                 className="inline-flex items-center text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                               >
-                                <MessageSquare className="h-3 w-3 mr-1" />
+                                <span className="material-icons-outlined" style={{fontSize: "14px", marginRight: "4px"}}>chat</span>
                                 Text
                               </a>
                             </div>
@@ -493,7 +602,7 @@ const TodayJobs = () => {
                           >
                             {startingTrip === trip.id ? (
                               <>
-                                <Loader2 className="animate-spin h-4 w-4 mr-1" />
+                                <div className="w-4 h-4 mr-1 border-2 border-white border-t-transparent animate-spin rounded-full"></div>
                                 Starting...
                               </>
                             ) : (
@@ -513,7 +622,7 @@ const TodayJobs = () => {
                           >
                             {completingTrip === trip.id ? (
                               <>
-                                <Loader2 className="animate-spin h-4 w-4 mr-1" />
+                                <div className="w-4 h-4 mr-1 border-2 border-white border-t-transparent animate-spin rounded-full"></div>
                                 Completing...
                               </>
                             ) : (
@@ -534,7 +643,7 @@ const TodayJobs = () => {
                           >
                             {acknowledging === trip.id ? (
                               <>
-                                <Loader2 className="animate-spin h-4 w-4 mr-1" />
+                                <div className="w-4 h-4 mr-1 border-2 border-white border-t-transparent animate-spin rounded-full"></div>
                                 Processing...
                               </>
                             ) : (
@@ -564,9 +673,9 @@ const TodayJobs = () => {
                         rel="noopener noreferrer"
                         className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm flex items-center"
                       >
-                        <MapPin className="h-4 w-4 mr-1" />
+                        <span className="material-icons-outlined" style={{fontSize: "16px", marginRight: "4px"}}>map</span>
                         Directions
-                        <ChevronRight className="h-4 w-4 ml-1" />
+                        <span className="material-icons-outlined" style={{fontSize: "14px", marginLeft: "4px"}}>north_east</span>
                       </a>
                     </div>
                   </div>

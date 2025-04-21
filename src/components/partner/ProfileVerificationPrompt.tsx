@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, X, CheckCircle2, Upload, AlertCircle, ChevronRight } from 'lucide-react';
+import { X, CheckCircle2, Upload, AlertCircle, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -28,34 +28,38 @@ const ProfileVerificationPrompt: React.FC<ProfileVerificationPromptProps> = ({ o
   }, [userData]);
 
   const checkDriverStatus = async () => {
-    if (!userData?.id) return;
-    
     try {
-      // First check if the user has a driver record
-      const { data: driverData, error: driverError } = await supabase
-        .from('drivers')
-        .select('id, verification_status, decline_reason')
-        .eq('user_id', userData.id)
-        .single();
+      // Use the get_user_driver_id RPC function to check for driver profile
+      const { data: driverId, error: driverIdError } = await supabase
+        .rpc('get_user_driver_id');
       
-      if (driverError) {
-        if (driverError.code === 'PGRST116') { // Record not found
-          setDriverStatus('unverified');
-        } else {
-          console.error('Error fetching driver status:', driverError);
-        }
+      if (driverIdError || !driverId) {
+        setDriverStatus('unverified');
         return;
       }
       
-      // Set the status based on database value or default to unverified
-      if (driverData) {
-        setDriverStatus(driverData.verification_status || 'unverified');
-        setDeclineReason(driverData.decline_reason);
+      // Now fetch the driver details
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('verification_status, decline_reason')
+        .eq('id', driverId)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching driver status:', error);
+        setDriverStatus('unverified');
+        return;
+      }
+      
+      if (data) {
+        setDriverStatus(data.verification_status || 'unverified');
+        setDeclineReason(data.decline_reason);
       } else {
         setDriverStatus('unverified');
       }
     } catch (error) {
       console.error('Error checking driver status:', error);
+      setDriverStatus('unverified');
     }
   };
 
@@ -82,7 +86,7 @@ const ProfileVerificationPrompt: React.FC<ProfileVerificationPromptProps> = ({ o
         {/* Header */}
         <div className="bg-blue-50 dark:bg-blue-900/30 px-6 py-4 flex justify-between items-center">
           <div className="flex items-center">
-            <AlertTriangle className="h-6 w-6 text-blue-600 dark:text-blue-400 mr-3" />
+            <AlertCircle className="h-6 w-6 text-blue-600 dark:text-blue-400 mr-3" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">
               Driver Verification Required
             </h3>
@@ -157,6 +161,7 @@ const ProfileVerificationPrompt: React.FC<ProfileVerificationPromptProps> = ({ o
           <Link
             to="/partner/documents"
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+            onClick={() => localStorage.removeItem('profilePromptDismissed')}
           >
             <Upload className="h-4 w-4 mr-2" />
             {driverStatus === 'declined' ? 'Resubmit Documents' : 'Upload Documents'}

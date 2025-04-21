@@ -17,7 +17,7 @@ import { Toaster } from '../components/ui/toaster';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from '../components/ThemeToggle';
 import DriverAvailabilityToggle from '../components/partner/DriverAvailabilityToggle';
-import { supabase } from '../lib/supabase';
+import { adminApi } from '../lib/adminApi';
 
 const Partner = () => {
   const navigate = useNavigate();
@@ -67,25 +67,21 @@ const Partner = () => {
   // Check driver verification status
   const checkDriverStatus = async () => {
     try {
-      // First check if the user has a driver record
-      const { data: driverData, error: driverError } = await supabase
-        .from('drivers')
-        .select('id, verification_status, is_available')
-        .eq('user_id', userData?.id)
-        .single();
+      if (!userData || !userData.id) return;
       
-      if (driverError) {
-        if (driverError.code === 'PGRST116') { // No record found
-          setShowVerificationPrompt(true);
-          setDriverVerificationStatus('unverified');
-        } else {
-          console.error('Error fetching driver status:', driverError);
-        }
+      // Use adminApi instead of direct Supabase query
+      const response = await adminApi.fetchDrivers({ userId: userData.id });
+      
+      if (!response || response.error) {
+        console.error('Error fetching driver status:', response?.error || 'No data returned');
+        setDriverVerificationStatus('unverified');
+        setShowVerificationPrompt(true);
         return;
       }
       
-      // Set driver status and availability
-      if (driverData) {
+      // Check if any driver data was returned
+      if (response.data && response.data.length > 0) {
+        const driverData = response.data[0];
         setDriverVerificationStatus(driverData.verification_status || 'unverified');
         setIsAvailable(driverData.is_available || false);
         
@@ -94,11 +90,14 @@ const Partner = () => {
           setShowVerificationPrompt(true);
         }
       } else {
+        // No driver record found
         setDriverVerificationStatus('unverified');
         setShowVerificationPrompt(true);
       }
     } catch (error) {
       console.error('Error checking driver status:', error);
+      setDriverVerificationStatus('unverified');
+      setShowVerificationPrompt(true);
     }
   };
 

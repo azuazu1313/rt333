@@ -13,6 +13,7 @@ const VerificationStatus: React.FC<VerificationStatusProps> = ({ className = '' 
   const [loading, setLoading] = useState(true);
   const [docsUploaded, setDocsUploaded] = useState(0);
   const [docsRequired, setDocsRequired] = useState(0);
+  const [declineReason, setDeclineReason] = useState<string | null>(null);
   const { userData } = useAuth();
 
   useEffect(() => {
@@ -26,30 +27,39 @@ const VerificationStatus: React.FC<VerificationStatusProps> = ({ className = '' 
     try {
       setLoading(true);
       
-      // First check if the user has a driver record
-      const { data: driverData, error: driverError } = await supabase
+      // First check if the user has a driver record using RPC
+      const { data: driverId, error: driverIdError } = await supabase
+        .rpc('get_user_driver_id', { p_user_id: userData?.id });
+      
+      if (driverIdError || !driverId) {
+        // No driver record found
+        setStatus('unverified');
+        return;
+      }
+      
+      // Now fetch the driver details with the ID
+      const { data, error } = await supabase
         .from('drivers')
-        .select('id, verification_status')
-        .eq('user_id', userData?.id)
+        .select('verification_status, decline_reason')
+        .eq('id', driverId)
         .single();
       
-      if (driverError) {
-        if (driverError.code === 'PGRST116') { // Record not found
-          setStatus('unverified');
-        } else {
-          console.error('Error fetching driver status:', driverError);
-        }
+      if (error) {
+        console.error('Error fetching driver verification status:', error);
+        setStatus('unverified');
         return;
       }
       
       // Set the status based on database value or default to unverified
-      if (driverData) {
-        setStatus(driverData.verification_status || 'unverified');
+      if (data) {
+        setStatus(data.verification_status || 'unverified');
+        setDeclineReason(data.decline_reason);
       } else {
         setStatus('unverified');
       }
     } catch (error) {
       console.error('Error checking verification status:', error);
+      setStatus('unverified');
     } finally {
       setLoading(false);
     }
@@ -57,14 +67,11 @@ const VerificationStatus: React.FC<VerificationStatusProps> = ({ className = '' 
 
   const fetchDocumentStats = async () => {
     try {
-      // First check if the user has a driver record
-      const { data: driverData, error: driverError } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('user_id', userData?.id)
-        .single();
+      // Get driver ID using the RPC function
+      const { data: driverId, error: driverIdError } = await supabase
+        .rpc('get_user_driver_id', { p_user_id: userData?.id });
       
-      if (driverError || !driverData?.id) {
+      if (driverIdError || !driverId) {
         setDocsUploaded(0);
         setDocsRequired(3); // Default required docs count
         return;
@@ -74,7 +81,7 @@ const VerificationStatus: React.FC<VerificationStatusProps> = ({ className = '' 
       const { count: uploadedCount, error: uploadedError } = await supabase
         .from('driver_documents')
         .select('*', { count: 'exact', head: true })
-        .eq('driver_id', driverData.id);
+        .eq('driver_id', driverId);
         
       if (uploadedError) {
         console.error('Error counting uploaded documents:', uploadedError);
@@ -125,7 +132,7 @@ const VerificationStatus: React.FC<VerificationStatusProps> = ({ className = '' 
           borderColor: 'border-red-200 dark:border-red-800',
           icon: <XCircle className="h-5 w-5 mr-2" />,
           text: 'Verification Declined',
-          description: 'Your verification was declined. Please check your profile for details and resubmit.'
+          description: declineReason || 'Your verification was declined. Please check your profile for details and resubmit.'
         };
       default:
         return {

@@ -4,7 +4,7 @@ export const adminApi = {
   /**
    * Fetches drivers with admin permissions
    */
-  async fetchDrivers() {
+  async fetchDrivers(options = {}) {
     try {
       // Get current session for auth token
       const { data: { session } } = await supabase.auth.getSession();
@@ -20,7 +20,7 @@ export const adminApi = {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({})
+        body: JSON.stringify(options)
       });
       
       if (!response.ok) {
@@ -28,10 +28,17 @@ export const adminApi = {
         throw new Error(errorData.error || `HTTP error ${response.status}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      return {
+        data,
+        error: null
+      };
     } catch (error) {
       console.error('Error in adminApi.fetchDrivers:', error);
-      throw error;
+      return {
+        data: null,
+        error
+      };
     }
   },
   

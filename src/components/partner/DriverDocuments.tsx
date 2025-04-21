@@ -10,12 +10,13 @@ import {
   AlertCircle, 
   Loader2,
   AlertTriangle,
-  ExternalLink,
   Eye,
   Calendar,
-  Info
+  Info,
+  Save
 } from 'lucide-react';
 import { format, isBefore, addDays } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 interface Document {
   id: string;
@@ -41,12 +42,16 @@ const DriverDocuments: React.FC = () => {
   const [driverId, setDriverId] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
-  const [uploadedAll, setUploadedAll] = useState(false);
-  const [showSubmitReviewButton, setShowSubmitReviewButton] = useState(false);
+  const [hasAnyDocument, setHasAnyDocument] = useState(false);
   const [submittingForReview, setSubmittingForReview] = useState(false);
   const [uploadExpiryDate, setUploadExpiryDate] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
+  const [localDocumentUrls, setLocalDocumentUrls] = useState<Record<string, string>>({});
+  const [expiryDates, setExpiryDates] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const { userData } = useAuth();
+  const [creatingDriverProfile, setCreatingDriverProfile] = useState(false);
 
   useEffect(() => {
     if (userData?.id) {
@@ -57,40 +62,28 @@ const DriverDocuments: React.FC = () => {
           fetchDriverStatus(id);
         } else {
           // Don't create driver profile automatically
-          // We'll create it when they try to upload a document
+          // We'll create it when they submit documents or click "Submit for Verification"
           setLoading(false);
         }
       });
     }
   }, [userData]);
 
-  // Check if all required docs are uploaded
+  // Check if at least one document is uploaded or selected
   useEffect(() => {
-    // Get the list of required document types
-    const requiredDocTypes = DOCUMENT_TYPES.filter(docType => docType.required).map(docType => docType.value);
+    // Get the list of documents (existing or staged)
+    const existingDocTypes = documents.map(doc => doc.doc_type);
+    const stagedDocTypes = Object.keys(uploadedFiles);
+    const allDocTypes = [...new Set([...existingDocTypes, ...stagedDocTypes])];
     
-    // Get the list of uploaded document types
-    const uploadedDocTypes = documents.map(doc => doc.doc_type);
-    
-    // Check if all required document types are uploaded
-    const allRequiredDocsUploaded = requiredDocTypes.every(docType => uploadedDocTypes.includes(docType));
-    
-    setUploadedAll(allRequiredDocsUploaded);
-    
-    // Show the "Submit for Review" button if:
-    // 1. All required docs are uploaded
-    // 2. Status is 'unverified' or 'declined'
-    setShowSubmitReviewButton(allRequiredDocsUploaded && 
-      (verificationStatus === 'unverified' || verificationStatus === 'declined'));
-  }, [documents, verificationStatus]);
+    // Check if we have any documents
+    setHasAnyDocument(allDocTypes.length > 0);
+  }, [documents, uploadedFiles]);
 
   const fetchDriverId = async (): Promise<string | null> => {
     try {
       const { data, error } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('user_id', userData?.id)
-        .single();
+        .rpc('get_user_driver_id');
 
       if (error) {
         console.error('Error fetching driver ID:', error);
@@ -98,45 +91,59 @@ const DriverDocuments: React.FC = () => {
         return null;
       }
 
-      return data?.id || null;
+      return data || null;
     } catch (error) {
       console.error('Error:', error);
       return null;
     }
   };
 
-  const createDriverProfile = async () => {
+  const createDriverProfile = async (): Promise<string | null> => {
     try {
-      const { data, error } = await supabase
-        .from('drivers')
-        .insert({
-          user_id: userData?.id,
-          verification_status: 'unverified',
-          is_available: false
-        })
-        .select('id')
-        .single();
-
-      if (error) {
-        console.error('Error creating driver profile:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Could not create your driver profile. Please contact support.",
-        });
-        return null;
+      setErrorMessage(null);
+      setCreatingDriverProfile(true);
+      
+      // Get the current session for the JWT token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Authentication required');
       }
-
-      if (data?.id) {
-        setDriverId(data.id);
+      
+      // Call the edge function to securely create a driver profile
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-driver-profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.driverId) {
+        setDriverId(result.driverId);
         setVerificationStatus('unverified');
-        return data.id;
+        return result.driverId;
       }
-
-      return null;
-    } catch (error) {
+      
+      throw new Error('Failed to create driver profile');
+    } catch (error: any) {
       console.error('Error creating driver profile:', error);
+      setErrorMessage(error.message || 'Could not create your driver profile. Please try again or contact support.');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Could not create your driver profile. Please try again or contact support.",
+      });
       return null;
+    } finally {
+      setCreatingDriverProfile(false);
     }
   };
 
@@ -144,7 +151,7 @@ const DriverDocuments: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('drivers')
-        .select('verification_status')
+        .select('verification_status, decline_reason')
         .eq('id', driverId)
         .single();
 
@@ -185,30 +192,64 @@ const DriverDocuments: React.FC = () => {
   };
 
   const submitForReview = async () => {
-    if (!driverId) return;
-    
+    // Only proceed if we have any documents to submit
+    if (!hasAnyDocument && Object.keys(uploadedFiles).length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No Documents",
+        description: "Please upload at least one document before submitting for verification.",
+      });
+      return;
+    }
+
     try {
       setSubmittingForReview(true);
+      setErrorMessage(null);
+
+      // First, ensure we have a driver profile
+      let currentDriverId = driverId;
+      if (!currentDriverId) {
+        // Create driver profile if it doesn't exist
+        currentDriverId = await createDriverProfile();
+        if (!currentDriverId) {
+          throw new Error('Could not create driver profile');
+        }
+        setDriverId(currentDriverId);
+      }
+      
+      // Now upload any saved documents to existing driver profile
+      await uploadSavedDocuments(currentDriverId);
       
       // Update driver verification status to 'pending'
       const { error } = await supabase
         .from('drivers')
         .update({ verification_status: 'pending' })
-        .eq('id', driverId);
+        .eq('id', currentDriverId);
         
       if (error) throw error;
       
       // Update state
       setVerificationStatus('pending');
-      setShowSubmitReviewButton(false);
       
       toast({
         title: "Documents Submitted",
         description: "Your documents have been submitted for review. You'll be notified once they're verified.",
         variant: "success"
       });
+      
+      // Clear temporary uploads
+      setUploadedFiles({});
+      setLocalDocumentUrls({});
+      setExpiryDates({});
+      
+      // Refresh document list
+      fetchDocuments(currentDriverId);
+      
+      // Remove dismiss flag to show prompt again when status changes
+      localStorage.removeItem('profilePromptDismissed');
     } catch (error: any) {
       console.error('Error submitting for review:', error);
+      setErrorMessage(error.message || "Failed to submit for review. Please try again.");
       toast({
         variant: "destructive",
         title: "Error",
@@ -219,33 +260,17 @@ const DriverDocuments: React.FC = () => {
     }
   };
 
-  const handleFileUpload = async (docType: string, file: File) => {
-    // If no driver profile exists, create one first
-    if (!driverId) {
-      const newDriverId = await createDriverProfile();
-      if (!newDriverId) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Could not create your driver profile. Please contact support.",
-        });
-        return;
-      }
-      setDriverId(newDriverId);
-    }
+  const generateLocalDocumentUrl = (file: File): string => {
+    return URL.createObjectURL(file);
+  };
 
-    if (!file) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please select a file to upload.",
-      });
-      return;
-    }
-
+  const handleFilePrepare = async (docType: string, file: File) => {
+    if (!file) return;
+    
     try {
       setUploading(docType);
-
+      setErrorMessage(null);
+      
       // Validate file size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
         throw new Error('File too large. Maximum size is 5MB.');
@@ -257,79 +282,105 @@ const DriverDocuments: React.FC = () => {
         throw new Error('Invalid file type. Please upload a JPEG, PNG or PDF file.');
       }
 
-      // Generate unique file path
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${driverId}/${docType}_${Date.now()}.${fileExt}`;
-      const filePath = `driver_documents/${fileName}`;
-
-      // Upload file to Supabase Storage
-      const { error: uploadError, data: uploadData } = await supabase.storage
-        .from('documents')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (uploadError) throw uploadError;
-
-      // Get the public URL for the file
-      const { data: { publicUrl } } = supabase.storage
-        .from('documents')
-        .getPublicUrl(filePath);
-
-      // Store document reference in the database with expiry date if provided
-      const docData = {
-        driver_id: driverId,
-        doc_type: docType,
-        file_url: publicUrl,
-        name: file.name,
-        verified: false,
-        expiry_date: uploadExpiryDate
-      };
-
-      // Delete previous documents with the same type
-      await supabase
-        .from('driver_documents')
-        .delete()
-        .eq('driver_id', driverId)
-        .eq('doc_type', docType);
-
-      // Insert new document
-      const { error: dbError } = await supabase
-        .from('driver_documents')
-        .insert(docData);
-
-      if (dbError) throw dbError;
-
-      // If verification status is currently 'verified', change to 'pending'
-      if (verificationStatus === 'verified') {
-        await supabase
-          .from('drivers')
-          .update({ verification_status: 'pending' })
-          .eq('id', driverId);
-          
-        setVerificationStatus('pending');
+      // Store uploaded file and expiry date in local state
+      setUploadedFiles(prev => ({
+        ...prev,
+        [docType]: file
+      }));
+      
+      // Generate and store local URL for preview
+      const localUrl = generateLocalDocumentUrl(file);
+      setLocalDocumentUrls(prev => ({
+        ...prev,
+        [docType]: localUrl
+      }));
+      
+      // Store expiry date if set
+      if (uploadExpiryDate) {
+        setExpiryDates(prev => ({
+          ...prev,
+          [docType]: uploadExpiryDate
+        }));
       }
 
-      // Reset expiry date
-      setUploadExpiryDate(null);
-
-      // Refresh documents list
-      fetchDocuments(driverId);
-
       toast({
-        title: "Document Uploaded",
-        description: "Your document has been uploaded successfully and is pending verification.",
+        title: "File Selected",
+        description: "Document is ready for submission. Click 'Submit for Verification' when ready.",
       });
+      
+      // Reset upload expiry date for next document
+      setUploadExpiryDate(null);
     } catch (error: any) {
-      console.error('Error uploading document:', error);
+      console.error('Error preparing document:', error);
+      setErrorMessage(error.message || "Failed to prepare document. Please try again.");
       toast({
         variant: "destructive",
         title: "Upload Failed",
-        description: error.message || "Failed to upload document. Please try again.",
+        description: error.message || "Failed to prepare document. Please try again.",
       });
     } finally {
       setUploading(null);
+    }
+  };
+
+  const uploadSavedDocuments = async (driverId: string): Promise<boolean> => {
+    try {
+      // Upload each saved document
+      for (const docType of Object.keys(uploadedFiles)) {
+        const file = uploadedFiles[docType];
+        const expiryDate = expiryDates[docType] || null;
+
+        // Generate unique file path
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${driverId}/${docType}_${Date.now()}.${fileExt}`;
+        const filePath = `driver_documents/${fileName}`;
+
+        // Upload file to Supabase Storage
+        const { error: uploadError, data: uploadData } = await supabase.storage
+          .from('documents')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Get the public URL for the file
+        const { data: { publicUrl } } = supabase.storage
+          .from('documents')
+          .getPublicUrl(filePath);
+
+        // Delete any previous document of same type
+        await supabase
+          .from('driver_documents')
+          .delete()
+          .eq('driver_id', driverId)
+          .eq('doc_type', docType);
+
+        // Store document reference in the database with expiry date
+        const { error: dbError } = await supabase
+          .from('driver_documents')
+          .insert({
+            driver_id: driverId,
+            doc_type: docType,
+            file_url: publicUrl,
+            name: file.name,
+            verified: false,
+            expiry_date: expiryDate
+          });
+
+        if (dbError) throw dbError;
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error('Error uploading documents:', error);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: error.message || "Failed to upload documents. Please try again.",
+      });
+      return false;
     }
   };
 
@@ -380,6 +431,14 @@ const DriverDocuments: React.FC = () => {
     return documents.find(doc => doc.doc_type === type);
   };
 
+  const getPendingDocumentForType = (type: string): File | undefined => {
+    return uploadedFiles[type];
+  };
+
+  const hasPendingDocument = (type: string): boolean => {
+    return !!uploadedFiles[type];
+  };
+
   // File input ref for each document type
   const fileInputRefs: Record<string, React.RefObject<HTMLInputElement>> = {};
   DOCUMENT_TYPES.forEach(type => {
@@ -395,57 +454,58 @@ const DriverDocuments: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, docType: string) => {
     const file = e.target.files?.[0];
     if (file) {
-      handleFileUpload(docType, file);
+      handleFilePrepare(docType, file);
     }
   };
 
-  // Verification banner color
-  const getStatusBanner = () => {
-    switch (verificationStatus) {
-      case 'unverified':
-        return {
-          color: 'bg-yellow-100 dark:bg-yellow-900/30',
-          textColor: 'text-yellow-800 dark:text-yellow-300',
-          borderColor: 'border-yellow-200 dark:border-yellow-800',
-          icon: <AlertCircle className="h-5 w-5 mr-2" />,
-          text: 'Your profile needs verification. Please upload all required documents.'
-        };
-      case 'pending':
-        return {
-          color: 'bg-blue-100 dark:bg-blue-900/30',
-          textColor: 'text-blue-800 dark:text-blue-300',
-          borderColor: 'border-blue-200 dark:border-blue-800',
-          icon: <Clock className="h-5 w-5 mr-2" />,
-          text: 'Your documents are being reviewed. This typically takes 24-48 hours.'
-        };
-      case 'verified':
-        return {
-          color: 'bg-green-100 dark:bg-green-900/30',
-          textColor: 'text-green-800 dark:text-green-300',
-          borderColor: 'border-green-200 dark:border-green-800',
-          icon: <CheckCircle className="h-5 w-5 mr-2" />,
-          text: 'Your driver profile is verified. You can accept trips now.'
-        };
-      case 'declined':
-        return {
-          color: 'bg-red-100 dark:bg-red-900/30',
-          textColor: 'text-red-800 dark:text-red-300',
-          borderColor: 'border-red-200 dark:border-red-800',
-          icon: <AlertTriangle className="h-5 w-5 mr-2" />,
-          text: 'Your verification was declined. Please update your documents and resubmit.'
-        };
-      default:
-        return {
-          color: 'bg-blue-100 dark:bg-blue-900/30',
-          textColor: 'text-blue-800 dark:text-blue-300',
-          borderColor: 'border-blue-200 dark:border-blue-800',
-          icon: <Info className="h-5 w-5 mr-2" />,
-          text: 'Upload your documents for verification to start accepting trips.'
-        };
-    }
+  // Error display component
+  const ErrorDisplay = () => {
+    if (!errorMessage) return null;
+    
+    return (
+      <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-md mb-6 border border-red-200 dark:border-red-800 flex items-start">
+        <AlertTriangle className="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+        <div>
+          <p className="text-red-700 dark:text-red-300 font-medium">Error</p>
+          <p className="text-red-600 dark:text-red-400 mt-1">{errorMessage}</p>
+        </div>
+      </div>
+    );
   };
 
-  const statusBanner = getStatusBanner();
+  // Determine if we should show the verification status bar
+  const shouldShowVerificationSubmitButton = () => {
+    // Don't show for verified drivers
+    if (verificationStatus === 'verified') return false;
+    
+    // Don't show for pending verification
+    if (verificationStatus === 'pending') return false;
+    
+    // Show in all other cases (unverified, declined, or null)
+    return true;
+  };
+
+  // Calculate button status
+  const getVerificationButtonStatus = () => {
+    if (creatingDriverProfile || submittingForReview) {
+      return {
+        disabled: true,
+        text: creatingDriverProfile ? "Creating Profile..." : "Submitting..."
+      };
+    }
+
+    if (!hasAnyDocument && Object.keys(uploadedFiles).length === 0) {
+      return {
+        disabled: true,
+        text: "Upload at least one document"
+      };
+    }
+    
+    return {
+      disabled: false,
+      text: verificationStatus === 'declined' ? "Resubmit for Verification" : "Submit for Verification"
+    };
+  };
 
   if (loading && driverId) {
     return (
@@ -464,22 +524,51 @@ const DriverDocuments: React.FC = () => {
         </p>
       </div>
 
-      {/* Verification Status Banner */}
-      <div className={`p-4 ${statusBanner.color} ${statusBanner.borderColor} border rounded-lg mb-6`}>
-        <div className="flex items-center">
-          <div className={`${statusBanner.textColor}`}>
-            {statusBanner.icon}
-          </div>
-          <p className={`${statusBanner.textColor} font-medium`}>
-            {statusBanner.text}
+      {/* Error Message Display */}
+      <ErrorDisplay />
+
+      {/* Submit for Verification Button - Always visible */}
+      {shouldShowVerificationSubmitButton() && (
+        <div className="mb-6 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 text-center">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            {hasAnyDocument || Object.keys(uploadedFiles).length > 0 
+              ? "Ready to Submit for Verification?" 
+              : "Upload Documents for Verification"}
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-lg mx-auto">
+            {hasAnyDocument || Object.keys(uploadedFiles).length > 0 
+              ? "You can submit your documents for review now. At least one document is required."
+              : "Upload at least one document below, then submit for verification to start accepting trips."}
           </p>
+          
+          <button
+            onClick={submitForReview}
+            disabled={getVerificationButtonStatus().disabled}
+            className={`px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center ${
+              getVerificationButtonStatus().disabled ? 'opacity-60 cursor-not-allowed' : ''
+            }`}
+          >
+            {creatingDriverProfile || submittingForReview ? (
+              <>
+                <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                {getVerificationButtonStatus().text}
+              </>
+            ) : (
+              <>
+                <Save className="h-5 w-5 mr-2" />
+                {getVerificationButtonStatus().text}
+              </>
+            )}
+          </button>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {DOCUMENT_TYPES.map((docType) => {
           const existingDoc = getDocumentForType(docType.value);
+          const pendingDoc = getPendingDocumentForType(docType.value);
           const status = existingDoc ? getDocumentStatus(existingDoc) : null;
+          const isPending = hasPendingDocument(docType.value);
 
           return (
             <div 
@@ -539,14 +628,16 @@ const DriverDocuments: React.FC = () => {
                         {existingDoc.verified ? 'Document verified' : 'Awaiting verification'}
                       </span>
                       
-                      <div className="flex items-center space-x-3">
-                        {/* Show expiry date input when re-uploading */}
+                      <div className="flex flex-col md:flex-row items-end md:items-center space-y-2 md:space-y-0 md:space-x-3">
+                        {/* Document expiry date input field */}
                         {docType.value !== 'other' && (
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                          <div className="flex flex-col items-start space-y-1">
+                            <label htmlFor={`${docType.value}-expiry`} className="text-xs text-gray-500 dark:text-gray-400">
+                              Expiry Date:
+                            </label>
                             <input
                               type="date"
-                              placeholder="Expiry Date"
+                              id={`${docType.value}-expiry`}
                               className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-white"
                               onChange={(e) => setUploadExpiryDate(e.target.value)}
                             />
@@ -564,12 +655,66 @@ const DriverDocuments: React.FC = () => {
                           type="button"
                           onClick={() => triggerFileInput(docType.value)}
                           disabled={!!uploading}
-                          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center z-10"
                         >
                           <Upload className="h-4 w-4 mr-1" />
-                          Upload New
+                          {uploading === docType.value ? 'Uploading...' : 'Upload New'}
                         </button>
                       </div>
+                    </div>
+                  </div>
+                ) : isPending ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                        <Clock className="h-5 w-5 mr-2" />
+                        <span>Ready for Submission</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                      <span className="truncate max-w-[180px]">{pendingDoc?.name}</span>
+                    </div>
+                    
+                    {expiryDates[docType.value] && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Expires: {format(new Date(expiryDates[docType.value]), 'PP')}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center mt-2 pt-4 border-t dark:border-gray-700">
+                      <a 
+                        href={localDocumentUrls[docType.value]}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center"
+                      >
+                        <Eye className="w-4 h-4 mr-1" /> View Selected File
+                      </a>
+
+                      <button
+                        onClick={() => {
+                          // Remove the file from staged uploads
+                          setUploadedFiles(prev => {
+                            const newState = {...prev};
+                            delete newState[docType.value];
+                            return newState;
+                          });
+                          setLocalDocumentUrls(prev => {
+                            const newState = {...prev};
+                            delete newState[docType.value];
+                            return newState;
+                          });
+                          setExpiryDates(prev => {
+                            const newState = {...prev};
+                            delete newState[docType.value];
+                            return newState;
+                          });
+                        }}
+                        className="ml-auto text-red-600 dark:text-red-400 text-sm hover:underline"
+                      >
+                        Remove
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -583,17 +728,15 @@ const DriverDocuments: React.FC = () => {
                     </p>
                     
                     <div className="space-y-4">
-                      {/* Expiry date selector for documents that have expiration */}
+                      {/* Document expiry date input field (not dropdown) */}
                       {docType.value !== 'other' && (
                         <div>
                           <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Document Expiry Date
                           </label>
                           <div className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
                             <input
                               type="date"
-                              placeholder="Expiry Date"
                               className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 dark:bg-gray-700 dark:text-white text-sm"
                               onChange={(e) => setUploadExpiryDate(e.target.value)}
                             />
@@ -612,17 +755,17 @@ const DriverDocuments: React.FC = () => {
                         type="button"
                         onClick={() => triggerFileInput(docType.value)}
                         disabled={uploading === docType.value}
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 z-10"
                       >
                         {uploading === docType.value ? (
                           <>
                             <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                            Uploading...
+                            Selecting...
                           </>
                         ) : (
                           <>
                             <Upload className="h-4 w-4 mr-2" />
-                            Upload Document
+                            Select Document
                           </>
                         )}
                       </button>
@@ -635,38 +778,9 @@ const DriverDocuments: React.FC = () => {
         })}
       </div>
 
-      {/* Submit for Review Button */}
-      {showSubmitReviewButton && (
-        <div className="mt-6 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 text-center">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            Ready to Submit for Review?
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-lg mx-auto">
-            You've uploaded all required documents. Submit them for admin verification to start accepting trips.
-          </p>
-          <button
-            onClick={submitForReview}
-            disabled={submittingForReview}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center"
-          >
-            {submittingForReview ? (
-              <>
-                <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                Submitting...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-5 w-5 mr-2" />
-                Submit for Verification
-              </>
-            )}
-          </button>
-        </div>
-      )}
-
       <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg shadow-sm border border-blue-100 dark:border-blue-800">
         <div className="flex items-start">
-          <AlertCircle className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5 mr-3" />
+          <Info className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5 mr-3" />
           <div>
             <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">Document Requirements</h4>
             <ul className="text-sm text-blue-700 dark:text-blue-400 list-disc list-inside space-y-1">
@@ -677,7 +791,7 @@ const DriverDocuments: React.FC = () => {
               <li>All documents will be verified by our team before you can start accepting trips</li>
             </ul>
             <p className="text-sm text-blue-700 dark:text-blue-400 mt-2">
-              For assistance, please contact support.
+              For assistance, please <Link to="/partner/chat" className="underline">contact support</Link>.
             </p>
           </div>
         </div>

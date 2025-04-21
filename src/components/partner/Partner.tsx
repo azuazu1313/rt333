@@ -72,32 +72,44 @@ const Partner = () => {
     try {
       // First check if the user has a driver record
       const { data: driverData, error: driverError } = await supabase
-        .from('drivers')
-        .select('id, verification_status, is_available')
-        .eq('user_id', userData?.id)
-        .single();
+        .rpc('get_user_driver_id', { p_user_id: userData?.id })
+        .then(async result => {
+          if (result.error) {
+            return { data: null, error: result.error };
+          }
+
+          if (result.data) {
+            // If we got a driver ID, fetch the driver details
+            const { data, error } = await supabase
+              .from('drivers')
+              .select('id, verification_status, is_available, decline_reason')
+              .eq('id', result.data)
+              .single();
+            
+            return { data, error };
+          }
+          
+          return { data: null, error: null };
+        });
       
       if (driverError) {
-        if (driverError.code === 'PGRST116') { // No record found
-          setShowVerificationPrompt(true);
-          setDriverVerificationStatus('unverified');
-        } else {
-          console.error('Error fetching driver status:', driverError);
-        }
+        console.error('Error fetching driver status:', driverError);
+        return;
+      }
+      
+      if (!driverData) {
+        // No driver profile yet
+        setDriverVerificationStatus('unverified');
+        setShowVerificationPrompt(true);
         return;
       }
       
       // Set driver status and availability
-      if (driverData) {
-        setDriverVerificationStatus(driverData.verification_status || 'unverified');
-        setIsAvailable(driverData.is_available || false);
-        
-        // Show verification prompt for unverified or declined status
-        if (driverData.verification_status === 'unverified' || driverData.verification_status === 'declined') {
-          setShowVerificationPrompt(true);
-        }
-      } else {
-        setDriverVerificationStatus('unverified');
+      setDriverVerificationStatus(driverData.verification_status || 'unverified');
+      setIsAvailable(driverData.is_available || false);
+      
+      // Show verification prompt for unverified or declined status
+      if (driverData.verification_status === 'unverified' || driverData.verification_status === 'declined') {
         setShowVerificationPrompt(true);
       }
     } catch (error) {
