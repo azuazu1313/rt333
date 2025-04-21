@@ -30,8 +30,11 @@
     "react-dom": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-ga4": "^2.1.0",
+    "react-helmet-async": "^2.0.5",
     "react-intersection-observer": "^9.8.1",
     "react-router-dom": "^6.22.2",
+    "react-schemaorg": "^2.0.0",
+    "schema-dts": "^1.1.2",
     "tailwind-merge": "^2.2.1",
     "web-vitals": "^3.5.2"
   },
@@ -54,6 +57,7 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
     "vite": "^5.4.2",
+    "vite-plugin-compression": "^0.5.1",
     "vite-plugin-imagemin": "^0.6.1"
   }
 }

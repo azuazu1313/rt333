@@ -34,6 +34,68 @@
       }
     </script>
 
+    <!-- FAQ Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I book a ride?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Book online, via phone, or through our app—instant confirmation guaranteed."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What happens if my flight is delayed?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No worries! We track flights and adjust pick-up times at no extra cost."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Are your prices fixed or metered?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Choose between fixed fares for transparency or metered rides for flexibility."
+            }
+          }
+        ]
+      }
+    </script>
+
+    <!-- Breadcrumbs Structured Data for Pages -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://royaltransfer.eu/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Services",
+            "item": "https://royaltransfer.eu/services"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Destinations",
+            "item": "https://royaltransfer.eu/blogs/destinations"
+          }
+        ]
+      }
+    </script>
+
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=%VITE_GA_MEASUREMENT_ID%"></script>
     <script>
@@ -70,11 +132,6 @@
 
     <!-- Preload Critical JS -->
     <link rel="modulepreload" href="/src/main.tsx">
-    <link rel="modulepreload" href="/src/App.tsx">
-    <link rel="modulepreload" href="/src/pages/Home.tsx">
-    <link rel="modulepreload" href="/src/components/Header.tsx">
-    <link rel="modulepreload" href="/src/components/Hero.tsx">
-    <link rel="modulepreload" href="/src/components/SearchForm.tsx">
 
     <!-- Google Maps Script -->
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=%VITE_GOOGLE_MAPS_API_KEY%&libraries=places"></script>

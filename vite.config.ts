@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
 
+// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const isAnalyze = mode === 'analyze';
@@ -20,7 +21,7 @@ export default defineConfig(({ mode }) => {
       exclude: ['lucide-react'],
     },
     build: {
-      sourcemap: true,
+      sourcemap: mode !== 'production',
       rollupOptions: {
         output: {
           manualChunks: (id) => {
@@ -28,6 +29,12 @@ export default defineConfig(({ mode }) => {
             if (id.includes('node_modules/react/') || 
                 id.includes('node_modules/react-dom/')) {
               return 'react-vendor';
+            }
+            
+            // Router in separate chunk
+            if (id.includes('node_modules/react-router') ||
+                id.includes('node_modules/history')) {
+              return 'router-vendor';
             }
             
             // UI libraries in one chunk
@@ -52,12 +59,26 @@ export default defineConfig(({ mode }) => {
             if (id.includes('node_modules/@radix-ui')) {
               return 'radix-vendor';
             }
+            
+            // Supabase
+            if (id.includes('node_modules/@supabase')) {
+              return 'supabase-vendor';
+            }
           },
         },
       },
       cssCodeSplit: true,
       chunkSizeWarningLimit: 1000,
       assetsInlineLimit: 4096, // 4kb - inline assets smaller than this
+    },
+    server: {
+      port: 3000,
+      open: true,
+      cors: true,
+    },
+    preview: {
+      port: 4000,
+      open: true,
     },
     define: {
       'process.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL),
