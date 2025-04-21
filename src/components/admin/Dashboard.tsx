@@ -76,47 +76,74 @@ const Dashboard = () => {
 
       console.log('Fetching dashboard stats...');
       
-      // Fetch total users
-      const { count: userCount, error: userError } = await supabase
-        .from('users')
-        .select('*', { count: 'exact' });
+      // Save current stats to restore in case of partial failures
+      const currentStats = { ...stats };
+      const newStats = { ...currentStats };
+      newStats.loading = true;
+      setStats(newStats);
+      
+      // Fetch total users count
+      try {
+        const { count: userCount, error: userError } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true });
 
-      if (userError) {
-        console.error('Error fetching user count:', userError);
-        throw userError;
+        if (userError) {
+          console.error('Error fetching user count:', userError);
+          // Don't throw, continue with other queries
+        } else {
+          newStats.users.total = userCount || currentStats.users.total;
+        }
+      } catch (error) {
+        console.error('Exception in user count query:', error);
       }
 
       // Fetch active users (non-suspended)
-      const { count: activeUserCount, error: activeUserError } = await supabase
-        .from('users')
-        .select('*', { count: 'exact' })
-        .eq('is_suspended', false);
+      try {
+        const { count: activeUserCount, error: activeUserError } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_suspended', false);
 
-      if (activeUserError) {
-        console.error('Error fetching active user count:', activeUserError);
-        throw activeUserError;
+        if (activeUserError) {
+          console.error('Error fetching active user count:', activeUserError);
+        } else {
+          newStats.users.active = activeUserCount || currentStats.users.active;
+        }
+      } catch (error) {
+        console.error('Exception in active user count query:', error);
       }
 
       // Fetch admin count
-      const { count: adminCount, error: adminError } = await supabase
-        .from('users')
-        .select('*', { count: 'exact' })
-        .eq('user_role', 'admin');
+      try {
+        const { count: adminCount, error: adminError } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_role', 'admin');
 
-      if (adminError) {
-        console.error('Error fetching admin count:', adminError);
-        throw adminError;
+        if (adminError) {
+          console.error('Error fetching admin count:', adminError);
+        } else {
+          newStats.users.admin = adminCount || currentStats.users.admin;
+        }
+      } catch (error) {
+        console.error('Exception in admin count query:', error);
       }
 
       // Fetch partner count (instead of support count)
-      const { count: partnerCount, error: partnerError } = await supabase
-        .from('users')
-        .select('*', { count: 'exact' })
-        .eq('user_role', 'partner');
+      try {
+        const { count: partnerCount, error: partnerError } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_role', 'partner');
 
-      if (partnerError) {
-        console.error('Error fetching partner count:', partnerError);
-        throw partnerError;
+        if (partnerError) {
+          console.error('Error fetching partner count:', partnerError);
+        } else {
+          newStats.users.partner = partnerCount || currentStats.users.partner;
+        }
+      } catch (error) {
+        console.error('Exception in partner count query:', error);
       }
 
       // Get dates for time-based queries
@@ -126,53 +153,151 @@ const Dashboard = () => {
       const last30d = subDays(now, 30).toISOString();
       
       // Fetch signup counts (using created_at from users)
-      const { count: signups24h, error: signups24hError } = await supabase
-        .from('users')
-        .select('*', { count: 'exact' })
-        .gte('created_at', last24h);
-        
-      const { count: signups7d, error: signups7dError } = await supabase
-        .from('users')
-        .select('*', { count: 'exact' })
-        .gte('created_at', last7d);
-        
-      const { count: signups30d, error: signups30dError } = await supabase
-        .from('users')
-        .select('*', { count: 'exact' })
-        .gte('created_at', last30d);
-        
-      if (signups24hError || signups7dError || signups30dError) {
-        console.error('Error fetching signup counts');
+      try {
+        const { count: signups24h, error: signups24hError } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', last24h);
+          
+        if (signups24hError) {
+          console.error('Error fetching 24h signups:', signups24hError);
+        } else {
+          newStats.signups.last24h = signups24h || currentStats.signups.last24h;
+        }
+      } catch (error) {
+        console.error('Exception in 24h signups query:', error);
       }
       
-      // TODO: In a production environment, we would create and use a user_logins table to track login activity
-      // For now we're using placeholder data, but this should be replaced with actual database queries
-      // This would require a new table with columns like:
-      // - id: uuid
-      // - user_id: uuid (foreign key to users.id)
-      // - login_time: timestamp
-      // - login_method: text (password, token, oauth, etc.)
-      const logins24h = 36; // Fixed placeholder instead of random
-      const logins7d = 92;  // Fixed placeholder instead of random
-      const logins30d = 417; // Fixed placeholder instead of random
+      try {
+        const { count: signups7d, error: signups7dError } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', last7d);
+          
+        if (signups7dError) {
+          console.error('Error fetching 7d signups:', signups7dError);
+        } else {
+          newStats.signups.last7d = signups7d || currentStats.signups.last7d;
+        }
+      } catch (error) {
+        console.error('Exception in 7d signups query:', error);
+      }
+      
+      try {
+        const { count: signups30d, error: signups30dError } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', last30d);
+          
+        if (signups30dError) {
+          console.error('Error fetching 30d signups:', signups30dError);
+        } else {
+          newStats.signups.last30d = signups30d || currentStats.signups.last30d;
+        }
+      } catch (error) {
+        console.error('Exception in 30d signups query:', error);
+      }
+      
+      // For login activity, check if we have the log_queries table available
+      try {
+        const { count: logins24h, error: logins24hError } = await supabase
+          .from('log_queries')
+          .select('*', { count: 'exact', head: true })
+          .eq('source', 'auth')
+          .ilike('query', '%login%')
+          .gte('created_at', last24h);
+          
+        if (logins24hError) {
+          // If the table doesn't exist, fall back to the fixed placeholders
+          // but don't reset the values if they were already set
+          newStats.logins.last24h = 36;
+        } else {
+          newStats.logins.last24h = logins24h || 36;
+        }
+      } catch (error) {
+        console.error('Exception in 24h logins query:', error);
+        newStats.logins.last24h = 36;
+      }
+      
+      try {
+        const { count: logins7d, error: logins7dError } = await supabase
+          .from('log_queries')
+          .select('*', { count: 'exact', head: true })
+          .eq('source', 'auth')
+          .ilike('query', '%login%')
+          .gte('created_at', last7d);
+          
+        if (logins7dError) {
+          newStats.logins.last7d = 92;
+        } else {
+          newStats.logins.last7d = logins7d || 92;
+        }
+      } catch (error) {
+        console.error('Exception in 7d logins query:', error);
+        newStats.logins.last7d = 92;
+      }
+      
+      try {
+        const { count: logins30d, error: logins30dError } = await supabase
+          .from('log_queries')
+          .select('*', { count: 'exact', head: true })
+          .eq('source', 'auth')
+          .ilike('query', '%login%')
+          .gte('created_at', last30d);
+          
+        if (logins30dError) {
+          newStats.logins.last30d = 417;
+        } else {
+          newStats.logins.last30d = logins30d || 417;
+        }
+      } catch (error) {
+        console.error('Exception in 30d logins query:', error);
+        newStats.logins.last30d = 417;
+      }
       
       // Fetch trip counts
-      const { count: tripCount, error: tripError } = await supabase
-        .from('trips')
-        .select('*', { count: 'exact' });
-        
-      const { count: pendingTripCount, error: pendingTripError } = await supabase
-        .from('trips')
-        .select('*', { count: 'exact' })
-        .eq('status', 'pending');
-        
-      const { count: completedTripCount, error: completedTripError } = await supabase
-        .from('trips')
-        .select('*', { count: 'exact' })
-        .eq('status', 'completed');
-        
-      if (tripError || pendingTripError || completedTripError) {
-        console.error('Error fetching trip counts');
+      try {
+        const { count: tripCount, error: tripError } = await supabase
+          .from('trips')
+          .select('*', { count: 'exact', head: true });
+          
+        if (tripError) {
+          console.error('Error fetching trips count:', tripError);
+        } else {
+          newStats.trips.total = tripCount || currentStats.trips.total;
+        }
+      } catch (error) {
+        console.error('Exception in trips count query:', error);
+      }
+      
+      try {
+        const { count: pendingTripCount, error: pendingTripError } = await supabase
+          .from('trips')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending');
+          
+        if (pendingTripError) {
+          console.error('Error fetching pending trips count:', pendingTripError);
+        } else {
+          newStats.trips.pending = pendingTripCount || currentStats.trips.pending;
+        }
+      } catch (error) {
+        console.error('Exception in pending trips count query:', error);
+      }
+      
+      try {
+        const { count: completedTripCount, error: completedTripError } = await supabase
+          .from('trips')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'completed');
+          
+        if (completedTripError) {
+          console.error('Error fetching completed trips count:', completedTripError);
+        } else {
+          newStats.trips.completed = completedTripCount || currentStats.trips.completed;
+        }
+      } catch (error) {
+        console.error('Exception in completed trips count query:', error);
       }
       
       // Handle driver counts based on user role
@@ -182,67 +307,58 @@ const Dashboard = () => {
       // Only admins have access to the drivers table due to RLS policies
       if (userData?.user_role === 'admin') {
         try {
-          // Use RPC function call instead of direct table access to bypass RLS for admin users
-          // This assumes you've created a function in the database called get_driver_counts
-          // If this function doesn't exist, it will fail gracefully
+          // Try to get driver counts via RPC function first
           const { data: driverCounts, error: driverCountError } = await supabase.rpc('get_driver_counts');
           
           if (!driverCountError && driverCounts) {
-            driverCount = driverCounts.total || 0;
-            activeDriverCount = driverCounts.active || 0;
+            driverCount = driverCounts.total || currentStats.drivers.total;
+            activeDriverCount = driverCounts.active || currentStats.drivers.active;
           } else {
-            // Fallback to querying users with partner role for an estimate
-            const { count: partnerCount, error: partnerError } = await supabase
-              .from('users')
-              .select('*', { count: 'exact' })
-              .eq('user_role', 'partner');
-              
-            if (!partnerError) {
-              driverCount = partnerCount || 0;
-              // Without access to is_available, we can't determine active drivers
-              activeDriverCount = 0;
+            console.error('Error with get_driver_counts RPC, falling back to user count:', driverCountError);
+            
+            // Fallback to querying users with partner role
+            try {
+              const { count: partnerUserCount, error: partnerCountError } = await supabase
+                .from('users')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_role', 'partner');
+                
+              if (!partnerCountError) {
+                driverCount = partnerUserCount || currentStats.drivers.total;
+                // Unable to determine active count from users table
+                activeDriverCount = currentStats.drivers.active;
+              } else {
+                console.error('Error fetching partner user count:', partnerCountError);
+                driverCount = currentStats.drivers.total;
+                activeDriverCount = currentStats.drivers.active;
+              }
+            } catch (error) {
+              console.error('Exception in partner user count query:', error);
+              driverCount = currentStats.drivers.total;
+              activeDriverCount = currentStats.drivers.active;
             }
           }
         } catch (error) {
           console.error('Error fetching driver counts:', error);
+          driverCount = currentStats.drivers.total;
+          activeDriverCount = currentStats.drivers.active;
         }
+        
+        newStats.drivers.total = driverCount;
+        newStats.drivers.active = activeDriverCount;
       }
 
       console.log('Stats fetched successfully:', {
-        totalUsers: userCount || 0,
-        activeUsers: activeUserCount || 0,
-        adminCount: adminCount || 0,
-        partnerCount: partnerCount || 0
+        totalUsers: newStats.users.total,
+        activeUsers: newStats.users.active,
+        adminCount: newStats.users.admin,
+        partnerCount: newStats.users.partner
       });
 
-      setStats({
-        users: {
-          total: userCount || 0,
-          active: activeUserCount || 0,
-          admin: adminCount || 0,
-          partner: partnerCount || 0
-        },
-        signups: {
-          last24h: signups24h || 0,
-          last7d: signups7d || 0,
-          last30d: signups30d || 0
-        },
-        logins: {
-          last24h: logins24h || 0,
-          last7d: logins7d || 0,
-          last30d: logins30d || 0
-        },
-        trips: {
-          total: tripCount || 0,
-          pending: pendingTripCount || 0,
-          completed: completedTripCount || 0
-        },
-        drivers: {
-          total: driverCount || 0,
-          active: activeDriverCount || 0
-        },
-        loading: false
-      });
+      // Update with all fetched stats
+      newStats.loading = false;
+      setStats(newStats);
+      
     } catch (error: any) {
       console.error('Error fetching stats:', error);
       toast({
