@@ -53,7 +53,7 @@ const ConsoleLogStream: React.FC = () => {
   const liveModeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
   const { toast } = useToast();
-  const { userData } = useAuth();
+  const { userData, refreshSession } = useAuth();
 
   useEffect(() => {
     // Initial load of logs
@@ -110,6 +110,9 @@ const ConsoleLogStream: React.FC = () => {
       if (userData?.user_role !== 'admin') {
         throw new Error('Admin permissions required to view logs');
       }
+      
+      // Refresh the session to get a fresh JWT token
+      await refreshSession();
       
       // Get current session for auth header
       const { data: { session } } = await supabase.auth.getSession();

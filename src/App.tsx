@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
@@ -9,11 +9,15 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { FeatureFlagProvider } from './components/FeatureFlagProvider';
 import { useAuth } from './contexts/AuthContext';
+import { ErrorProvider } from './contexts/ErrorContext';
 import InstallPWA from './components/InstallPWA';
 import MobileInstallPrompt from './components/MobileInstallPrompt';
 import DynamicPWAManifest from './components/DynamicPWAManifest';
 import UpdateNotification from './components/UpdateNotification';
 import NotificationListener from './components/NotificationListener';
+import ErrorBoundary from './components/ErrorBoundary';
+import LoadingFallback from './components/LoadingFallback';
+import { Toaster } from './components/ui/toaster';
 
 // Route observer component to handle page-specific classes
 const RouteObserver = () => {
@@ -36,11 +40,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <LoadingFallback message="Checking authentication..." fullscreen />;
   }
   
   if (!user) {
@@ -55,26 +55,18 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, userData, loading } = useAuth();
   
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <LoadingFallback message="Checking authentication..." fullscreen />;
   }
   
   if (user) {
-    // If user has admin role, redirect to admin page
     if (userData?.user_role === 'admin' || userData?.user_role === 'support') {
       return <Navigate to="/admin" replace />;
-    }
-    
-    // If user has partner role, redirect to partner page
-    if (userData?.user_role === 'partner') {
+    } else if (userData?.user_role === 'partner') {
       return <Navigate to="/partner" replace />;
+    } else {
+      // Otherwise redirect to login (which will handle customer redirects)
+      return <Navigate to="/login" replace />;
     }
-    
-    // Otherwise redirect to login (which will handle customer redirects)
-    return <Navigate to="/login" replace />;
   }
   
   return <>{children}</>;
@@ -92,55 +84,64 @@ function AppRoutes() {
     <>
       <RouteObserver />
       <NotificationListener />
-      <Routes>
-        <Route path="/" element={<IndexRedirect />} />
-        <Route 
-          path="/login" 
-          element={
-            <PublicRoute>
-              <Login />
-            </PublicRoute>
-          } 
-        />
-        <Route 
-          path="/admin/*" 
-          element={
-            <ProtectedRoute>
-              <Admin />
-            </ProtectedRoute>
-          }
-        />
-        <Route 
-          path="/partner/*" 
-          element={
-            <ProtectedRoute>
-              <Partner />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <ErrorBoundary>
+        <Suspense fallback={<LoadingFallback message="Loading content..." fullscreen />}>
+          <Routes>
+            <Route path="/" element={<IndexRedirect />} />
+            <Route 
+              path="/login" 
+              element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/admin/*" 
+              element={
+                <ProtectedRoute>
+                  <Admin />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/partner/*" 
+              element={
+                <ProtectedRoute>
+                  <Partner />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
     </>
   );
 }
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <FeatureFlagProvider>
-          <BookingProvider>
-            <BrowserRouter>
-              <DynamicPWAManifest />
-              <AppRoutes />
-              <InstallPWA />
-              <MobileInstallPrompt />
-              <UpdateNotification />
-            </BrowserRouter>
-          </BookingProvider>
-        </FeatureFlagProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <ErrorProvider>
+            <FeatureFlagProvider>
+              <BookingProvider>
+                <BrowserRouter>
+                  <DynamicPWAManifest />
+                  <AppRoutes />
+                  <InstallPWA />
+                  <MobileInstallPrompt />
+                  <UpdateNotification />
+                  <Toaster />
+                </BrowserRouter>
+              </BookingProvider>
+            </FeatureFlagProvider>
+          </ErrorProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

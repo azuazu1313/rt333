@@ -49,15 +49,19 @@ const DriverDocuments: React.FC = () => {
   const { userData } = useAuth();
 
   useEffect(() => {
-    fetchDriverId().then(id => {
-      if (id) {
-        setDriverId(id);
-        fetchDocuments(id);
-        fetchDriverStatus(id);
-      } else {
-        createDriverProfile();
-      }
-    });
+    if (userData?.id) {
+      fetchDriverId().then(id => {
+        if (id) {
+          setDriverId(id);
+          fetchDocuments(id);
+          fetchDriverStatus(id);
+        } else {
+          // Don't create driver profile automatically
+          // We'll create it when they try to upload a document
+          setLoading(false);
+        }
+      });
+    }
   }, [userData]);
 
   // Check if all required docs are uploaded
@@ -90,7 +94,7 @@ const DriverDocuments: React.FC = () => {
 
       if (error) {
         console.error('Error fetching driver ID:', error);
-        // Don't show toast here, we'll handle new driver profile creation
+        // This is expected for new drivers, no need to show toast
         return null;
       }
 
@@ -216,13 +220,18 @@ const DriverDocuments: React.FC = () => {
   };
 
   const handleFileUpload = async (docType: string, file: File) => {
+    // If no driver profile exists, create one first
     if (!driverId) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Driver profile not found. Please contact support.",
-      });
-      return;
+      const newDriverId = await createDriverProfile();
+      if (!newDriverId) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not create your driver profile. Please contact support.",
+        });
+        return;
+      }
+      setDriverId(newDriverId);
     }
 
     if (!file) {
@@ -427,18 +436,18 @@ const DriverDocuments: React.FC = () => {
         };
       default:
         return {
-          color: 'bg-gray-100 dark:bg-gray-800',
-          textColor: 'text-gray-800 dark:text-gray-300',
-          borderColor: 'border-gray-200 dark:border-gray-700',
+          color: 'bg-blue-100 dark:bg-blue-900/30',
+          textColor: 'text-blue-800 dark:text-blue-300',
+          borderColor: 'border-blue-200 dark:border-blue-800',
           icon: <Info className="h-5 w-5 mr-2" />,
-          text: 'Upload your documents for verification.'
+          text: 'Upload your documents for verification to start accepting trips.'
         };
     }
   };
 
   const statusBanner = getStatusBanner();
 
-  if (loading) {
+  if (loading && driverId) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" />

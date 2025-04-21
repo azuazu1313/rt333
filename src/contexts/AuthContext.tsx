@@ -20,6 +20,44 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper to implement retry logic with exponential backoff
+const retryWithExponentialBackoff = async <T,>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  initialDelay: number = 1000
+): Promise<T> => {
+  let retries = 0;
+  let delay = initialDelay;
+
+  while (true) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      // Check for refresh token errors and don't retry those
+      if (error.message?.includes('refresh_token_not_found') || 
+          error.error?.message?.includes('refresh_token_not_found') ||
+          error.error === 'invalid_grant' ||
+          (error.statusText === 'Bad Request' && error.status === 400)) {
+        console.warn('Invalid refresh token detected, forcing sign out');
+        throw error; // Don't retry for invalid refresh tokens
+      }
+      
+      // If rate limited or if we should retry for this error
+      if ((error.message?.includes('rate_limit') || error.status === 429) && retries < maxRetries) {
+        retries++;
+        console.log(`Retry ${retries}/${maxRetries} after ${delay}ms delay`);
+        // Wait for the specified delay
+        await new Promise(resolve => setTimeout(resolve, delay));
+        // Increase delay for next potential retry (exponential backoff)
+        delay *= 2;
+      } else {
+        // If we're out of retries or it's not a rate limit error, throw it
+        throw error;
+      }
+    }
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -28,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const initialStateLoadedRef = useRef(false);
   const authStateChangeSubscribed = useRef(false);
   const tokenAuthAttemptedRef = useRef(false);
+  const isRefreshingRef = useRef(false);
 
   // Function to fetch user data
   const fetchUserData = async (userId: string) => {
@@ -39,6 +78,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
+        // Check if the error is because no rows were returned
+        if (error.code === 'PGRST116' || error.message?.includes('no rows')) {
+          console.warn('No user data found for user ID:', userId);
+          return null;
+        }
         console.error('Error fetching user data:', error);
         return null;
       }
@@ -52,28 +96,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Handle signed out state completely
+  const handleSignedOut = async () => {
+    console.log('Handling signed out state...');
+    // Clear all auth state
+    setSession(null);
+    setUser(null);
+    setUserData(null);
+    
+    // Ensure we're fully signed out from Supabase
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error during cleanup signOut:', error);
+    }
+  };
+
   // Refresh the session to update JWT claims
   const refreshSession = async () => {
+    // Prevent multiple simultaneous refresh attempts
+    if (isRefreshingRef.current) {
+      console.log('Session refresh already in progress, skipping');
+      return;
+    }
+
     try {
+      isRefreshingRef.current = true;
       console.log('Refreshing session...');
-      const { data: { session: newSession }, error } = await supabase.auth.refreshSession();
       
-      if (error) {
-        console.error('Error refreshing session:', error);
+      // Check if we have a current session first
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession) {
+        console.log('No current session to refresh');
+        await handleSignedOut();
         return;
       }
       
-      if (newSession) {
-        console.log('Session refreshed successfully');
-        setSession(newSession);
-        setUser(newSession.user);
+      // Use the retry logic with the refresh function
+      try {
+        const { data } = await retryWithExponentialBackoff(
+          async () => await supabase.auth.refreshSession(),
+          2, // Max 2 retries
+          1000 // Start with 1s delay
+        );
         
-        if (newSession.user) {
-          await fetchUserData(newSession.user.id);
+        const newSession = data.session;
+        
+        if (newSession) {
+          console.log('Session refreshed successfully');
+          setSession(newSession);
+          setUser(newSession.user);
+          
+          if (newSession.user) {
+            await fetchUserData(newSession.user.id);
+          }
+        } else {
+          console.log('No session returned from refresh');
+          await handleSignedOut();
+        }
+      } catch (error: any) {
+        console.error('Error refreshing session:', error);
+        // If refresh token is invalid or not found, sign the user out
+        if (error.message?.includes('refresh_token_not_found') || 
+            error.error?.message?.includes('refresh_token_not_found') ||
+            error.error === 'invalid_grant' ||
+            (error.statusText === 'Bad Request' && error.status === 400)) {
+          console.warn('Invalid refresh token, signing out user');
+          await handleSignedOut();
         }
       }
     } catch (error) {
       console.error('Error in refreshSession:', error);
+    } finally {
+      isRefreshingRef.current = false;
     }
   };
 
@@ -144,10 +239,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Fetch user data and update JWT claims if needed
           const userData = await fetchUserData(currentSession.user.id);
           if (userData?.user_role) {
-            // Refresh session to get updated JWT claims
-            const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
-            if (!refreshError && newSession) {
-              setSession(newSession);
+            try {
+              // Refresh session with retry logic to get updated JWT claims
+              const { data } = await retryWithExponentialBackoff(
+                async () => await supabase.auth.refreshSession(),
+                2 // Max 2 retries to avoid hitting rate limits during initialization
+              );
+              
+              if (data.session) {
+                setSession(data.session);
+              }
+            } catch (refreshError: any) {
+              console.error('Error refreshing session during init:', refreshError);
+              // If refresh token is invalid, sign the user out
+              if (refreshError.message?.includes('refresh_token_not_found') || 
+                  refreshError.error?.message?.includes('refresh_token_not_found') ||
+                  refreshError.error === 'invalid_grant' ||
+                  (refreshError.statusText === 'Bad Request' && refreshError.status === 400)) {
+                console.warn('Invalid refresh token during init, signing out user');
+                await handleSignedOut();
+              }
+              // Continue with current session for other errors
             }
           }
         }
@@ -170,9 +282,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Auth state change:', event);
       
       if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-        setSession(null);
-        setUser(null);
-        setUserData(null);
+        await handleSignedOut();
       } else if (currentSession?.user) {
         setSession(currentSession);
         setUser(currentSession.user);
@@ -180,10 +290,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!userData || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           const userData = await fetchUserData(currentSession.user.id);
           if (userData?.user_role) {
-            // Refresh session to get updated JWT claims
-            const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
-            if (!refreshError && newSession) {
-              setSession(newSession);
+            try {
+              // Refresh session with retry logic
+              const { data } = await retryWithExponentialBackoff(
+                async () => await supabase.auth.refreshSession()
+              );
+              
+              if (data.session) {
+                setSession(data.session);
+              }
+            } catch (refreshError: any) {
+              console.error('Error refreshing session after auth change:', refreshError);
+              // If refresh token is invalid, sign the user out
+              if (refreshError.message?.includes('refresh_token_not_found') || 
+                  refreshError.error?.message?.includes('refresh_token_not_found') ||
+                  refreshError.error === 'invalid_grant' ||
+                  (refreshError.statusText === 'Bad Request' && refreshError.status === 400)) {
+                console.warn('Invalid refresh token after auth change, signing out user');
+                await handleSignedOut();
+              }
+              // Continue with current session for other errors
             }
           }
         }
@@ -351,11 +477,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userData = await fetchUserData(data.session.user.id);
         
         if (userData?.user_role) {
-          // Refresh session to get updated JWT claims
-          const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
-          if (!refreshError && newSession) {
-            // Set the new session with updated claims
-            setSession(newSession);
+          try {
+            // Refresh session with retry logic
+            const { data: refreshData } = await retryWithExponentialBackoff(
+              async () => await supabase.auth.refreshSession()
+            );
+            
+            if (refreshData.session) {
+              setSession(refreshData.session);
+            }
+          } catch (refreshError: any) {
+            console.error('Error refreshing session after sign in:', refreshError);
+            // If refresh token is invalid, sign the user out
+            if (refreshError.message?.includes('refresh_token_not_found') || 
+                refreshError.error?.message?.includes('refresh_token_not_found') ||
+                refreshError.error === 'invalid_grant' ||
+                (refreshError.statusText === 'Bad Request' && refreshError.status === 400)) {
+              console.warn('Invalid refresh token after sign in, signing out user');
+              await handleSignedOut();
+              throw new Error('Session refresh failed. Please try signing in again.');
+            }
+            // Continue with current session for other errors
           }
         }
       }
@@ -372,17 +514,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       setLoading(true);
-      
-      // Clear all auth state before making the signOut request
-      setSession(null);
-      setUser(null);
-      setUserData(null);
-
-      // Now attempt to sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.warn('Error during Supabase sign out:', error);
-      }
+      await handleSignedOut();
     } catch (error) {
       console.error('Error signing out:', error);
     } finally {
@@ -409,9 +541,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Refresh session to update JWT claims if user_role was updated
       if ('user_role' in updates) {
-        const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
-        if (!refreshError && newSession) {
-          setSession(newSession);
+        try {
+          // Use retry logic when refreshing
+          const { data: refreshData } = await retryWithExponentialBackoff(
+            async () => await supabase.auth.refreshSession()
+          );
+          
+          if (refreshData.session) {
+            setSession(refreshData.session);
+          }
+        } catch (refreshError: any) {
+          console.error('Error refreshing session after user data update:', refreshError);
+          // If refresh token is invalid, sign the user out
+          if (refreshError.message?.includes('refresh_token_not_found') || 
+              refreshError.error?.message?.includes('refresh_token_not_found') ||
+              refreshError.error === 'invalid_grant' ||
+              (refreshError.statusText === 'Bad Request' && refreshError.status === 400)) {
+            console.warn('Invalid refresh token after user data update, signing out user');
+            await handleSignedOut();
+            throw new Error('Session refresh failed. Please sign in again.');
+          }
+          // Continue without refresh for other errors
         }
       }
       

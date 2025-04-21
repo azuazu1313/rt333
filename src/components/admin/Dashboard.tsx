@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Users, TrendingUp, Settings, ShieldCheck, Loader2, RefreshCw, Calendar, FileText, LogIn, Car } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../ui/use-toast';
 import { format, subDays } from 'date-fns';
+import { useError } from '../../contexts/ErrorContext';
+
+// Session refresh cooldown and retry configuration
+const SESSION_REFRESH_COOLDOWN = 60000; // 1 minute in milliseconds
+const MAX_REFRESH_RETRIES = 3;
+const RETRY_BACKOFF_BASE = 2000; // Base delay in milliseconds
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -36,7 +42,13 @@ const Dashboard = () => {
   });
   const { userData, refreshSession } = useAuth();
   const { toast } = useToast();
+  const { captureError } = useError();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Refs to track session refresh state
+  const lastRefreshAttemptRef = useRef(0);
+  const refreshInProgressRef = useRef(false);
+  const refreshRetryCountRef = useRef(0);
 
   useEffect(() => {
     if (userData?.user_role === 'admin' || userData?.user_role === 'support') {
@@ -44,13 +56,85 @@ const Dashboard = () => {
     }
   }, [userData]);
 
+  // Safe session refresh with rate limiting and exponential backoff
+  const safeRefreshSession = async () => {
+    // Check if a refresh is already in progress
+    if (refreshInProgressRef.current) {
+      console.log('Session refresh already in progress, skipping duplicate request');
+      return false;
+    }
+
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshAttemptRef.current;
+    
+    // Check cooldown period
+    if (timeSinceLastRefresh < SESSION_REFRESH_COOLDOWN) {
+      console.log(`Session refresh on cooldown. Please wait ${Math.ceil((SESSION_REFRESH_COOLDOWN - timeSinceLastRefresh) / 1000)}s`);
+      return false;
+    }
+    
+    // Check max retries
+    if (refreshRetryCountRef.current >= MAX_REFRESH_RETRIES) {
+      console.warn(`Maximum refresh retry count (${MAX_REFRESH_RETRIES}) reached. Stopping attempts.`);
+      
+      // Reset retry count after a longer cooldown to allow future attempts
+      setTimeout(() => {
+        refreshRetryCountRef.current = 0;
+      }, SESSION_REFRESH_COOLDOWN * 2);
+      
+      return false;
+    }
+
+    // Set refresh in progress flag and update last attempt time
+    refreshInProgressRef.current = true;
+    lastRefreshAttemptRef.current = now;
+    
+    try {
+      const retryCount = refreshRetryCountRef.current;
+      
+      // Apply exponential backoff if this is a retry
+      if (retryCount > 0) {
+        const backoffDelay = RETRY_BACKOFF_BASE * Math.pow(2, retryCount - 1);
+        console.log(`Applying backoff delay of ${backoffDelay}ms before session refresh`);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
+      }
+      
+      // Attempt to refresh the session
+      await refreshSession();
+      
+      // Success: reset retry count
+      refreshRetryCountRef.current = 0;
+      return true;
+    } catch (error) {
+      // Increment retry count on failure
+      refreshRetryCountRef.current++;
+      
+      console.error(`Session refresh failed (attempt ${refreshRetryCountRef.current}/${MAX_REFRESH_RETRIES}):`, error);
+      
+      if (refreshRetryCountRef.current >= MAX_REFRESH_RETRIES) {
+        toast({
+          variant: "destructive",
+          title: "Authentication Error",
+          description: "Failed to refresh your session. Please try logging out and back in.",
+        });
+      }
+      
+      return false;
+    } finally {
+      // Clear the in-progress flag
+      refreshInProgressRef.current = false;
+    }
+  };
+
   const refreshData = async () => {
     setIsRefreshing(true);
     try {
-      // Refresh the session to update JWT claims
-      await refreshSession();
-      // Then fetch stats with updated JWT
-      await fetchStats();
+      // Try to refresh the session safely
+      const refreshSuccessful = await safeRefreshSession();
+      
+      // Only proceed if the refresh was successful or we didn't need to refresh
+      await fetchStats(refreshSuccessful);
+      
       toast({
         title: "Success",
         description: "Data refreshed successfully",
@@ -67,7 +151,64 @@ const Dashboard = () => {
     }
   };
 
-  const fetchStats = async () => {
+  // Function to safely fetch data from the edge function with retry logic
+  const fetchLoginStats = async (token) => {
+    let retries = 0;
+    const maxRetries = 2;
+    const fallbackStats = {
+      logins24h: 36,
+      logins7d: 92,
+      logins30d: 417
+    };
+    
+    const attemptFetch = async () => {
+      try {
+        // Call the edge function with proper authorization
+        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-login-stats`;
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          // Add a timeout for the fetch request
+          signal: AbortSignal.timeout(8000) // 8 second timeout
+        });
+          
+        if (response.ok) {
+          const data = await response.json();
+          if (data) {
+            return data;
+          }
+        } else {
+          console.warn('Edge function returned non-200 status:', response.status);
+          throw new Error(`Edge function returned status ${response.status}`);
+        }
+      } catch (error) {
+        if (retries < maxRetries) {
+          retries++;
+          console.warn(`Edge function fetch failed, retrying (${retries}/${maxRetries})...`);
+          // Exponential backoff
+          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retries)));
+          return await attemptFetch();
+        } else {
+          console.error('Maximum retries reached for edge function fetch:', error);
+          // Return fallback data after all retries fail
+          return fallbackStats;
+        }
+      }
+    };
+    
+    // Use the fallback data if fetch fails completely
+    try {
+      return await attemptFetch();
+    } catch (error) {
+      console.error('Edge function fetch failed completely:', error);
+      return fallbackStats;
+    }
+  };
+
+  const fetchStats = async (sessionRefreshed = false) => {
     try {
       // Verify admin role before querying
       if (userData?.user_role !== 'admin' && userData?.user_role !== 'support') {
@@ -75,6 +216,36 @@ const Dashboard = () => {
       }
 
       console.log('Fetching dashboard stats...');
+      
+      // Check if we need to refresh the session
+      let needToRefreshSession = false;
+      if (!sessionRefreshed) {
+        try {
+          // Only try to refresh if we haven't already and if enough time has passed
+          const now = Date.now();
+          const timeSinceLastRefresh = now - lastRefreshAttemptRef.current;
+          
+          if (timeSinceLastRefresh >= SESSION_REFRESH_COOLDOWN && !refreshInProgressRef.current) {
+            needToRefreshSession = true;
+          }
+        } catch (refreshError) {
+          console.warn('Error checking session refresh status:', refreshError);
+        }
+      }
+      
+      // Attempt to refresh session if needed
+      if (needToRefreshSession) {
+        try {
+          await safeRefreshSession();
+        } catch (refreshError) {
+          console.warn('Session refresh failed, will continue with existing session:', refreshError);
+          toast({
+            variant: "warning",
+            title: "Warning",
+            description: "Your session may have expired. Some data might not load correctly.",
+          });
+        }
+      }
       
       // Save current stats to restore in case of partial failures
       const currentStats = { ...stats };
@@ -198,88 +369,41 @@ const Dashboard = () => {
         console.error('Exception in 30d signups query:', error);
       }
       
-      // Check if log_queries table exists before querying it
+      // Fetch login statistics using the edge function with improved error handling
       try {
-        // First check if the table exists by doing a zero-count query
-        const { error: tableCheckError } = await supabase
-          .from('log_queries')
-          .select('id', { count: 'exact', head: true })
-          .limit(1);
-          
-        if (tableCheckError) {
-          console.log('log_queries table may not exist or is not accessible:', tableCheckError.message);
-          // Use placeholder values for login stats
-          newStats.logins.last24h = 36;
-          newStats.logins.last7d = 92;
-          newStats.logins.last30d = 417;
+        // Set default fallback values first
+        newStats.logins.last24h = currentStats.logins.last24h || 36;
+        newStats.logins.last7d = currentStats.logins.last7d || 92;
+        newStats.logins.last30d = currentStats.logins.last30d || 417;
+        
+        // Get the current token
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        
+        if (token) {
+          try {
+            // Use our safer edge function fetch method with retries
+            const loginStats = await fetchLoginStats(token);
+            
+            if (loginStats) {
+              newStats.logins.last24h = loginStats.logins24h || newStats.logins.last24h;
+              newStats.logins.last7d = loginStats.logins7d || newStats.logins.last7d;
+              newStats.logins.last30d = loginStats.logins30d || newStats.logins.last30d;
+            }
+          } catch (edgeFunctionError) {
+            console.error('Error fetching login stats from edge function:', edgeFunctionError);
+            // We're already using fallback values set above
+          }
         } else {
-          // If the table exists, try to query it
-          try {
-            const { count: logins24h, error: logins24hError } = await supabase
-              .from('log_queries')
-              .select('*', { count: 'exact', head: true })
-              .eq('source', 'auth')
-              .ilike('query', '%login%')
-              .gte('created_at', last24h);
-              
-            if (logins24hError) {
-              console.error('Error fetching 24h logins:', logins24hError);
-              newStats.logins.last24h = 36;
-            } else {
-              newStats.logins.last24h = logins24h || 36;
-            }
-          } catch (error) {
-            console.error('Exception in 24h logins query:', error);
-            newStats.logins.last24h = 36;
-          }
-          
-          try {
-            const { count: logins7d, error: logins7dError } = await supabase
-              .from('log_queries')
-              .select('*', { count: 'exact', head: true })
-              .eq('source', 'auth')
-              .ilike('query', '%login%')
-              .gte('created_at', last7d);
-              
-            if (logins7dError) {
-              console.error('Error fetching 7d logins:', logins7dError);
-              newStats.logins.last7d = 92;
-            } else {
-              newStats.logins.last7d = logins7d || 92;
-            }
-          } catch (error) {
-            console.error('Exception in 7d logins query:', error);
-            newStats.logins.last7d = 92;
-          }
-          
-          try {
-            const { count: logins30d, error: logins30dError } = await supabase
-              .from('log_queries')
-              .select('*', { count: 'exact', head: true })
-              .eq('source', 'auth')
-              .ilike('query', '%login%')
-              .gte('created_at', last30d);
-              
-            if (logins30dError) {
-              console.error('Error fetching 30d logins:', logins30dError);
-              newStats.logins.last30d = 417;
-            } else {
-              newStats.logins.last30d = logins30d || 417;
-            }
-          } catch (error) {
-            console.error('Exception in 30d logins query:', error);
-            newStats.logins.last30d = 417;
-          }
+          console.warn('No access token available, using fallback login statistics');
         }
       } catch (error) {
-        console.error('Exception checking log_queries table:', error);
-        // Use placeholder values for login stats
-        newStats.logins.last24h = 36;
-        newStats.logins.last7d = 92;
-        newStats.logins.last30d = 417;
+        console.error('Exception fetching login stats:', error);
+        // Login stats fallbacks are already set above
       }
       
-      // Fetch trip counts
+      // Fetch trip counts with additional error handling and session refreshing
+      // Total trips count
       try {
         const { count: tripCount, error: tripError } = await supabase
           .from('trips')
@@ -287,6 +411,29 @@ const Dashboard = () => {
           
         if (tripError) {
           console.error('Error fetching trips count:', tripError);
+          
+          // Check if this is an auth error and try to refresh the session
+          if (tripError.code === '401' || tripError.message?.includes('JWT')) {
+            console.warn('Auth error fetching trips, attempting to refresh session');
+            try {
+              const refreshSuccessful = await safeRefreshSession();
+              
+              // Only retry if the refresh was successful
+              if (refreshSuccessful) {
+                const { count: retryCount, error: retryError } = await supabase
+                  .from('trips')
+                  .select('*', { count: 'exact', head: true });
+                  
+                if (!retryError) {
+                  newStats.trips.total = retryCount || currentStats.trips.total;
+                } else {
+                  console.error('Error after retry for trips count:', retryError);
+                }
+              }
+            } catch (refreshError) {
+              console.error('Failed to refresh session for trips query:', refreshError);
+            }
+          }
         } else {
           newStats.trips.total = tripCount || currentStats.trips.total;
         }
@@ -294,6 +441,7 @@ const Dashboard = () => {
         console.error('Exception in trips count query:', error);
       }
       
+      // Pending trips count with error handling
       try {
         const { count: pendingTripCount, error: pendingTripError } = await supabase
           .from('trips')
@@ -302,6 +450,12 @@ const Dashboard = () => {
           
         if (pendingTripError) {
           console.error('Error fetching pending trips count:', pendingTripError);
+          
+          // Only try to refresh if we haven't already done so for this fetch operation
+          if ((pendingTripError.code === '401' || pendingTripError.message?.includes('JWT')) && !sessionRefreshed) {
+            console.warn('Auth error fetching pending trips');
+            // Don't attempt to refresh again to avoid potential loop
+          }
         } else {
           newStats.trips.pending = pendingTripCount || currentStats.trips.pending;
         }
@@ -309,6 +463,7 @@ const Dashboard = () => {
         console.error('Exception in pending trips count query:', error);
       }
       
+      // Completed trips count with error handling
       try {
         const { count: completedTripCount, error: completedTripError } = await supabase
           .from('trips')
@@ -317,6 +472,12 @@ const Dashboard = () => {
           
         if (completedTripError) {
           console.error('Error fetching completed trips count:', completedTripError);
+          
+          // Only try to refresh if we haven't already done so for this fetch operation
+          if ((completedTripError.code === '401' || completedTripError.message?.includes('JWT')) && !sessionRefreshed) {
+            console.warn('Auth error fetching completed trips');
+            // Don't attempt to refresh again to avoid potential loop
+          }
         } else {
           newStats.trips.completed = completedTripCount || currentStats.trips.completed;
         }
@@ -385,6 +546,7 @@ const Dashboard = () => {
       
     } catch (error: any) {
       console.error('Error fetching stats:', error);
+      captureError(error, 'Dashboard Stats');
       toast({
         variant: "destructive",
         title: "Error",
