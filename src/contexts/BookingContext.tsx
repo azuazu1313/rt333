@@ -20,6 +20,8 @@ interface BookingState {
     country: string;
     phone: string;
     selectedExtras: Set<string>;
+    pickup?: string; // Added to store pickup location from form
+    dropoff?: string; // Added to store dropoff location from form
   };
   paymentDetails: {
     method: 'card' | 'cash';

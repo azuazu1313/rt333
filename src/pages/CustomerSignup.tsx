@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, User, AlertCircle, Loader2, Mail, Lock, Phone, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, User, AlertCircle, Loader2, Mail, Lock, Phone, Eye, EyeOff, Search } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import FormField, { ValidationRule } from '../components/ui/form-field';
 import useFormValidation from '../hooks/useFormValidation';
+import BookingReferenceForm from '../components/BookingReferenceForm';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 const CustomerSignup = () => {
   const navigate = useNavigate();
   const { signUp, user, loading } = useAuth();
   const [searchParams] = useSearchParams();
+  const { trackEvent } = useAnalytics();
   const inviteCode = searchParams.get('invite');
   
   const [formData, setFormData] = useState({
@@ -27,6 +30,8 @@ const CustomerSignup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formTouched, setFormTouched] = useState(false);
+  const [showBookingReferenceForm, setShowBookingReferenceForm] = useState(false);
+  const [bookingReference, setBookingReference] = useState<string | null>(null);
 
   // Define validation rules
   const validationRules = {
@@ -61,7 +66,8 @@ const CustomerSignup = () => {
     isValid,
     validateAllFields,
     handleBlur,
-    touchedFields
+    touchedFields,
+    resetForm
   } = useFormValidation(formData, validationRules);
 
   // Redirect if already authenticated
@@ -127,6 +133,26 @@ const CustomerSignup = () => {
     }
   };
 
+  const handleBookingReferenceFound = (bookingData) => {
+    // Populate the form with data from the booking
+    setFormData({
+      name: bookingData.customer_name || '',
+      email: bookingData.customer_email || '',
+      phone: bookingData.customer_phone || '',
+      password: '',
+      confirmPassword: ''
+    });
+    
+    // Store the booking reference for later use
+    setBookingReference(bookingData.booking_reference);
+    
+    // Hide the booking reference form and show the signup form
+    setShowBookingReferenceForm(false);
+    
+    // Track the event
+    trackEvent('Authentication', 'Booking Reference Form Prefill', bookingData.booking_reference);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -150,7 +176,7 @@ const CustomerSignup = () => {
       });
       
       // Call signUp function with invite code
-      const { error: signUpError } = await signUp(
+      const { error: signUpError, data: signupData } = await signUp(
         formData.email, 
         formData.password,
         formData.name,
@@ -163,9 +189,30 @@ const CustomerSignup = () => {
         throw signUpError;
       }
 
+      // If we have a booking reference, link the booking to the new user
+      if (bookingReference && signupData?.user) {
+        // Update the trip's user_id to link it to the new account
+        const { error: updateError } = await supabase
+          .from('trips')
+          .update({ user_id: signupData.user.id })
+          .eq('booking_reference', bookingReference);
+        
+        if (updateError) {
+          console.error('Error linking booking to user:', updateError);
+          // Don't fail the account creation just because linking failed
+          // But we'll track it for monitoring
+          trackEvent('Authentication', 'Booking Link Error', updateError.message);
+        } else {
+          trackEvent('Authentication', 'Booking Link Success', bookingReference);
+        }
+      }
+
       // Navigate to login with success message
       navigate('/login', { 
-        state: { message: 'Registration successful! Please sign in to continue.' } 
+        state: { 
+          message: 'Registration successful! Please sign in to continue.',
+          ...(bookingReference ? { bookingReference } : {})
+        } 
       });
     } catch (error: any) {
       console.error('Error during sign up:', error);
@@ -216,178 +263,200 @@ const CustomerSignup = () => {
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
-          <div className="bg-white p-8 rounded-lg shadow-lg">
-            <div className="flex items-center justify-center mb-8">
-              <User className="w-12 h-12 text-blue-600" />
-            </div>
-            <h1 className="text-3xl font-bold text-center mb-8">Create Account</h1>
-            
-            {inviteCode && (
-              <div className="bg-blue-50 text-blue-600 p-3 rounded-md mb-6 text-sm">
-                {inviteDetails ? (
-                  <>
-                    <p className="font-medium">Using invite code: {inviteCode}</p>
-                    {inviteDetails.role && (
-                      <p className="mt-1">You will be registered as: <span className="font-medium capitalize">{inviteDetails.role}</span></p>
-                    )}
-                    {inviteDetails.note && (
-                      <p className="mt-1 text-gray-600">{inviteDetails.note}</p>
-                    )}
-                  </>
-                ) : (
-                  <p>Using invite code: {inviteCode}</p>
-                )}
+          {showBookingReferenceForm ? (
+            <BookingReferenceForm 
+              onSuccess={handleBookingReferenceFound}
+              onCancel={() => setShowBookingReferenceForm(false)}
+            />
+          ) : (
+            <div className="bg-white p-8 rounded-lg shadow-lg">
+              <div className="flex items-center justify-center mb-8">
+                <User className="w-12 h-12 text-blue-600" />
               </div>
-            )}
-            
-            {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-md mb-6 text-sm flex items-start">
-                <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-            
-            {!isValid && formTouched && (
-              <div className="bg-yellow-50 text-yellow-600 p-3 rounded-md mb-6 text-sm">
-                Please fill in all required fields correctly before submitting.
-              </div>
-            )}
-            
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              <FormField
-                id="name"
-                name="name"
-                label="Full Name"
-                value={formData.name}
-                onChange={handleInputChange}
-                onBlur={() => handleBlur('name')}
-                required
-                icon={<User className="h-5 w-5" />}
-                error={errors.name}
-                autoComplete="name"
-              />
-
-              <FormField
-                id="email"
-                name="email"
-                label="Email Address"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                onBlur={() => handleBlur('email')}
-                required
-                icon={<Mail className="h-5 w-5" />}
-                error={errors.email}
-                autoComplete="email"
-              />
-
-              <FormField
-                id="phone"
-                name="phone"
-                label="Phone Number"
-                type="tel"
-                value={formData.phone}
-                onChange={handleInputChange}
-                icon={<Phone className="h-5 w-5" />}
-                helpText="Optional, but recommended for booking notifications"
-                autoComplete="tel"
-              />
-
-              <div className="relative">
+              <h1 className="text-3xl font-bold text-center mb-8">Create Account</h1>
+              
+              {inviteCode && (
+                <div className="bg-blue-50 text-blue-600 p-3 rounded-md mb-6 text-sm">
+                  {inviteDetails ? (
+                    <>
+                      <p className="font-medium">Using invite code: {inviteCode}</p>
+                      {inviteDetails.role && (
+                        <p className="mt-1">You will be registered as: <span className="font-medium capitalize">{inviteDetails.role}</span></p>
+                      )}
+                      {inviteDetails.note && (
+                        <p className="mt-1 text-gray-600">{inviteDetails.note}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p>Using invite code: {inviteCode}</p>
+                  )}
+                </div>
+              )}
+              
+              {bookingReference && (
+                <div className="bg-blue-50 text-blue-600 p-3 rounded-md mb-6 text-sm">
+                  <p className="font-medium">Using booking reference: {bookingReference}</p>
+                  <p className="mt-1">This booking will be linked to your new account.</p>
+                </div>
+              )}
+              
+              {error && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-md mb-6 text-sm flex items-start">
+                  <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+              
+              {!isValid && formTouched && (
+                <div className="bg-yellow-50 text-yellow-600 p-3 rounded-md mb-6 text-sm">
+                  Please fill in all required fields correctly before submitting.
+                </div>
+              )}
+              
+              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <FormField
-                  id="password"
-                  name="password"
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
+                  id="name"
+                  name="name"
+                  label="Full Name"
+                  value={formData.name}
                   onChange={handleInputChange}
-                  onBlur={() => handleBlur('password')}
+                  onBlur={() => handleBlur('name')}
                   required
-                  icon={<Lock className="h-5 w-5" />}
-                  error={errors.password}
-                  autoComplete="new-password"
-                  helpText="Must be at least 6 characters"
-                  inputClassName="pr-10"
-                  validateOnChange={true}
+                  icon={<User className="h-5 w-5" />}
+                  error={errors.name}
+                  autoComplete="name"
                 />
-                <button 
-                  type="button"
-                  onClick={togglePasswordVisibility}
-                  className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+
+                <FormField
+                  id="email"
+                  name="email"
+                  label="Email Address"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  onBlur={() => handleBlur('email')}
+                  required
+                  icon={<Mail className="h-5 w-5" />}
+                  error={errors.email}
+                  autoComplete="email"
+                />
+
+                <FormField
+                  id="phone"
+                  name="phone"
+                  label="Phone Number"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  icon={<Phone className="h-5 w-5" />}
+                  helpText="Optional, but recommended for booking notifications"
+                  autoComplete="tel"
+                />
+
+                <div className="relative">
+                  <FormField
+                    id="password"
+                    name="password"
+                    label="Password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    onBlur={() => handleBlur('password')}
+                    required
+                    icon={<Lock className="h-5 w-5" />}
+                    error={errors.password}
+                    autoComplete="new-password"
+                    helpText="Must be at least 6 characters"
+                    inputClassName="pr-10"
+                    validateOnChange={true}
+                  />
+                  <button 
+                    type="button"
+                    onClick={togglePasswordVisibility}
+                    className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <FormField
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    label="Confirm Password"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    onBlur={() => handleBlur('confirmPassword')}
+                    required
+                    icon={<Lock className="h-5 w-5" />}
+                    error={errors.confirmPassword}
+                    autoComplete="new-password"
+                    inputClassName="pr-10"
+                    validateOnChange={true}
+                  />
+                  <button 
+                    type="button"
+                    onClick={toggleConfirmPasswordVisibility}
+                    className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isButtonDisabled()}
+                  aria-busy={isSubmitting}
+                  className={`w-full py-3 rounded-md transition-all duration-300 flex justify-center items-center mt-6
+                    ${isButtonDisabled() 
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
                 >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Creating Account...
+                    </>
+                  ) : 'Create Account'}
+                </button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <p className="text-gray-600">
+                  Already have an account?{' '}
+                  <Link
+                    to="/login"
+                    className="text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Sign In
+                  </Link>
+                </p>
+
+                <button
+                  onClick={() => setShowBookingReferenceForm(true)}
+                  className="mt-4 text-blue-600 hover:text-blue-800 flex items-center justify-center mx-auto"
+                >
+                  <Search className="w-4 h-4 mr-1" />
+                  Have a booking reference?
                 </button>
               </div>
 
-              <div className="relative">
-                <FormField
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  label="Confirm Password"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  onBlur={() => handleBlur('confirmPassword')}
-                  required
-                  icon={<Lock className="h-5 w-5" />}
-                  error={errors.confirmPassword}
-                  autoComplete="new-password"
-                  inputClassName="pr-10"
-                  validateOnChange={true}
-                />
-                <button 
-                  type="button"
-                  onClick={toggleConfirmPasswordVisibility}
-                  className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600"
-                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isButtonDisabled()}
-                aria-busy={isSubmitting}
-                className={`w-full py-3 rounded-md transition-all duration-300 flex justify-center items-center mt-6
-                  ${isButtonDisabled() 
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Creating Account...
-                  </>
-                ) : 'Create Account'}
-              </button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-gray-600">
-                Already have an account?{' '}
+              {/* Back Link */}
+              <div className="mt-8 text-center">
                 <Link
-                  to="/login"
-                  className="text-blue-600 hover:text-blue-700 font-medium"
+                  to="/"
+                  className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors"
                 >
-                  Sign In
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Home
                 </Link>
-              </p>
+              </div>
             </div>
-
-            {/* Back Link */}
-            <div className="mt-8 text-center">
-              <Link
-                to="/"
-                className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Home
-              </Link>
-            </div>
-          </div>
+          )}
 
           {/* Help Link */}
           <div className="text-center mt-6">

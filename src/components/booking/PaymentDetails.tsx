@@ -56,7 +56,9 @@ const PaymentDetails = () => {
         },
         vehicle: bookingState.selectedVehicle,
         customer: {
-          ...bookingState.personalDetails,
+          title: bookingState.personalDetails?.title,
+          firstName: bookingState.personalDetails?.firstName,
+          lastName: bookingState.personalDetails?.lastName,
           email: customerEmail,
           user_id: user?.id || null
         },
@@ -112,8 +114,8 @@ const PaymentDetails = () => {
   // Create a trip record in the database
   const createTripRecord = async (bookingRef: string) => {
     try {
-      if (!user && !bookingState.personalDetails?.email) {
-        throw new Error('User information is required to create a booking');
+      if (!bookingState.personalDetails?.email) {
+        throw new Error('Email is required to create a booking');
       }
 
       // Prepare trip data
@@ -130,7 +132,8 @@ const PaymentDetails = () => {
         status: 'pending',
         vehicle_type: bookingState.selectedVehicle?.name || '',
         passengers: bookingState.passengers || 1,
-        customer_name: `${bookingState.personalDetails?.title || ''} ${bookingState.personalDetails?.firstName || ''} ${bookingState.personalDetails?.lastName || ''}`.trim(),
+        // Store name WITHOUT title prefix
+        customer_name: `${bookingState.personalDetails?.firstName || ''} ${bookingState.personalDetails?.lastName || ''}`.trim(),
         customer_email: bookingState.personalDetails?.email || userData?.email || '',
         customer_phone: bookingState.personalDetails?.phone || userData?.phone || '',
         is_return: bookingState.isReturn || false,
@@ -141,6 +144,20 @@ const PaymentDetails = () => {
       };
 
       console.log('Creating trip record:', tripData);
+
+      // If no user ID but we have an email, try to find a user with that email
+      if (!tripData.user_id && tripData.customer_email) {
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', tripData.customer_email)
+          .single();
+        
+        if (existingUser?.id) {
+          console.log('Found existing user with matching email:', existingUser.id);
+          tripData.user_id = existingUser.id;
+        }
+      }
 
       // Insert into trips table
       const { data, error } = await supabase

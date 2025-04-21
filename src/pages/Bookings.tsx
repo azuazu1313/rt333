@@ -15,8 +15,10 @@ interface Trip {
   estimated_duration_min: number;
   estimated_price: number;
   status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
-  pickup_zone_id: string;
-  dropoff_zone_id: string;
+  pickup_address: string;
+  dropoff_address: string;
+  customer_email: string;
+  booking_reference: string;
 }
 
 interface BookingDetails extends Trip {
@@ -54,22 +56,48 @@ const Bookings = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Fetch trips
+  // Fetch trips - both user's trips and trips made with user's email
   useEffect(() => {
     const fetchTrips = async () => {
       if (!user) return;
 
       try {
         const now = new Date().toISOString();
+        setLoading(true);
+
+        // First get the user's email
+        const { data: userData } = await supabase
+          .from('users')
+          .select('email')
+          .eq('id', user.id)
+          .single();
+
+        if (!userData?.email) {
+          throw new Error('User email not found');
+        }
+
+        // Fetch trips by user_id and customer_email (for non-logged-in bookings)
         const { data, error } = await supabase
           .from('trips')
           .select('*')
-          .eq('user_id', user.id)
-          .order('datetime', { ascending: activeTab === 'upcoming' })
-          .filter('datetime', activeTab === 'upcoming' ? 'gte' : 'lt', now);
+          .or(`user_id.eq.${user.id},customer_email.eq.${userData.email}`)
+          .order('datetime', { ascending: activeTab === 'upcoming' });
 
         if (error) throw error;
-        setTrips(data || []);
+
+        // Filter by date based on the active tab
+        let filteredTrips = [];
+        if (activeTab === 'upcoming') {
+          filteredTrips = data.filter(trip => 
+            new Date(trip.datetime) >= new Date(now)
+          );
+        } else {
+          filteredTrips = data.filter(trip => 
+            new Date(trip.datetime) < new Date(now)
+          );
+        }
+
+        setTrips(filteredTrips);
       } catch (error) {
         console.error('Error fetching trips:', error);
       } finally {
@@ -77,8 +105,9 @@ const Bookings = () => {
       }
     };
 
-    setLoading(true);
-    fetchTrips();
+    if (user) {
+      fetchTrips();
+    }
   }, [user, activeTab]);
 
   const fetchBookingDetails = async (tripId: string) => {
@@ -203,22 +232,40 @@ const Bookings = () => {
                         }`}>
                           {trip.status.charAt(0).toUpperCase() + trip.status.slice(1)}
                         </span>
+                        {trip.booking_reference && (
+                          <span className="text-xs text-gray-500 font-mono">
+                            {trip.booking_reference}
+                          </span>
+                        )}
                         <ChevronRight className="w-5 h-5 text-gray-400" />
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="flex items-center space-x-2">
-                        <MapPin className="w-5 h-5 text-gray-400" />
-                        <span>{trip.estimated_distance_km} km</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+                      <div className="flex items-start space-x-2">
+                        <MapPin className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <div className="text-sm text-gray-500">From</div>
+                          <div className="text-sm font-medium truncate">{trip.pickup_address}</div>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Clock className="w-5 h-5 text-gray-400" />
-                        <span>{trip.estimated_duration_min} min</span>
+                      <div className="flex items-start space-x-2">
+                        <MapPin className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <div className="text-sm text-gray-500">To</div>
+                          <div className="text-sm font-medium truncate">{trip.dropoff_address}</div>
+                        </div>
                       </div>
+                    </div>
+                    <div className="flex justify-between mt-4 pt-4 border-t border-gray-100">
                       <div className="flex items-center space-x-2">
                         <DollarSign className="w-5 h-5 text-gray-400" />
-                        <span>€{trip.estimated_price.toFixed(2)}</span>
+                        <span>€{trip.estimated_price?.toFixed(2) || '0.00'}</span>
                       </div>
+                      {trip.estimated_distance_km > 0 && (
+                        <div className="text-sm text-gray-500">
+                          {trip.estimated_distance_km} km • {trip.estimated_duration_min} min
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -254,6 +301,10 @@ const Bookings = () => {
                     <h3 className="text-lg font-semibold mb-2">Trip Information</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
+                        <p className="text-sm text-gray-500">Booking Reference</p>
+                        <p className="font-mono">{selectedBooking.booking_reference}</p>
+                      </div>
+                      <div>
                         <p className="text-sm text-gray-500">Date & Time</p>
                         <p>{format(new Date(selectedBooking.datetime), 'PPP p')}</p>
                       </div>
@@ -262,12 +313,18 @@ const Bookings = () => {
                         <p className="capitalize">{selectedBooking.status}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Distance</p>
-                        <p>{selectedBooking.estimated_distance_km} km</p>
+                        <p className="text-sm text-gray-500">Passengers</p>
+                        <p>{selectedBooking.passengers}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <div>
+                        <p className="text-sm text-gray-500">From</p>
+                        <p>{selectedBooking.pickup_address}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Duration</p>
-                        <p>{selectedBooking.estimated_duration_min} minutes</p>
+                        <p className="text-sm text-gray-500">To</p>
+                        <p>{selectedBooking.dropoff_address}</p>
                       </div>
                     </div>
                   </div>

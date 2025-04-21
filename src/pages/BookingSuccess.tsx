@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
+import SignUpModal from '../components/SignUpModal';
 
 const BookingSuccess = () => {
   const location = useLocation();
@@ -16,16 +17,17 @@ const BookingSuccess = () => {
   const [bookingReference, setBookingReference] = useState<string | null>(null);
   const [bookingDetails, setBookingDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
   
   useEffect(() => {
     // Get the booking reference from the URL query parameters
     const params = new URLSearchParams(location.search);
     
-    // Check for Stripe session_id first
-    const sessionId = params.get('session_id');
-    
-    // Then check for direct reference (for cash payments)
+    // Check for direct reference first (from both card and cash payments)
     const reference = params.get('reference');
+    
+    // Then check for Stripe session_id as fallback (legacy format)
+    const sessionId = params.get('session_id');
     
     // Use the first available reference
     const bookingRef = reference || sessionId;
@@ -56,6 +58,13 @@ const BookingSuccess = () => {
       
       if (data && data.length > 0) {
         setBookingDetails(data[0]);
+        
+        // If we have a booking and the user is not logged in, check if we should show the sign-up modal
+        // Only show the modal if the booking doesn't already have a user_id and the customer provided an email
+        if (!user && !data[0].user_id && data[0].customer_email) {
+          // Small delay to let the success screen be visible first
+          setTimeout(() => setShowSignUpModal(true), 3000);
+        }
       }
     } catch (error) {
       console.error('Error fetching booking details:', error);
@@ -137,6 +146,21 @@ const BookingSuccess = () => {
     };
   }, []);
 
+  // Format date for display
+  const formatDateTime = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-UK', {
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return 'Invalid date';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -189,15 +213,17 @@ const BookingSuccess = () => {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Transfer Date:</span>
                     <span className="font-medium">
-                      {new Date(bookingDetails.datetime).toLocaleDateString('en-UK', {
-                        day: '2-digit', 
-                        month: 'long', 
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                      {formatDateTime(bookingDetails.datetime)}
                     </span>
                   </div>
+                  {bookingDetails.is_return && bookingDetails.return_datetime && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Return Date:</span>
+                      <span className="font-medium">
+                        {formatDateTime(bookingDetails.return_datetime)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">Vehicle:</span>
                     <span className="font-medium">{bookingDetails.vehicle_type}</span>
@@ -206,10 +232,30 @@ const BookingSuccess = () => {
                     <span className="text-gray-600">Passengers:</span>
                     <span className="font-medium">{bookingDetails.passengers}</span>
                   </div>
+                  {bookingDetails.extra_items && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Extras:</span>
+                      <span className="font-medium">{bookingDetails.extra_items.replace(/,/g, ', ')}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Price:</span>
+                    <span className="font-medium">€{(bookingDetails.estimated_price || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Payment Method:</span>
+                    <span className="font-medium capitalize">{bookingDetails.payment_method}</span>
+                  </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Status:</span>
                     <span className="font-medium text-green-600">Confirmed</span>
                   </div>
+                  {bookingDetails.notes && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Notes:</span>
+                      <span className="font-medium">{bookingDetails.notes}</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-gray-600">No detailed booking information available.</p>
@@ -226,15 +272,24 @@ const BookingSuccess = () => {
             </div>
             
             <div className="flex flex-col md:flex-row gap-4 justify-center">
-              <button 
-                onClick={() => {
-                  trackEvent('Navigation', 'Post-Booking Click', 'View My Bookings');
-                  navigate('/bookings');
-                }}
-                className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-all duration-300"
-              >
-                View My Bookings
-              </button>
+              {user ? (
+                <button 
+                  onClick={() => {
+                    trackEvent('Navigation', 'Post-Booking Click', 'View My Bookings');
+                    navigate('/bookings');
+                  }}
+                  className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-all duration-300"
+                >
+                  View My Bookings
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowSignUpModal(true)}
+                  className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-all duration-300"
+                >
+                  Create Account to Manage Booking
+                </button>
+              )}
               <button
                 onClick={() => {
                   trackEvent('Navigation', 'Post-Booking Click', 'Return to Home');
@@ -301,6 +356,18 @@ const BookingSuccess = () => {
           </div>
         </div>
       </main>
+
+      {/* Sign-up Modal for non-logged in users */}
+      {bookingDetails && bookingReference && !user && (
+        <SignUpModal
+          isOpen={showSignUpModal}
+          onClose={() => setShowSignUpModal(false)}
+          email={bookingDetails.customer_email || ''}
+          bookingReference={bookingReference}
+          name={bookingDetails.customer_name || ''}
+          phone={bookingDetails.customer_phone || ''}
+        />
+      )}
 
       <Sitemap />
     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Car, User, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Car, User, ArrowRight, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
@@ -8,6 +8,7 @@ import Header from '../components/Header';
 interface LocationState {
   message?: string;
   from?: Location;
+  bookingReference?: string;
 }
 
 const Login = () => {
@@ -18,6 +19,7 @@ const Login = () => {
   });
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [bookingReference, setBookingReference] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigate = useNavigate();
@@ -37,6 +39,13 @@ const Login = () => {
     const state = location.state as LocationState;
     if (state?.message) {
       setSuccessMessage(state.message);
+    }
+    if (state?.bookingReference) {
+      setBookingReference(state.bookingReference);
+    }
+    
+    // Clear state after reading it
+    if (state?.message || state?.bookingReference) {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location, navigate]);
@@ -60,7 +69,7 @@ const Login = () => {
       // If we have a session, redirect immediately
       if (session) {
         const state = location.state as LocationState;
-        navigate(state?.from?.pathname || '/', { replace: true });
+        navigate(state?.from?.pathname || '/bookings', { replace: true });
       }
     } catch (error: any) {
       console.error('Login error:', error);
@@ -124,12 +133,16 @@ const Login = () => {
             {/* Success Message */}
             {successMessage && (
               <div className="bg-green-50 text-green-700 p-3 rounded-md mb-6 text-sm flex items-start">
-                <div className="flex-shrink-0 mt-0.5">
-                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
+                <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <div className="ml-2">{successMessage}</div>
+              </div>
+            )}
+
+            {/* Booking Reference Message */}
+            {bookingReference && (
+              <div className="bg-blue-50 text-blue-700 p-3 rounded-md mb-6 text-sm">
+                <p className="font-medium">Your booking reference: {bookingReference}</p>
+                <p className="mt-1">Sign in to manage your booking.</p>
               </div>
             )}
 
