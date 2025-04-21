@@ -55,8 +55,21 @@ Deno.serve(async (req) => {
       trip, 
       vehicle: vehicle.name, 
       customerEmail: customer.email,
-      amount 
+      amount,
+      is_round_trip: trip.type === 'round-trip'
     });
+
+    // Prepare trip description
+    let tripDescription = `${trip.from} to ${trip.to}`;
+    let tripTypeDesc = trip.type === "round-trip" ? "Round trip" : "One way";
+    
+    if (trip.type === "round-trip" && trip.returnDate) {
+      const departDate = new Date(trip.date).toLocaleDateString();
+      const returnDate = new Date(trip.returnDate).toLocaleDateString();
+      tripDescription += ` (${departDate} → ${returnDate})`;
+    } else {
+      tripDescription += ` (${new Date(trip.date).toLocaleDateString()})`;
+    }
 
     // Create a Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -66,8 +79,9 @@ Deno.serve(async (req) => {
           price_data: {
             currency: "eur",
             product_data: {
-              name: `${vehicle.name} - ${trip.from} to ${trip.to}`,
-              description: `${trip.type} transfer on ${new Date(trip.date).toLocaleDateString()} for ${trip.passengers} passenger(s)`,
+              name: `${vehicle.name} - ${tripTypeDesc}`,
+              description: tripDescription,
+              images: vehicle.image ? [vehicle.image] : undefined
             },
             unit_amount: Math.round(amount * 100), // Convert to cents and ensure it's an integer
           },
@@ -117,7 +131,8 @@ Deno.serve(async (req) => {
       return_datetime: trip.returnDate || null,
       extra_items: extras.join(','),
       payment_method: 'card', // Since this is Stripe checkout
-      notes: ''
+      notes: '',
+      customer_title: customer.title || null
     };
 
     // If there's no user_id provided but we have an email, try to find a matching user
@@ -134,15 +149,25 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Insert the trip record when Stripe session is created
-    // This will be updated later when payment completes via webhook
-    const { data, error } = await supabase
+    // Check if this booking reference already exists in the database
+    const { data: existingBooking } = await supabase
       .from('trips')
-      .insert([tripData]);
+      .select('id')
+      .eq('booking_reference', booking_reference)
+      .single();
 
-    if (error) {
-      console.error('Error creating trip record:', error);
-      // Continue with checkout even if trip record fails - we'll handle this via webhook
+    // Only create a new record if it doesn't already exist
+    if (!existingBooking) {
+      const { data, error } = await supabase
+        .from('trips')
+        .insert([tripData]);
+
+      if (error) {
+        console.error('Error creating trip record:', error);
+        // Continue with checkout even if trip record fails - we'll handle this via webhook
+      }
+    } else {
+      console.log('Booking already exists with reference:', booking_reference);
     }
 
     // Return the session URL
