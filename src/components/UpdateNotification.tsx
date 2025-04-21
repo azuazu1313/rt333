@@ -100,6 +100,7 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({
       className: "update-notification",
       action: (
         <ToastAction altText="Reload" onClick={handleReload}>
+          <RefreshCw className="w-4 h-4 mr-1" />
           Reload
         </ToastAction>
       ),

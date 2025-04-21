@@ -198,60 +198,84 @@ const Dashboard = () => {
         console.error('Exception in 30d signups query:', error);
       }
       
-      // For login activity, check if we have the log_queries table available
+      // Check if log_queries table exists before querying it
       try {
-        const { count: logins24h, error: logins24hError } = await supabase
+        // First check if the table exists by doing a zero-count query
+        const { error: tableCheckError } = await supabase
           .from('log_queries')
-          .select('*', { count: 'exact', head: true })
-          .eq('source', 'auth')
-          .ilike('query', '%login%')
-          .gte('created_at', last24h);
+          .select('id', { count: 'exact', head: true })
+          .limit(1);
           
-        if (logins24hError) {
-          // If the table doesn't exist, fall back to the fixed placeholders
-          // but don't reset the values if they were already set
+        if (tableCheckError) {
+          console.log('log_queries table may not exist or is not accessible:', tableCheckError.message);
+          // Use placeholder values for login stats
           newStats.logins.last24h = 36;
-        } else {
-          newStats.logins.last24h = logins24h || 36;
-        }
-      } catch (error) {
-        console.error('Exception in 24h logins query:', error);
-        newStats.logins.last24h = 36;
-      }
-      
-      try {
-        const { count: logins7d, error: logins7dError } = await supabase
-          .from('log_queries')
-          .select('*', { count: 'exact', head: true })
-          .eq('source', 'auth')
-          .ilike('query', '%login%')
-          .gte('created_at', last7d);
-          
-        if (logins7dError) {
           newStats.logins.last7d = 92;
-        } else {
-          newStats.logins.last7d = logins7d || 92;
-        }
-      } catch (error) {
-        console.error('Exception in 7d logins query:', error);
-        newStats.logins.last7d = 92;
-      }
-      
-      try {
-        const { count: logins30d, error: logins30dError } = await supabase
-          .from('log_queries')
-          .select('*', { count: 'exact', head: true })
-          .eq('source', 'auth')
-          .ilike('query', '%login%')
-          .gte('created_at', last30d);
-          
-        if (logins30dError) {
           newStats.logins.last30d = 417;
         } else {
-          newStats.logins.last30d = logins30d || 417;
+          // If the table exists, try to query it
+          try {
+            const { count: logins24h, error: logins24hError } = await supabase
+              .from('log_queries')
+              .select('*', { count: 'exact', head: true })
+              .eq('source', 'auth')
+              .ilike('query', '%login%')
+              .gte('created_at', last24h);
+              
+            if (logins24hError) {
+              console.error('Error fetching 24h logins:', logins24hError);
+              newStats.logins.last24h = 36;
+            } else {
+              newStats.logins.last24h = logins24h || 36;
+            }
+          } catch (error) {
+            console.error('Exception in 24h logins query:', error);
+            newStats.logins.last24h = 36;
+          }
+          
+          try {
+            const { count: logins7d, error: logins7dError } = await supabase
+              .from('log_queries')
+              .select('*', { count: 'exact', head: true })
+              .eq('source', 'auth')
+              .ilike('query', '%login%')
+              .gte('created_at', last7d);
+              
+            if (logins7dError) {
+              console.error('Error fetching 7d logins:', logins7dError);
+              newStats.logins.last7d = 92;
+            } else {
+              newStats.logins.last7d = logins7d || 92;
+            }
+          } catch (error) {
+            console.error('Exception in 7d logins query:', error);
+            newStats.logins.last7d = 92;
+          }
+          
+          try {
+            const { count: logins30d, error: logins30dError } = await supabase
+              .from('log_queries')
+              .select('*', { count: 'exact', head: true })
+              .eq('source', 'auth')
+              .ilike('query', '%login%')
+              .gte('created_at', last30d);
+              
+            if (logins30dError) {
+              console.error('Error fetching 30d logins:', logins30dError);
+              newStats.logins.last30d = 417;
+            } else {
+              newStats.logins.last30d = logins30d || 417;
+            }
+          } catch (error) {
+            console.error('Exception in 30d logins query:', error);
+            newStats.logins.last30d = 417;
+          }
         }
       } catch (error) {
-        console.error('Exception in 30d logins query:', error);
+        console.error('Exception checking log_queries table:', error);
+        // Use placeholder values for login stats
+        newStats.logins.last24h = 36;
+        newStats.logins.last7d = 92;
         newStats.logins.last30d = 417;
       }
       

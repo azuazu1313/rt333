@@ -13,6 +13,7 @@ import InstallPWA from './components/InstallPWA';
 import MobileInstallPrompt from './components/MobileInstallPrompt';
 import DynamicPWAManifest from './components/DynamicPWAManifest';
 import UpdateNotification from './components/UpdateNotification';
+import NotificationListener from './components/NotificationListener';
 
 // Route observer component to handle page-specific classes
 const RouteObserver = () => {
@@ -85,9 +86,12 @@ const IndexRedirect = () => {
 };
 
 function AppRoutes() {
+  const { userData } = useAuth();
+  
   return (
     <>
       <RouteObserver />
+      <NotificationListener />
       <Routes>
         <Route path="/" element={<IndexRedirect />} />
         <Route 

@@ -10,11 +10,14 @@ import PaymentHistory from '../components/partner/PaymentHistory';
 import PartnerSettings from '../components/partner/PartnerSettings';
 import ChatSupport from '../components/partner/ChatSupport';
 import IncidentReports from '../components/partner/IncidentReports';
+import VerificationStatus from '../components/partner/VerificationStatus';
+import ProfileVerificationPrompt from '../components/partner/ProfileVerificationPrompt';
 import { useAuth } from '../contexts/AuthContext';
 import { Toaster } from '../components/ui/toaster';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from '../components/ThemeToggle';
 import DriverAvailabilityToggle from '../components/partner/DriverAvailabilityToggle';
+import { supabase } from '../lib/supabase';
 
 const Partner = () => {
   const navigate = useNavigate();
@@ -24,6 +27,9 @@ const Partner = () => {
   const [error, setError] = useState<string | null>(null);
   const [isAvailable, setIsAvailable] = useState<boolean>(false);
   const [isAdminView, setIsAdminView] = useState<boolean>(false);
+  const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
+  const [driverVerificationStatus, setDriverVerificationStatus] = useState<string | null>(null);
+  const [showAvailabilityTooltip, setShowAvailabilityTooltip] = useState(false);
 
   // Setup admin view flag
   useEffect(() => {
@@ -36,6 +42,13 @@ const Partner = () => {
     }
   }, [userData, loading]);
   
+  // Check driver status on component mount
+  useEffect(() => {
+    if (!loading && userData && userData.user_role === 'partner') {
+      checkDriverStatus();
+    }
+  }, [userData, loading]);
+
   // Only redirect non-partner/non-admin users
   useEffect(() => {
     if (!loading && userData) {
@@ -50,6 +63,44 @@ const Partner = () => {
       }
     }
   }, [userData, loading, navigate]);
+
+  // Check driver verification status
+  const checkDriverStatus = async () => {
+    try {
+      // First check if the user has a driver record
+      const { data: driverData, error: driverError } = await supabase
+        .from('drivers')
+        .select('id, verification_status, is_available')
+        .eq('user_id', userData?.id)
+        .single();
+      
+      if (driverError) {
+        if (driverError.code === 'PGRST116') { // No record found
+          setShowVerificationPrompt(true);
+          setDriverVerificationStatus('unverified');
+        } else {
+          console.error('Error fetching driver status:', driverError);
+        }
+        return;
+      }
+      
+      // Set driver status and availability
+      if (driverData) {
+        setDriverVerificationStatus(driverData.verification_status || 'unverified');
+        setIsAvailable(driverData.is_available || false);
+        
+        // Show verification prompt for unverified or declined status
+        if (driverData.verification_status === 'unverified' || driverData.verification_status === 'declined') {
+          setShowVerificationPrompt(true);
+        }
+      } else {
+        setDriverVerificationStatus('unverified');
+        setShowVerificationPrompt(true);
+      }
+    } catch (error) {
+      console.error('Error checking driver status:', error);
+    }
+  };
 
   const tabs = [
     { id: 'today', label: "Today's Jobs", icon: Clock, path: '/partner' },
@@ -123,14 +174,38 @@ const Partner = () => {
             
             <div className="flex items-center mt-4 md:mt-0 space-x-3">
               {!isAdminView && (
-                <DriverAvailabilityToggle 
-                  isAvailable={isAvailable}
-                  onChange={setIsAvailable}
-                />
+                <div 
+                  className="relative"
+                  onMouseEnter={() => driverVerificationStatus !== 'verified' && setShowAvailabilityTooltip(true)}
+                  onMouseLeave={() => setShowAvailabilityTooltip(false)}
+                >
+                  <DriverAvailabilityToggle 
+                    isAvailable={isAvailable}
+                    onChange={setIsAvailable}
+                    verificationStatus={driverVerificationStatus as any}
+                  />
+                  
+                  {/* Status tooltip */}
+                  {showAvailabilityTooltip && driverVerificationStatus !== 'verified' && (
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-60 bg-gray-800 text-white text-xs rounded py-2 px-3 shadow-lg z-10">
+                      {driverVerificationStatus === 'pending' ? 
+                        'Your documents are pending verification. You\'ll be able to go available once approved.' : 
+                        'You need to complete verification before you can go available for trips.'}
+                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-800"></div>
+                    </div>
+                  )}
+                </div>
               )}
               <ThemeToggle />
             </div>
           </div>
+          
+          {/* Verification Status Banner */}
+          {!isAdminView && driverVerificationStatus && (
+            <div className="mb-6">
+              <VerificationStatus className="w-full" />
+            </div>
+          )}
 
           <div className="flex flex-col md:flex-row">
             {/* Mobile Menu Button */}
@@ -202,6 +277,11 @@ const Partner = () => {
           </div>
         </div>
       </main>
+
+      {/* Verification Prompt */}
+      {showVerificationPrompt && !isAdminView && (
+        <ProfileVerificationPrompt onDismiss={() => setShowVerificationPrompt(false)} />
+      )}
 
       {/* Toast Container */}
       <Toaster />

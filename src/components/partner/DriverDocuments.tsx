@@ -11,7 +11,9 @@ import {
   Loader2,
   AlertTriangle,
   ExternalLink,
-  Eye 
+  Eye,
+  Calendar,
+  Info
 } from 'lucide-react';
 import { format, isBefore, addDays } from 'date-fns';
 
@@ -38,6 +40,11 @@ const DriverDocuments: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [driverId, setDriverId] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
+  const [uploadedAll, setUploadedAll] = useState(false);
+  const [showSubmitReviewButton, setShowSubmitReviewButton] = useState(false);
+  const [submittingForReview, setSubmittingForReview] = useState(false);
+  const [uploadExpiryDate, setUploadExpiryDate] = useState<string | null>(null);
   const { toast } = useToast();
   const { userData } = useAuth();
 
@@ -46,9 +53,32 @@ const DriverDocuments: React.FC = () => {
       if (id) {
         setDriverId(id);
         fetchDocuments(id);
+        fetchDriverStatus(id);
+      } else {
+        createDriverProfile();
       }
     });
   }, [userData]);
+
+  // Check if all required docs are uploaded
+  useEffect(() => {
+    // Get the list of required document types
+    const requiredDocTypes = DOCUMENT_TYPES.filter(docType => docType.required).map(docType => docType.value);
+    
+    // Get the list of uploaded document types
+    const uploadedDocTypes = documents.map(doc => doc.doc_type);
+    
+    // Check if all required document types are uploaded
+    const allRequiredDocsUploaded = requiredDocTypes.every(docType => uploadedDocTypes.includes(docType));
+    
+    setUploadedAll(allRequiredDocsUploaded);
+    
+    // Show the "Submit for Review" button if:
+    // 1. All required docs are uploaded
+    // 2. Status is 'unverified' or 'declined'
+    setShowSubmitReviewButton(allRequiredDocsUploaded && 
+      (verificationStatus === 'unverified' || verificationStatus === 'declined'));
+  }, [documents, verificationStatus]);
 
   const fetchDriverId = async (): Promise<string | null> => {
     try {
@@ -60,11 +90,7 @@ const DriverDocuments: React.FC = () => {
 
       if (error) {
         console.error('Error fetching driver ID:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Could not find your driver profile. Please contact support.",
-        });
+        // Don't show toast here, we'll handle new driver profile creation
         return null;
       }
 
@@ -72,6 +98,60 @@ const DriverDocuments: React.FC = () => {
     } catch (error) {
       console.error('Error:', error);
       return null;
+    }
+  };
+
+  const createDriverProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('drivers')
+        .insert({
+          user_id: userData?.id,
+          verification_status: 'unverified',
+          is_available: false
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('Error creating driver profile:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not create your driver profile. Please contact support.",
+        });
+        return null;
+      }
+
+      if (data?.id) {
+        setDriverId(data.id);
+        setVerificationStatus('unverified');
+        return data.id;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error creating driver profile:', error);
+      return null;
+    }
+  };
+
+  const fetchDriverStatus = async (driverId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('verification_status')
+        .eq('id', driverId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching driver status:', error);
+        return;
+      }
+
+      setVerificationStatus(data?.verification_status || 'unverified');
+    } catch (error) {
+      console.error('Error:', error);
     }
   };
 
@@ -97,6 +177,41 @@ const DriverDocuments: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const submitForReview = async () => {
+    if (!driverId) return;
+    
+    try {
+      setSubmittingForReview(true);
+      
+      // Update driver verification status to 'pending'
+      const { error } = await supabase
+        .from('drivers')
+        .update({ verification_status: 'pending' })
+        .eq('id', driverId);
+        
+      if (error) throw error;
+      
+      // Update state
+      setVerificationStatus('pending');
+      setShowSubmitReviewButton(false);
+      
+      toast({
+        title: "Documents Submitted",
+        description: "Your documents have been submitted for review. You'll be notified once they're verified.",
+        variant: "success"
+      });
+    } catch (error: any) {
+      console.error('Error submitting for review:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to submit for review. Please try again.",
+      });
+    } finally {
+      setSubmittingForReview(false);
     }
   };
 
@@ -153,18 +268,42 @@ const DriverDocuments: React.FC = () => {
         .from('documents')
         .getPublicUrl(filePath);
 
-      // Store document reference in the database
+      // Store document reference in the database with expiry date if provided
+      const docData = {
+        driver_id: driverId,
+        doc_type: docType,
+        file_url: publicUrl,
+        name: file.name,
+        verified: false,
+        expiry_date: uploadExpiryDate
+      };
+
+      // Delete previous documents with the same type
+      await supabase
+        .from('driver_documents')
+        .delete()
+        .eq('driver_id', driverId)
+        .eq('doc_type', docType);
+
+      // Insert new document
       const { error: dbError } = await supabase
         .from('driver_documents')
-        .insert({
-          driver_id: driverId,
-          doc_type: docType,
-          file_url: publicUrl,
-          name: file.name,
-          verified: false,
-        });
+        .insert(docData);
 
       if (dbError) throw dbError;
+
+      // If verification status is currently 'verified', change to 'pending'
+      if (verificationStatus === 'verified') {
+        await supabase
+          .from('drivers')
+          .update({ verification_status: 'pending' })
+          .eq('id', driverId);
+          
+        setVerificationStatus('pending');
+      }
+
+      // Reset expiry date
+      setUploadExpiryDate(null);
 
       // Refresh documents list
       fetchDocuments(driverId);
@@ -251,6 +390,54 @@ const DriverDocuments: React.FC = () => {
     }
   };
 
+  // Verification banner color
+  const getStatusBanner = () => {
+    switch (verificationStatus) {
+      case 'unverified':
+        return {
+          color: 'bg-yellow-100 dark:bg-yellow-900/30',
+          textColor: 'text-yellow-800 dark:text-yellow-300',
+          borderColor: 'border-yellow-200 dark:border-yellow-800',
+          icon: <AlertCircle className="h-5 w-5 mr-2" />,
+          text: 'Your profile needs verification. Please upload all required documents.'
+        };
+      case 'pending':
+        return {
+          color: 'bg-blue-100 dark:bg-blue-900/30',
+          textColor: 'text-blue-800 dark:text-blue-300',
+          borderColor: 'border-blue-200 dark:border-blue-800',
+          icon: <Clock className="h-5 w-5 mr-2" />,
+          text: 'Your documents are being reviewed. This typically takes 24-48 hours.'
+        };
+      case 'verified':
+        return {
+          color: 'bg-green-100 dark:bg-green-900/30',
+          textColor: 'text-green-800 dark:text-green-300',
+          borderColor: 'border-green-200 dark:border-green-800',
+          icon: <CheckCircle className="h-5 w-5 mr-2" />,
+          text: 'Your driver profile is verified. You can accept trips now.'
+        };
+      case 'declined':
+        return {
+          color: 'bg-red-100 dark:bg-red-900/30',
+          textColor: 'text-red-800 dark:text-red-300',
+          borderColor: 'border-red-200 dark:border-red-800',
+          icon: <AlertTriangle className="h-5 w-5 mr-2" />,
+          text: 'Your verification was declined. Please update your documents and resubmit.'
+        };
+      default:
+        return {
+          color: 'bg-gray-100 dark:bg-gray-800',
+          textColor: 'text-gray-800 dark:text-gray-300',
+          borderColor: 'border-gray-200 dark:border-gray-700',
+          icon: <Info className="h-5 w-5 mr-2" />,
+          text: 'Upload your documents for verification.'
+        };
+    }
+  };
+
+  const statusBanner = getStatusBanner();
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -266,6 +453,18 @@ const DriverDocuments: React.FC = () => {
         <p className="text-gray-500 dark:text-gray-400 mt-1">
           Upload and manage your required documents. All documents must be verified before you can accept trips.
         </p>
+      </div>
+
+      {/* Verification Status Banner */}
+      <div className={`p-4 ${statusBanner.color} ${statusBanner.borderColor} border rounded-lg mb-6`}>
+        <div className="flex items-center">
+          <div className={`${statusBanner.textColor}`}>
+            {statusBanner.icon}
+          </div>
+          <p className={`${statusBanner.textColor} font-medium`}>
+            {statusBanner.text}
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -320,26 +519,48 @@ const DriverDocuments: React.FC = () => {
                       Uploaded: {format(new Date(existingDoc.uploaded_at), 'PP')}
                     </div>
                     
+                    {existingDoc.expiry_date && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Expires: {format(new Date(existingDoc.expiry_date), 'PP')}
+                      </div>
+                    )}
+                    
                     <div className="pt-4 border-t dark:border-gray-700 mt-4 flex justify-between items-center">
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         {existingDoc.verified ? 'Document verified' : 'Awaiting verification'}
                       </span>
                       
-                      <input
-                        type="file"
-                        ref={fileInputRefs[docType.value]}
-                        onChange={(e) => handleFileChange(e, docType.value)}
-                        className="hidden"
-                        accept=".jpg,.jpeg,.png,.pdf"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => triggerFileInput(docType.value)}
-                        disabled={!!uploading}
-                        className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                      >
-                        Upload New
-                      </button>
+                      <div className="flex items-center space-x-3">
+                        {/* Show expiry date input when re-uploading */}
+                        {docType.value !== 'other' && (
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                            <input
+                              type="date"
+                              placeholder="Expiry Date"
+                              className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 dark:bg-gray-700 dark:text-white"
+                              onChange={(e) => setUploadExpiryDate(e.target.value)}
+                            />
+                          </div>
+                        )}
+                        
+                        <input
+                          type="file"
+                          ref={fileInputRefs[docType.value]}
+                          onChange={(e) => handleFileChange(e, docType.value)}
+                          className="hidden"
+                          accept=".jpg,.jpeg,.png,.pdf"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => triggerFileInput(docType.value)}
+                          disabled={!!uploading}
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
+                        >
+                          <Upload className="h-4 w-4 mr-1" />
+                          Upload New
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -352,31 +573,51 @@ const DriverDocuments: React.FC = () => {
                         : 'Upload this document if requested by admin.'}
                     </p>
                     
-                    <input
-                      type="file"
-                      ref={fileInputRefs[docType.value]}
-                      onChange={(e) => handleFileChange(e, docType.value)}
-                      className="hidden"
-                      accept=".jpg,.jpeg,.png,.pdf"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => triggerFileInput(docType.value)}
-                      disabled={uploading === docType.value}
-                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      {uploading === docType.value ? (
-                        <>
-                          <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload Document
-                        </>
+                    <div className="space-y-4">
+                      {/* Expiry date selector for documents that have expiration */}
+                      {docType.value !== 'other' && (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Document Expiry Date
+                          </label>
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
+                            <input
+                              type="date"
+                              placeholder="Expiry Date"
+                              className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 dark:bg-gray-700 dark:text-white text-sm"
+                              onChange={(e) => setUploadExpiryDate(e.target.value)}
+                            />
+                          </div>
+                        </div>
                       )}
-                    </button>
+                      
+                      <input
+                        type="file"
+                        ref={fileInputRefs[docType.value]}
+                        onChange={(e) => handleFileChange(e, docType.value)}
+                        className="hidden"
+                        accept=".jpg,.jpeg,.png,.pdf"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => triggerFileInput(docType.value)}
+                        disabled={uploading === docType.value}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        {uploading === docType.value ? (
+                          <>
+                            <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload Document
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -384,6 +625,35 @@ const DriverDocuments: React.FC = () => {
           );
         })}
       </div>
+
+      {/* Submit for Review Button */}
+      {showSubmitReviewButton && (
+        <div className="mt-6 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md border dark:border-gray-700 text-center">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            Ready to Submit for Review?
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-lg mx-auto">
+            You've uploaded all required documents. Submit them for admin verification to start accepting trips.
+          </p>
+          <button
+            onClick={submitForReview}
+            disabled={submittingForReview}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center"
+          >
+            {submittingForReview ? (
+              <>
+                <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Submit for Verification
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg shadow-sm border border-blue-100 dark:border-blue-800">
         <div className="flex items-start">
