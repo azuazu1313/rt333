@@ -1,10 +1,15 @@
 import { Workbox } from 'workbox-window';
 
 export function registerSW() {
-  // Check if in StackBlitz environment - Don't register service worker in StackBlitz
-  if ('serviceWorker' in navigator && 
-      !window.location.hostname.includes('stackblitz') && 
-      !window.location.origin.includes('stackblitz.io')) {
+  // Expanded check to catch all WebContainer environments including local-credentialless.webcontainer-api.io
+  const isWebContainerEnv = 
+    window.location.hostname.includes('stackblitz') || 
+    window.location.origin.includes('stackblitz.io') || 
+    window.location.hostname.includes('webcontainer-api.io') ||
+    window.location.hostname.includes('local-credentialless.webcontainer-api.io');
+  
+  // Check if in StackBlitz environment or WebContainer - Don't register service worker in these environments
+  if ('serviceWorker' in navigator && !isWebContainerEnv) {
     const wb = new Workbox('/service-worker.js');
 
     wb.addEventListener('installed', (event) => {

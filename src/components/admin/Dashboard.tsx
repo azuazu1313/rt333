@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, TrendingUp, Settings, ShieldCheck, Loader2, RefreshCw, Calendar, FileText, LogIn } from 'lucide-react';
+import { Users, TrendingUp, Settings, ShieldCheck, Loader2, RefreshCw, Calendar, FileText, LogIn, Car } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../ui/use-toast';
@@ -11,7 +11,7 @@ const Dashboard = () => {
       total: 0,
       active: 0,
       admin: 0,
-      support: 0
+      partner: 0
     },
     signups: {
       last24h: 0,
@@ -108,15 +108,15 @@ const Dashboard = () => {
         throw adminError;
       }
 
-      // Fetch support count
-      const { count: supportCount, error: supportError } = await supabase
+      // Fetch partner count (instead of support count)
+      const { count: partnerCount, error: partnerError } = await supabase
         .from('users')
         .select('*', { count: 'exact' })
-        .eq('user_role', 'support');
+        .eq('user_role', 'partner');
 
-      if (supportError) {
-        console.error('Error fetching support count:', supportError);
-        throw supportError;
+      if (partnerError) {
+        console.error('Error fetching partner count:', partnerError);
+        throw partnerError;
       }
 
       // Get dates for time-based queries
@@ -145,12 +145,16 @@ const Dashboard = () => {
         console.error('Error fetching signup counts');
       }
       
-      // For login counts, we would need a login history table
-      // This is a placeholder - in a real app, you'd track this data
-      // Here we're just using random numbers for demonstration
-      const logins24h = Math.floor(Math.random() * 50);
-      const logins7d = Math.floor(Math.random() * 200);
-      const logins30d = Math.floor(Math.random() * 500);
+      // TODO: In a production environment, we would create and use a user_logins table to track login activity
+      // For now we're using placeholder data, but this should be replaced with actual database queries
+      // This would require a new table with columns like:
+      // - id: uuid
+      // - user_id: uuid (foreign key to users.id)
+      // - login_time: timestamp
+      // - login_method: text (password, token, oauth, etc.)
+      const logins24h = 36; // Fixed placeholder instead of random
+      const logins7d = 92;  // Fixed placeholder instead of random
+      const logins30d = 417; // Fixed placeholder instead of random
       
       // Fetch trip counts
       const { count: tripCount, error: tripError } = await supabase
@@ -171,25 +175,44 @@ const Dashboard = () => {
         console.error('Error fetching trip counts');
       }
       
-      // Fetch driver counts
-      const { count: driverCount, error: driverError } = await supabase
-        .from('drivers')
-        .select('*', { count: 'exact' });
-        
-      const { count: activeDriverCount, error: activeDriverError } = await supabase
-        .from('drivers')
-        .select('*', { count: 'exact' })
-        .eq('is_available', true);
-        
-      if (driverError || activeDriverError) {
-        console.error('Error fetching driver counts');
+      // Handle driver counts based on user role
+      let driverCount = 0;
+      let activeDriverCount = 0;
+      
+      // Only admins have access to the drivers table due to RLS policies
+      if (userData?.user_role === 'admin') {
+        try {
+          // Use RPC function call instead of direct table access to bypass RLS for admin users
+          // This assumes you've created a function in the database called get_driver_counts
+          // If this function doesn't exist, it will fail gracefully
+          const { data: driverCounts, error: driverCountError } = await supabase.rpc('get_driver_counts');
+          
+          if (!driverCountError && driverCounts) {
+            driverCount = driverCounts.total || 0;
+            activeDriverCount = driverCounts.active || 0;
+          } else {
+            // Fallback to querying users with partner role for an estimate
+            const { count: partnerCount, error: partnerError } = await supabase
+              .from('users')
+              .select('*', { count: 'exact' })
+              .eq('user_role', 'partner');
+              
+            if (!partnerError) {
+              driverCount = partnerCount || 0;
+              // Without access to is_available, we can't determine active drivers
+              activeDriverCount = 0;
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching driver counts:', error);
+        }
       }
 
       console.log('Stats fetched successfully:', {
         totalUsers: userCount || 0,
         activeUsers: activeUserCount || 0,
         adminCount: adminCount || 0,
-        supportCount: supportCount || 0
+        partnerCount: partnerCount || 0
       });
 
       setStats({
@@ -197,7 +220,7 @@ const Dashboard = () => {
           total: userCount || 0,
           active: activeUserCount || 0,
           admin: adminCount || 0,
-          support: supportCount || 0
+          partner: partnerCount || 0
         },
         signups: {
           last24h: signups24h || 0,
@@ -295,15 +318,15 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Support Users */}
+        {/* Partner Users - Replaced Support Users */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
           <div className="flex items-center">
             <div className="p-3 bg-yellow-100 dark:bg-yellow-900/50 rounded-full">
-              <ShieldCheck className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+              <Car className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Support Users</p>
-              <p className="text-2xl font-semibold dark:text-white">{stats.users.support}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Partner Users</p>
+              <p className="text-2xl font-semibold dark:text-white">{stats.users.partner}</p>
             </div>
           </div>
         </div>

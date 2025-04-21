@@ -12,6 +12,7 @@ import { useAuth } from './contexts/AuthContext';
 import InstallPWA from './components/InstallPWA';
 import MobileInstallPrompt from './components/MobileInstallPrompt';
 import DynamicPWAManifest from './components/DynamicPWAManifest';
+import UpdateNotification from './components/UpdateNotification';
 
 // Route observer component to handle page-specific classes
 const RouteObserver = () => {
@@ -130,6 +131,7 @@ function App() {
               <AppRoutes />
               <InstallPWA />
               <MobileInstallPrompt />
+              <UpdateNotification />
             </BrowserRouter>
           </BookingProvider>
         </FeatureFlagProvider>

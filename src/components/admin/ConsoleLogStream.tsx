@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, RefreshCw, Copy, Trash2, Download, Search, Filter } from 'lucide-react';
+import { Loader2, RefreshCw, Copy, Trash2, Download, Search, Filter, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
+import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/use-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Define log entry interface
 interface LogEntry {
@@ -14,86 +16,23 @@ interface LogEntry {
   userAgent?: string;
   url?: string;
   sessionId?: string;
+  service?: 'edge' | 'postgres' | 'postgrest' | 'pooler' | 'auth' | 'storage' | 'realtime' | 'edge-functions' | 'pgcron';
   additionalData?: object;
 }
 
-// Create sample logs for demonstration
-const generateSampleLogs = (): LogEntry[] => {
-  const now = new Date();
-  const logs: LogEntry[] = [];
-
-  const messages = [
-    { level: 'info', message: 'User logged in successfully' },
-    { level: 'info', message: 'Booking created for user' },
-    { level: 'warn', message: 'User attempted to access unauthorized resource' },
-    { level: 'error', message: 'Failed to fetch user data: Network error' },
-    { level: 'error', message: 'Payment processing failed: Card declined' },
-    { level: 'debug', message: 'Rendering component with props' },
-    { level: 'info', message: 'Email notification sent to user' },
-    { level: 'warn', message: 'API rate limit approaching threshold' },
-    { level: 'error', message: 'Uncaught TypeError: Cannot read property of undefined' },
-    { level: 'debug', message: 'State updated: {"isLoading":false,"data":[]}' },
-    { level: 'info', message: 'New user registered: johndoe@example.com' },
-    { level: 'warn', message: 'Legacy API endpoint used, consider upgrading' },
-    { level: 'error', message: 'Database query timeout after 30s' },
-    { level: 'debug', message: 'Auth token refresh attempted' },
-    { level: 'info', message: 'User logged out' },
-  ];
-
-  const userNames = ['John Doe', 'Jane Smith', 'Robert Johnson', 'Maria Garcia', 'Anonymous'];
-  const userIds = ['usr_123456', 'usr_234567', 'usr_345678', 'usr_456789', null];
-  const userAgents = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.1 Safari/605.1.15',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 15_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Mobile/15E148 Safari/604.1',
-    'Mozilla/5.0 (Linux; Android 12; SM-G991U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.104 Mobile Safari/537.36',
-  ];
-  
-  const urls = [
-    '/admin/dashboard',
-    '/admin/users',
-    '/partner/trips',
-    '/login',
-    '/admin/bookings',
-  ];
-
-  // Generate random logs
-  for (let i = 0; i < 50; i++) {
-    const msgIndex = Math.floor(Math.random() * messages.length);
-    const userIndex = Math.floor(Math.random() * userNames.length);
-    const uaIndex = Math.floor(Math.random() * userAgents.length);
-    const urlIndex = Math.floor(Math.random() * urls.length);
-    
-    // Create log with random timestamp within the last 24 hours
-    const timestamp = new Date(now.getTime() - Math.random() * 24 * 60 * 60 * 1000);
-    
-    // Create some additional data for certain logs
-    let additionalData = undefined;
-    if (Math.random() > 0.7) {
-      additionalData = {
-        component: ['Dashboard', 'UserTable', 'LoginForm', 'BookingModal'][Math.floor(Math.random() * 4)],
-        duration: Math.floor(Math.random() * 1000),
-        status: [200, 400, 500, 201, 403][Math.floor(Math.random() * 5)]
-      };
-    }
-
-    logs.push({
-      id: `log_${i}_${Date.now()}`,
-      level: messages[msgIndex].level as 'info' | 'warn' | 'error' | 'debug',
-      message: messages[msgIndex].message,
-      timestamp: timestamp.toISOString(),
-      userId: userIds[userIndex],
-      userName: userNames[userIndex],
-      userAgent: userAgents[uaIndex],
-      url: urls[urlIndex],
-      sessionId: `sess_${Math.random().toString(36).substring(2, 10)}`,
-      additionalData
-    });
-  }
-
-  // Sort by timestamp (newest first)
-  return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-};
+// Supabase log sources
+const LOG_SOURCES = [
+  { id: 'all', name: 'All Sources', description: 'Logs from all services' },
+  { id: 'edge', name: 'API Gateway', description: 'API Gateway logs' },
+  { id: 'postgres', name: 'Postgres', description: 'Database logs' },
+  { id: 'postgrest', name: 'PostgREST', description: 'REST API logs' },
+  { id: 'pooler', name: 'Connection Pooler', description: 'Connection pooling logs' },
+  { id: 'auth', name: 'Auth', description: 'Authentication logs' },
+  { id: 'storage', name: 'Storage', description: 'File storage logs' },
+  { id: 'realtime', name: 'Realtime', description: 'Realtime subscription logs' },
+  { id: 'edge-functions', name: 'Edge Functions', description: 'Serverless function logs' },
+  { id: 'pgcron', name: 'Cron', description: 'Scheduled jobs logs' }
+];
 
 const ConsoleLogStream: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -102,17 +41,22 @@ const ConsoleLogStream: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<'all' | 'info' | 'warn' | 'error' | 'debug'>('all');
+  const [selectedSource, setSelectedSource] = useState<string>('all');
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [liveMode, setLiveMode] = useState(false);
   const [isParsingLogs, setIsParsingLogs] = useState(false);
   const [uploadedLogs, setUploadedLogs] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [logCount, setLogCount] = useState<number>(0);
+  const [timeRange, setTimeRange] = useState<'15m' | '1h' | '6h' | '24h' | '7d'>('1h');
   
   const liveModeIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
   const { toast } = useToast();
+  const { userData } = useAuth();
 
   useEffect(() => {
-    // Simulate initial log fetch
+    // Initial load of logs
     fetchLogs();
 
     return () => {
@@ -120,12 +64,12 @@ const ConsoleLogStream: React.FC = () => {
         clearInterval(liveModeIntervalRef.current);
       }
     };
-  }, []);
+  }, [selectedSource, timeRange]);
 
   useEffect(() => {
     // Filter logs when search or level filter changes
     filterLogs();
-  }, [logs, searchQuery, selectedLevel]);
+  }, [logs, searchQuery, selectedLevel, selectedSource]);
 
   useEffect(() => {
     // Handle live mode
@@ -134,21 +78,15 @@ const ConsoleLogStream: React.FC = () => {
         clearInterval(liveModeIntervalRef.current);
       }
       
-      // Add a new log every 3 seconds
+      // Fetch new logs every 5 seconds in live mode
       liveModeIntervalRef.current = setInterval(() => {
-        const randomLogEntry = generateRandomLogEntry();
-        setLogs(prevLogs => [randomLogEntry, ...prevLogs]);
-        
-        // Keep the latest 100 logs only
-        if (logs.length > 100) {
-          setLogs(prevLogs => prevLogs.slice(0, 100));
-        }
+        fetchLogs(true); // true means it's a live update
         
         // Auto-scroll to top if container exists
         if (logContainerRef.current) {
           logContainerRef.current.scrollTop = 0;
         }
-      }, 3000);
+      }, 5000);
     } else if (liveModeIntervalRef.current) {
       clearInterval(liveModeIntervalRef.current);
     }
@@ -158,19 +96,98 @@ const ConsoleLogStream: React.FC = () => {
         clearInterval(liveModeIntervalRef.current);
       }
     };
-  }, [liveMode, logs.length]);
+  }, [liveMode, selectedSource]);
 
-  const fetchLogs = () => {
-    setLoading(true);
-    setRefreshing(true);
-    
-    // Simulate API fetch delay
-    setTimeout(() => {
-      const sampleLogs = generateSampleLogs();
-      setLogs(sampleLogs);
-      setLoading(false);
+  const fetchLogs = async (isLiveUpdate = false) => {
+    try {
+      if (!isLiveUpdate) {
+        setLoading(true);
+      }
+      setRefreshing(true);
+      setError(null);
+      
+      // Verify that the user is an admin
+      if (userData?.user_role !== 'admin') {
+        throw new Error('Admin permissions required to view logs');
+      }
+      
+      // Get current session for auth header
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Authentication required');
+      }
+
+      // Call the fetch-logs edge function
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/fetch-logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          source: selectedSource,
+          timeRange: timeRange,
+          limit: 100
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch logs');
+      }
+
+      const result = await response.json();
+      
+      // Format the logs for our component
+      const formattedLogs: LogEntry[] = result.logs.map((log: any) => ({
+        id: log.id || `log_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        level: log.level || 'info',
+        message: log.message || log.msg || JSON.stringify(log),
+        timestamp: log.timestamp || log.time || new Date().toISOString(),
+        service: log.service || selectedSource,
+        userId: log.userId || log.user_id,
+        sessionId: log.sessionId || log.session_id,
+        additionalData: log
+      }));
+
+      setLogs(formattedLogs);
+      setLogCount(result.total || formattedLogs.length);
+      
+      // Show success toast for initial load but not for live updates
+      if (!isLiveUpdate) {
+        toast({
+          title: "Logs Loaded",
+          description: `Successfully loaded ${formattedLogs.length} logs`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fetching logs:', error);
+      setError(error.message || 'Failed to fetch logs. Please try again.');
+      
+      if (!isLiveUpdate) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message || "Failed to fetch logs. Please try again.",
+        });
+      }
+      
+      // If we're in live mode and hit an error, disable live mode
+      if (isLiveUpdate && liveMode) {
+        setLiveMode(false);
+        toast({
+          variant: "destructive",
+          title: "Live Mode Disabled",
+          description: "Encountered an error fetching logs. Live mode has been disabled.",
+        });
+      }
+    } finally {
+      if (!isLiveUpdate) {
+        setLoading(false);
+      }
       setRefreshing(false);
-    }, 1000);
+    }
   };
 
   const filterLogs = () => {
@@ -179,6 +196,11 @@ const ConsoleLogStream: React.FC = () => {
     // Apply level filter
     if (selectedLevel !== 'all') {
       filtered = filtered.filter(log => log.level === selectedLevel);
+    }
+    
+    // Apply source filter (if not 'all')
+    if (selectedSource !== 'all') {
+      filtered = filtered.filter(log => log.service === selectedSource);
     }
     
     // Apply search filter
@@ -194,35 +216,6 @@ const ConsoleLogStream: React.FC = () => {
     }
     
     setFilteredLogs(filtered);
-  };
-
-  const generateRandomLogEntry = (): LogEntry => {
-    const levels = ['info', 'warn', 'error', 'debug'] as const;
-    const level = levels[Math.floor(Math.random() * levels.length)];
-    
-    const messages = {
-      info: ['User action completed', 'Page loaded successfully', 'Data fetched', 'Cache updated'],
-      warn: ['Slow response time detected', 'Deprecated method used', 'Network latency high', 'Cache miss'],
-      error: ['Failed to load resource', 'API request failed', 'Uncaught exception', 'Authentication failed'],
-      debug: ['Component rendered', 'State updated', 'Effect triggered', 'Event handler fired']
-    };
-    
-    const message = messages[level][Math.floor(Math.random() * messages[level].length)];
-    
-    return {
-      id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      level,
-      message,
-      timestamp: new Date().toISOString(),
-      userId: Math.random() > 0.3 ? `user_${Math.random().toString(36).substring(2, 9)}` : undefined,
-      userName: Math.random() > 0.3 ? ['John', 'Jane', 'Alice', 'Bob'][Math.floor(Math.random() * 4)] + ' ' + 
-                                    ['Smith', 'Johnson', 'Williams', 'Brown'][Math.floor(Math.random() * 4)] : undefined,
-      url: Math.random() > 0.2 ? ['/admin', '/partner', '/login', '/dashboard'][Math.floor(Math.random() * 4)] : undefined,
-      additionalData: Math.random() > 0.7 ? { 
-        timestamp: Date.now(),
-        component: ['Header', 'Sidebar', 'Table', 'Form'][Math.floor(Math.random() * 4)]
-      } : undefined
-    };
   };
 
   const clearLogs = () => {
@@ -288,7 +281,8 @@ const ConsoleLogStream: React.FC = () => {
                 userAgent: log.userAgent,
                 url: log.url,
                 sessionId: log.sessionId,
-                additionalData: log.additionalData
+                service: log.service,
+                additionalData: log
               }));
               
             if (validLogs.length > 0) {
@@ -317,11 +311,19 @@ const ConsoleLogStream: React.FC = () => {
               else if (line.includes('[WARN]') || line.toLowerCase().includes('warn')) level = 'warn';
               else if (line.includes('[DEBUG]') || line.toLowerCase().includes('debug')) level = 'debug';
               
+              // Try to detect service
+              let service: LogEntry['service'] | undefined = undefined;
+              if (line.includes('postgres')) service = 'postgres';
+              else if (line.includes('auth')) service = 'auth';
+              else if (line.includes('storage')) service = 'storage';
+              else if (line.includes('edge function')) service = 'edge-functions';
+              
               return {
                 id: `imported_${index}_${Math.random().toString(36).substring(2)}`,
                 level,
                 message: line,
                 timestamp: new Date().toISOString(),
+                service,
                 additionalData: { rawLog: line }
               };
             });
@@ -367,7 +369,7 @@ const ConsoleLogStream: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `console_logs_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
+    a.download = `supabase_logs_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -394,6 +396,39 @@ const ConsoleLogStream: React.FC = () => {
     }
   };
 
+  const getServiceColor = (service?: string) => {
+    if (!service || service === 'all') return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
+    
+    switch (service) {
+      case 'edge':
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
+      case 'postgres':
+        return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
+      case 'auth':
+        return 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300';
+      case 'storage':
+        return 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300';
+      case 'edge-functions':
+        return 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300';
+      case 'realtime':
+        return 'bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-300';
+      case 'postgrest':
+        return 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300';
+      case 'pgcron':
+        return 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300';
+      case 'pooler':
+        return 'bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300';
+      default:
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300';
+    }
+  };
+
+  const getServiceName = (serviceId?: string) => {
+    if (!serviceId) return 'Unknown';
+    const source = LOG_SOURCES.find(s => s.id === serviceId);
+    return source ? source.name : serviceId;
+  };
+
   const formatTime = (timestamp: string) => {
     try {
       return format(new Date(timestamp), 'HH:mm:ss.SSS');
@@ -408,25 +443,51 @@ const ConsoleLogStream: React.FC = () => {
     if (!liveMode) {
       toast({
         title: "Live Mode Activated",
-        description: "New logs will be generated every few seconds",
+        description: "Logs will be updated automatically every 5 seconds",
         variant: "success",
       });
     } else {
       toast({
         title: "Live Mode Deactivated",
-        description: "Log generation stopped",
+        description: "Automatic log updates stopped",
       });
     }
   };
+
+  if (userData?.user_role !== 'admin') {
+    return (
+      <div className="bg-yellow-50 dark:bg-yellow-900/30 p-6 rounded-lg">
+        <div className="flex items-start">
+          <AlertTriangle className="h-6 w-6 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-2" />
+          <div>
+            <h3 className="text-lg font-medium text-yellow-700 dark:text-yellow-300">Admin Access Required</h3>
+            <p className="mt-2 text-yellow-600 dark:text-yellow-400">
+              You need administrator privileges to access the console logs. Please contact an administrator for assistance.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="mb-6">
         <h2 className="text-xl font-semibold dark:text-white">Console Log Stream</h2>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          View and analyze frontend console logs from users
+          View and analyze Supabase service logs
         </p>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start">
+          <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Error Loading Logs</h3>
+            <p className="mt-1 text-sm text-red-700 dark:text-red-400">{error}</p>
+          </div>
+        </div>
+      )}
 
       {/* Filters and Actions */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -459,7 +520,7 @@ const ConsoleLogStream: React.FC = () => {
         
         <div className="flex items-center space-x-2">
           <button
-            onClick={fetchLogs}
+            onClick={() => fetchLogs()}
             disabled={refreshing || loading}
             className="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center"
           >
@@ -496,8 +557,43 @@ const ConsoleLogStream: React.FC = () => {
       {/* Advanced Options */}
       <div className="mb-6 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Log Source
+              </label>
+              <select
+                value={selectedSource}
+                onChange={(e) => setSelectedSource(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 dark:text-white"
+              >
+                {LOG_SOURCES.map(source => (
+                  <option key={source.id} value={source.id}>
+                    {source.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Time Range
+              </label>
+              <select
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value as any)}
+                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 dark:text-white"
+              >
+                <option value="15m">Last 15 minutes</option>
+                <option value="1h">Last hour</option>
+                <option value="6h">Last 6 hours</option>
+                <option value="24h">Last 24 hours</option>
+                <option value="7d">Last 7 days</option>
+              </select>
+            </div>
+          </div>
+          
           <div>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Import/Export</h3>
             <div className="flex items-center space-x-2">
               <label className="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer flex items-center">
                 <Upload className="w-5 h-5 mr-2" />
@@ -520,11 +616,15 @@ const ConsoleLogStream: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+        
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {filteredLogs.length} logs displayed (of {logs.length} loaded, {logCount} total)
+          </p>
           
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              {filteredLogs.length} logs displayed (of {logs.length} total)
-            </p>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            {selectedSource === 'all' ? 'All services' : getServiceName(selectedSource)}
           </div>
         </div>
       </div>
@@ -544,14 +644,14 @@ const ConsoleLogStream: React.FC = () => {
               <p className="text-gray-500 dark:text-gray-400 mt-2">
                 {logs.length > 0 
                   ? 'Try changing your search criteria or filters'
-                  : 'Enable live mode or import logs to get started'}
+                  : 'Enable live mode or use the refresh button to fetch logs'}
               </p>
               {logs.length === 0 && (
                 <button
-                  onClick={toggleLiveMode}
+                  onClick={() => fetchLogs()}
                   className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
-                  Start Live Mode
+                  Fetch Logs
                 </button>
               )}
             </div>
@@ -565,11 +665,11 @@ const ConsoleLogStream: React.FC = () => {
                   <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-28">
                     Time
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Message
+                  <th scope="col" className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24">
+                    Service
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    User
+                    Message
                   </th>
                   <th scope="col" className="relative px-6 py-3 w-10">
                     <span className="sr-only">Actions</span>
@@ -593,18 +693,15 @@ const ConsoleLogStream: React.FC = () => {
                       <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">
                         {formatTime(log.timestamp)}
                       </td>
+                      <td className="px-2 py-4 whitespace-nowrap">
+                        {log.service && (
+                          <span className={`inline-flex text-xs font-medium rounded-full px-2 py-1 ${getServiceColor(log.service)}`}>
+                            {getServiceName(log.service).split(' ')[0]}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-900 dark:text-white break-all">
                         <div className="max-w-lg truncate">{log.message}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {log.userName ? (
-                          <div>
-                            <div className="font-medium text-gray-900 dark:text-white">{log.userName}</div>
-                            {log.userId && <div className="text-xs">{log.userId}</div>}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 dark:text-gray-500">—</span>
-                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
@@ -644,31 +741,31 @@ const ConsoleLogStream: React.FC = () => {
                                   <p className="text-sm text-gray-900 dark:text-white font-mono">{log.timestamp}</p>
                                 </div>
                                 <div>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">Session ID</p>
-                                  <p className="text-sm text-gray-900 dark:text-white font-mono">{log.sessionId || 'N/A'}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Service</p>
+                                  <p className="text-sm text-gray-900 dark:text-white">{getServiceName(log.service || '')}</p>
                                 </div>
                               </div>
+                              
+                              {log.sessionId && (
+                                <div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Session ID</p>
+                                  <p className="text-sm text-gray-900 dark:text-white font-mono">{log.sessionId}</p>
+                                </div>
+                              )}
+                              
+                              {log.userId && (
+                                <div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">User ID</p>
+                                  <p className="text-sm text-gray-900 dark:text-white font-mono">{log.userId}</p>
+                                </div>
+                              )}
                               
                               <div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">URL</p>
-                                <p className="text-sm text-gray-900 dark:text-white">{log.url || 'N/A'}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Log Data</p>
+                                <pre className="text-xs text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
+                                  {JSON.stringify(log.additionalData, null, 2)}
+                                </pre>
                               </div>
-                              
-                              {log.userAgent && (
-                                <div>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">User Agent</p>
-                                  <p className="text-sm text-gray-900 dark:text-white break-all">{log.userAgent}</p>
-                                </div>
-                              )}
-                              
-                              {log.additionalData && (
-                                <div>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">Additional Data</p>
-                                  <pre className="text-xs text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
-                                    {JSON.stringify(log.additionalData, null, 2)}
-                                  </pre>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </td>
@@ -687,11 +784,11 @@ const ConsoleLogStream: React.FC = () => {
         <div className="flex items-start">
           <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-2" />
           <div>
-            <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">How to use Console Log Stream</h4>
+            <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">About Supabase Logs</h4>
             <p className="text-sm text-blue-700 dark:text-blue-400">
-              This tool simulates streaming console logs from your users' browsers. In a real implementation, 
-              you would need to add a client-side logger to capture and send logs to your server.
-              Consider adding logger libraries like winston or pino on the server side, and a browser SDK to capture and transmit client-side logs.
+              This tool displays logs from your Supabase project's various services. Use the filters to narrow down logs 
+              by service, level, or search text. Live mode automatically refreshes logs every 5 seconds. Logs are only 
+              accessible to admin users.
             </p>
           </div>
         </div>
