@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
       status: 'pending', // Initially pending until assigned
       vehicle_type: vehicle.name || '',
       passengers: trip.passengers || 1,
-      customer_name: `${customer.title || ''} ${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
+      customer_name: `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
       customer_email: customer.email,
       customer_phone: customer.phone || '',
       is_return: trip.type === 'round-trip',
@@ -119,6 +119,20 @@ Deno.serve(async (req) => {
       payment_method: 'card', // Since this is Stripe checkout
       notes: ''
     };
+
+    // If there's no user_id provided but we have an email, try to find a matching user
+    if (!tripData.user_id && tripData.customer_email) {
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', tripData.customer_email)
+        .single();
+      
+      if (existingUser?.id) {
+        console.log('Found existing user with matching email:', existingUser.id);
+        tripData.user_id = existingUser.id;
+      }
+    }
 
     // Insert the trip record when Stripe session is created
     // This will be updated later when payment completes via webhook
