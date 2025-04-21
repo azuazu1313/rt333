@@ -49,7 +49,15 @@ export function DatePicker({ date, onDateChange, className, placeholder = "Pick 
           <CalendarIcon className="h-5 w-5 text-gray-400" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent 
+        className="w-auto p-0" 
+        align="start" 
+        side="bottom" 
+        sideOffset={5}
+        avoidCollisions={false}
+        sticky="always"
+        style={{ zIndex: 100 }}
+      >
         <Calendar
           mode="single"
           selected={selectedDate}

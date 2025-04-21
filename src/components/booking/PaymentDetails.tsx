@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ChevronDown, CreditCard, Banknote, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -21,12 +21,6 @@ const PaymentDetails = () => {
   const [showPriceDetails, setShowPriceDetails] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [bookingReference, setBookingReference] = useState<string>('');
-
-  // Generate booking reference on component mount
-  useEffect(() => {
-    setBookingReference(generateBookingReference());
-  }, []);
 
   const handleStripeCheckout = async () => {
     try {
@@ -46,8 +40,8 @@ const PaymentDetails = () => {
         throw new Error("Invalid email address. Please enter a valid email in your profile or booking details.");
       }
 
-      // Store the booking in database first
-      await createTripRecord(bookingReference);
+      // Generate booking reference right before checkout
+      const bookingReference = generateBookingReference();
 
       // Prepare booking data for the checkout session
       const bookingData = {
@@ -98,6 +92,12 @@ const PaymentDetails = () => {
       
       // Track successful Stripe checkout creation
       trackEvent('Payment', 'Stripe Checkout Created', bookingReference, calculateTotal());
+      
+      // Store the booking reference in the context
+      setBookingState(prev => ({
+        ...prev,
+        bookingReference
+      }));
       
       // Redirect to Stripe Checkout
       window.location.href = sessionUrl;
@@ -179,6 +179,9 @@ const PaymentDetails = () => {
         setIsProcessing(true);
         setError(null);
         
+        // Generate booking reference for cash payment
+        const bookingReference = generateBookingReference();
+        
         // First, create the trip record in the database
         await createTripRecord(bookingReference);
         
@@ -256,13 +259,6 @@ const PaymentDetails = () => {
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
             <p className="font-medium">Payment Error</p>
             <p className="text-sm whitespace-pre-line">{error}</p>
-          </div>
-        )}
-
-        {bookingReference && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-6">
-            <p className="font-medium">Booking Reference</p>
-            <p className="text-sm font-mono">{bookingReference}</p>
           </div>
         )}
 
