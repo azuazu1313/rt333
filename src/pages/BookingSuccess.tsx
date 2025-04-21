@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
 import SignUpModal from '../components/SignUpModal';
+import { Helmet } from 'react-helmet-async';
 
 const BookingSuccess = () => {
   const location = useLocation();
@@ -51,7 +52,7 @@ const BookingSuccess = () => {
     try {
       console.log('Fetching booking details for reference:', reference);
       
-      // Try to find booking using reference with proper query format
+      // Try to find booking using reference
       const { data, error } = await supabase
         .from('trips')
         .select('*')
@@ -69,7 +70,7 @@ const BookingSuccess = () => {
           .limit(1);
         
         if (fallbackError || !fallbackData || fallbackData.length === 0) {
-          throw new Error('Could not find booking with reference: ' + reference);
+          throw new Error('No matching booking found with reference: ' + reference);
         }
         
         setBookingDetails(fallbackData[0]);
@@ -204,6 +205,11 @@ const BookingSuccess = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Helmet>
+        <title>Booking Confirmed | Royal Transfer EU</title>
+        <meta name="description" content="Your transfer booking has been confirmed. Thank you for choosing Royal Transfer EU." />
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <Header />
       
       <main className="pt-32 pb-16">

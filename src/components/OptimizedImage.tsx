@@ -10,6 +10,8 @@ interface OptimizedImageProps {
   avif?: string;
   loading?: 'lazy' | 'eager';
   fetchPriority?: 'high' | 'low' | 'auto';
+  decoding?: 'async' | 'sync' | 'auto';
+  sizes?: string;
 }
 
 const OptimizedImage: React.FC<OptimizedImageProps> = ({
@@ -21,14 +23,16 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   webp,
   avif,
   loading = 'lazy',
-  fetchPriority = 'auto'
+  fetchPriority = 'auto',
+  decoding = 'async',
+  sizes,
 }) => {
   // If we have multiple formats, use a picture element
   if (webp || avif) {
     return (
       <picture>
-        {avif && <source srcSet={avif} type="image/avif" />}
-        {webp && <source srcSet={webp} type="image/webp" />}
+        {avif && <source srcSet={avif} type="image/avif" sizes={sizes} />}
+        {webp && <source srcSet={webp} type="image/webp" sizes={sizes} />}
         <img
           src={src}
           alt={alt}
@@ -37,6 +41,8 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
           className={className}
           loading={loading}
           fetchPriority={fetchPriority}
+          decoding={decoding}
+          sizes={sizes}
         />
       </picture>
     );
@@ -52,6 +58,8 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       className={className}
       loading={loading}
       fetchPriority={fetchPriority}
+      decoding={decoding}
+      sizes={sizes}
     />
   );
 };

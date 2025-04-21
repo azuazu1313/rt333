@@ -13,6 +13,7 @@ interface LazyImageProps {
   loadingStrategy?: 'lazy' | 'eager' | 'auto';
   onLoad?: () => void;
   onError?: () => void;
+  blurEffect?: boolean;
 }
 
 const LazyImage: React.FC<LazyImageProps> = ({
@@ -26,7 +27,8 @@ const LazyImage: React.FC<LazyImageProps> = ({
   placeholderColor = '#f1f5f9', // slate-100 by default
   loadingStrategy = 'lazy',
   onLoad,
-  onError
+  onError,
+  blurEffect = true,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -91,7 +93,12 @@ const LazyImage: React.FC<LazyImageProps> = ({
             loading={loadingStrategy === 'lazy' ? 'lazy' : undefined}
             onLoad={handleLoad}
             onError={handleError}
-            className={`transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'} w-full h-full object-cover`}
+            className={`transition-all duration-500 ${
+              isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
+            } w-full h-full object-cover`}
+            decoding="async"
+            fetchPriority={loadingStrategy === 'eager' ? 'high' : 'auto'}
+            
           />
         </picture>
       ) : (
@@ -104,7 +111,11 @@ const LazyImage: React.FC<LazyImageProps> = ({
           loading={loadingStrategy === 'lazy' ? 'lazy' : undefined}
           onLoad={handleLoad}
           onError={handleError}
-          className={`transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'} w-full h-full object-cover`}
+          className={`transition-all duration-500 ${
+            isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
+          } w-full h-full object-cover`}
+          decoding="async"
+          fetchPriority={loadingStrategy === 'eager' ? 'high' : 'auto'}
         />
       )}
       

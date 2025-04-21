@@ -1,12 +1,57 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Header from '../components/Header';
 import Sitemap from '../components/Sitemap';
 import TrustBadges from '../components/TrustBadges';
 import { motion } from 'framer-motion';
+import { Helmet } from 'react-helmet-async';
+import { useLocation } from 'react-router-dom';
+import { updateMetaTags, addStructuredData, addBreadcrumbData } from '../utils/seo';
 
 const About = () => {
+  const location = useLocation();
+  
+  useEffect(() => {
+    // Update meta tags and add structured data
+    updateMetaTags(
+      'About Us | Royal Transfer EU',
+      'Learn about Royal Transfer EU\'s 15+ years of experience providing premium airport transfers and taxi services across Italy.',
+      location.pathname
+    );
+    
+    // Add breadcrumb data
+    addBreadcrumbData(location.pathname);
+    
+    // Add structured data for the company
+    addStructuredData('Organization', {
+      name: 'Royal Transfer EU',
+      url: 'https://royaltransfer.eu',
+      logo: 'https://i.imghippo.com/files/cDgm3025PmI.webp',
+      description: 'Premium airport transfers and taxi services across Italy with 15+ years of experience.',
+      founder: {
+        '@type': 'Person',
+        name: 'Royal Transfer Founder'
+      },
+      foundingDate: '2010',
+      address: {
+        '@type': 'PostalAddress',
+        addressCountry: 'IT',
+        addressLocality: 'Rome'
+      },
+      contactPoint: {
+        '@type': 'ContactPoint',
+        telephone: '+393517482244',
+        contactType: 'customer service',
+        availableLanguage: ['English', 'Italian']
+      }
+    });
+  }, [location.pathname]);
+  
   return (
     <div className="min-h-screen bg-gray-50">
+      <Helmet>
+        <title>About Us | Royal Transfer EU</title>
+        <meta name="description" content="Learn about Royal Transfer EU's 15+ years of experience providing premium airport transfers and taxi services across Italy." />
+      </Helmet>
       <Header isAboutPage />
       
       <main className="pt-32 pb-16">

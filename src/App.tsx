@@ -1,20 +1,24 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import { Toaster } from './components/ui/toaster';
 
 // Import commonly used components directly
-import Home from './pages/Home';
 import { BookingProvider } from './contexts/BookingContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 import { useAnalytics } from './hooks/useAnalytics';
-import CookieBanner from './components/ui/CookieBanner';
 import { FeatureFlagProvider, useFeatureFlags } from './components/FeatureFlagProvider';
 
 // Import feature flag bridge for cross-domain communication
 import './utils/featureFlagBridge';
 
-// Lazily load less frequently accessed pages
+// Components that are needed on first render should not be lazy-loaded
+import Header from './components/Header';
+import CookieBanner from './components/ui/CookieBanner';
+
+// Lazily load all pages to improve initial load time
+const Home = lazy(() => import('./pages/Home'));
 const About = lazy(() => import('./pages/About'));
 const FAQ = lazy(() => import('./pages/FAQ'));
 const BlogPost = lazy(() => import('./pages/BlogPost'));
@@ -34,7 +38,7 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const CookiePolicy = lazy(() => import('./pages/CookiePolicy'));
 
-// Loading fallback component
+// Optimized loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
     <div className="text-center">
@@ -44,27 +48,75 @@ const PageLoader = () => (
   </div>
 );
 
-// Route observer component to handle page-specific classes
+// Route observer component to handle page-specific classes and SEO updates
 const RouteObserver = () => {
   const location = useLocation();
-  const { trackEvent } = useAnalytics(); // Use the analytics hook
+  const { trackEvent } = useAnalytics();
 
   useEffect(() => {
+    // Update page-specific classes
     const isBookingPage = location.pathname.startsWith('/transfer/');
     document.documentElement.classList.toggle('booking-page', isBookingPage);
     
     // Track page transitions as events
     trackEvent('Navigation', 'Page Transition', location.pathname);
     
+    // Update page title based on route
+    updatePageTitle(location.pathname);
+
     return () => {
       document.documentElement.classList.remove('booking-page');
     };
   }, [location, trackEvent]);
 
+  // Helper function to set appropriate page titles
+  const updatePageTitle = (path: string) => {
+    const baseTitle = 'Royal Transfer EU';
+    let pageTitle = '';
+
+    if (path === '/') {
+      pageTitle = `${baseTitle} | Premium Airport Transfers & Taxi in Italy`;
+    } else if (path.startsWith('/about')) {
+      pageTitle = `About Us | ${baseTitle}`;
+    } else if (path.startsWith('/services')) {
+      pageTitle = `Our Services | ${baseTitle}`;
+    } else if (path.startsWith('/blogs/destinations')) {
+      pageTitle = `Popular Destinations | ${baseTitle}`;
+    } else if (path.startsWith('/blogs')) {
+      pageTitle = `Travel Blog | ${baseTitle}`;
+    } else if (path.startsWith('/faq')) {
+      pageTitle = `Frequently Asked Questions | ${baseTitle}`;
+    } else if (path.startsWith('/partners')) {
+      pageTitle = `Partner With Us | ${baseTitle}`;
+    } else if (path.startsWith('/contact')) {
+      pageTitle = `Contact Us | ${baseTitle}`;
+    } else if (path.startsWith('/login')) {
+      pageTitle = `Sign In | ${baseTitle}`;
+    } else if (path.startsWith('/customer-signup')) {
+      pageTitle = `Create Account | ${baseTitle}`;
+    } else if (path.startsWith('/transfer')) {
+      pageTitle = `Book Your Transfer | ${baseTitle}`;
+    } else if (path.startsWith('/booking-success')) {
+      pageTitle = `Booking Confirmed | ${baseTitle}`;
+    } else if (path.startsWith('/profile')) {
+      pageTitle = `Your Profile | ${baseTitle}`;
+    } else if (path.startsWith('/bookings')) {
+      pageTitle = `Your Bookings | ${baseTitle}`;
+    } else if (path.startsWith('/privacy')) {
+      pageTitle = `Privacy Policy | ${baseTitle}`;
+    } else if (path.startsWith('/cookie-policy')) {
+      pageTitle = `Cookie Policy | ${baseTitle}`;
+    } else {
+      pageTitle = `${baseTitle} | Premium Airport Transfers & Taxi Service`;
+    }
+
+    document.title = pageTitle;
+  };
+
   return null;
 };
 
-// Protected route component
+// Protected route component with optimized loading
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const { trackEvent } = useAnalytics();
@@ -141,6 +193,9 @@ function AppRoutes() {
       
       {/* Conditionally render the CookieBanner based on the feature flag */}
       {flags.showCookieBanner && <CookieBanner />}
+      
+      {/* Toaster for displaying notifications */}
+      <Toaster />
     </>
   );
 }
