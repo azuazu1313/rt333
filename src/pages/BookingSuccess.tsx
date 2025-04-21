@@ -18,6 +18,7 @@ const BookingSuccess = () => {
   const [bookingDetails, setBookingDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [existingUserWithSameEmail, setExistingUserWithSameEmail] = useState(false);
   
   useEffect(() => {
     // Get the booking reference from the URL query parameters
@@ -45,25 +46,40 @@ const BookingSuccess = () => {
   const fetchBookingDetails = async (reference: string) => {
     setLoading(true);
     try {
-      // Try to find booking using reference
+      console.log('Fetching booking details for reference:', reference);
+      
+      // Try to find booking using reference with proper parameter binding
       const { data, error } = await supabase
         .from('trips')
         .select('*')
-        .or(`booking_reference.eq.${reference},id.eq.${reference}`)
+        .or(`booking_reference.eq."${reference}",id.eq."${reference}"`)
         .limit(1);
       
       if (error) {
         console.error('Error fetching booking details:', error);
       }
       
+      console.log('Booking data result:', data);
+      
       if (data && data.length > 0) {
         setBookingDetails(data[0]);
         
-        // If we have a booking and the user is not logged in, check if we should show the sign-up modal
-        // Only show the modal if the booking doesn't already have a user_id and the customer provided an email
-        if (!user && !data[0].user_id && data[0].customer_email) {
-          // Small delay to let the success screen be visible first
-          setTimeout(() => setShowSignUpModal(true), 3000);
+        // If we have a booking and the user is not logged in, check if the email matches an existing account
+        if (!user && data[0].customer_email) {
+          const { data: existingUserData } = await supabase
+            .from('users')
+            .select('id')
+            .eq('email', data[0].customer_email)
+            .limit(1);
+            
+          const hasExistingAccount = existingUserData && existingUserData.length > 0;
+          setExistingUserWithSameEmail(hasExistingAccount);
+          
+          // Only show the sign-up modal if there's no existing account with this email
+          if (!hasExistingAccount && !data[0].user_id) {
+            // Small delay to let the success screen be visible first
+            setTimeout(() => setShowSignUpModal(true), 3000);
+          }
         }
       }
     } catch (error) {
@@ -282,6 +298,16 @@ const BookingSuccess = () => {
                 >
                   View My Bookings
                 </button>
+              ) : existingUserWithSameEmail ? (
+                <button
+                  onClick={() => {
+                    trackEvent('Navigation', 'Post-Booking Click', 'Sign In To Manage Booking');
+                    navigate('/login');
+                  }}
+                  className="bg-black text-white px-6 py-3 rounded-md hover:bg-gray-800 transition-all duration-300"
+                >
+                  Sign In To Manage Booking
+                </button>
               ) : (
                 <button
                   onClick={() => setShowSignUpModal(true)}
@@ -358,7 +384,7 @@ const BookingSuccess = () => {
       </main>
 
       {/* Sign-up Modal for non-logged in users */}
-      {bookingDetails && bookingReference && !user && (
+      {bookingDetails && bookingReference && !user && !existingUserWithSameEmail && (
         <SignUpModal
           isOpen={showSignUpModal}
           onClose={() => setShowSignUpModal(false)}

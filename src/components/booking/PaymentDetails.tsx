@@ -47,8 +47,8 @@ const PaymentDetails = () => {
       const bookingData = {
         booking_reference: bookingReference,
         trip: {
-          from: bookingState.from || bookingState.personalDetails?.pickup || 'Unknown location',
-          to: bookingState.to || bookingState.personalDetails?.dropoff || 'Unknown location',
+          from: bookingState.personalDetails?.pickup || bookingState.from || 'Unknown location',
+          to: bookingState.personalDetails?.dropoff || bookingState.to || 'Unknown location',
           type: bookingState.isReturn ? 'round-trip' : 'one-way',
           date: bookingState.departureDate || new Date().toISOString(),
           returnDate: bookingState.returnDate || null,
@@ -71,6 +71,12 @@ const PaymentDetails = () => {
 
       // Track attempt to create stripe checkout
       trackEvent('Payment', 'Stripe Checkout Initiated', bookingReference, calculateTotal());
+
+      // Store the booking reference in the context
+      setBookingState(prev => ({
+        ...prev,
+        bookingReference
+      }));
 
       // Call the Supabase Edge Function to create a checkout session
       const response = await fetch(
@@ -95,12 +101,6 @@ const PaymentDetails = () => {
       // Track successful Stripe checkout creation
       trackEvent('Payment', 'Stripe Checkout Created', bookingReference, calculateTotal());
       
-      // Store the booking reference in the context
-      setBookingState(prev => ({
-        ...prev,
-        bookingReference
-      }));
-      
       // Redirect to Stripe Checkout
       window.location.href = sessionUrl;
     } catch (error: any) {
@@ -122,8 +122,8 @@ const PaymentDetails = () => {
       const tripData = {
         user_id: user?.id || null,
         booking_reference: bookingRef,
-        pickup_address: bookingState.from || '',
-        dropoff_address: bookingState.to || '',
+        pickup_address: bookingState.personalDetails?.pickup || bookingState.from || '',
+        dropoff_address: bookingState.personalDetails?.dropoff || bookingState.to || '',
         estimated_distance_km: 0, // Will be calculated by admin
         estimated_duration_min: 0, // Will be calculated by admin
         estimated_price: calculateTotal(),
@@ -140,7 +140,8 @@ const PaymentDetails = () => {
         return_datetime: bookingState.returnDate || null,
         extra_items: Array.from(bookingState.personalDetails?.selectedExtras || []).join(','),
         payment_method: paymentMethod,
-        notes: ''
+        notes: '',
+        customer_title: bookingState.personalDetails?.title
       };
 
       console.log('Creating trip record:', tripData);
