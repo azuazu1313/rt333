@@ -40,7 +40,6 @@ const setCookie = (name: string, value: string, days: number = 365): void => {
   let domain = window.location.hostname;
   
   // Extract top-level domain (e.g., example.com from subdomain.example.com)
-  // This handles basic cases - for more complex scenarios, you might need to adjust this
   const parts = domain.split('.');
   if (parts.length > 2) {
     // If we have a subdomain, use the top two parts
@@ -48,7 +47,7 @@ const setCookie = (name: string, value: string, days: number = 365): void => {
   }
   
   // Set the cookie with domain attribute to share across subdomains
-  document.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/; domain=.${domain}`;
+  document.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/; domain=.${domain}; SameSite=Lax`;
 };
 
 interface FeatureFlagProviderProps {
@@ -98,6 +97,24 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({ childr
     };
 
     fetchFlags();
+    
+    // Listen for storage events from other tabs/windows
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'featureFlags') {
+        try {
+          const newFlags = event.newValue ? JSON.parse(event.newValue) : defaultFeatureFlags;
+          setFlags(prev => ({ ...prev, ...newFlags }));
+        } catch (error) {
+          console.error('Error parsing feature flags from storage event:', error);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   // Save flags to cookies and localStorage when they change
@@ -110,6 +127,12 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({ childr
       
       // Also save to localStorage for backward compatibility
       localStorage.setItem('featureFlags', flagsJson);
+      
+      // Dispatch storage event to notify other tabs
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'featureFlags',
+        newValue: flagsJson
+      }));
     } catch (error) {
       console.error('Error saving feature flags:', error);
     }
@@ -132,11 +155,30 @@ export const FeatureFlagProvider: React.FC<FeatureFlagProviderProps> = ({ childr
       return false;
     };
     
+    // Check periodically for cookie changes from other domains
+    const checkForCookieChanges = () => {
+      const cookieValue = getCookie('featureFlags');
+      if (cookieValue) {
+        try {
+          const parsedFlags = JSON.parse(cookieValue);
+          // Only update state if different from current
+          if (parsedFlags.showCookieBanner !== flags.showCookieBanner) {
+            setFlags(prev => ({ ...prev, ...parsedFlags }));
+          }
+        } catch (error) {
+          console.error('Error parsing cookie feature flags:', error);
+        }
+      }
+    };
+    
+    const intervalId = setInterval(checkForCookieChanges, 5000);
+    
     // Clean up
     return () => {
+      clearInterval(intervalId);
       delete window.setFeatureFlag;
     };
-  }, []);
+  }, [flags.showCookieBanner]);
 
   return (
     <FeatureFlagContext.Provider value={{ flags, setFeatureFlag }}>

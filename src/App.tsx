@@ -11,6 +11,9 @@ import { useAnalytics } from './hooks/useAnalytics';
 import CookieBanner from './components/ui/CookieBanner';
 import { FeatureFlagProvider, useFeatureFlags } from './components/FeatureFlagProvider';
 
+// Import feature flag bridge for cross-domain communication
+import './utils/featureFlagBridge';
+
 // Lazily load less frequently accessed pages
 const About = lazy(() => import('./pages/About'));
 const FAQ = lazy(() => import('./pages/FAQ'));

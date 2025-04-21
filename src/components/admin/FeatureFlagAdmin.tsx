@@ -46,7 +46,7 @@ const setCookie = (name: string, value: string, days: number = 365): void => {
   }
   
   // Set the cookie with domain attribute to share across subdomains
-  document.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/; domain=.${domain}`;
+  document.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/; domain=.${domain}; SameSite=Lax`;
 };
 
 const FeatureFlagAdmin: React.FC = () => {
@@ -110,6 +110,13 @@ const FeatureFlagAdmin: React.FC = () => {
     };
     
     loadFlags();
+    
+    // Set up an interval to periodically refresh the flags
+    const intervalId = setInterval(loadFlags, 30000); // Every 30 seconds
+    
+    return () => {
+      clearInterval(intervalId);
+    };
   }, []);
   
   // Toggle a feature flag
@@ -145,15 +152,30 @@ const FeatureFlagAdmin: React.FC = () => {
       // Also save to localStorage for backward compatibility
       localStorage.setItem('featureFlags', flagsJson);
       
-      // Update flags in main site using the global function if available
-      flags.forEach(flag => {
-        if (window.setFeatureFlag) {
-          if (flag.key === 'show_cookies_banner') {
-            window.setFeatureFlag('show_cookies_banner', flag.enabled);
-          }
-          // Add handling for other flags
-        }
-      });
+      // Try to update flags in main site using the global function if available
+      // This is for when the admin panel is running in the same domain
+      if (window.setFeatureFlag) {
+        flags.forEach(flag => {
+          window.setFeatureFlag?.(flag.key, flag.enabled);
+        });
+      } else {
+        console.log('Direct flag update not available - relying on cookie sharing');
+      }
+      
+      // For cross-domain communication, dispatch a custom event
+      try {
+        // This works if the admin panel is embedded in the main site
+        window.parent.postMessage({
+          type: 'updateFeatureFlags',
+          flags: flagsObj
+        }, '*');
+      } catch (e) {
+        // Silently catch errors if window.parent isn't available
+      }
+      
+      // Manual fallback for admin panel running on separate domain
+      // The shared cookie will be picked up by the main site on next check
+      console.log('Updated feature flags via shared cookie. Changes will take effect on the main site within a few seconds.');
       
       setSaveStatus('success');
       

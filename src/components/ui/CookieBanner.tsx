@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Banner } from "./banner"
 import { Button } from "./button"
 import { Info } from "lucide-react"
 import { setCookie, getCookie } from "../../utils/cookieUtils"
 import { useAnalytics } from "../../hooks/useAnalytics"
 import { Link } from "react-router-dom"
+import { useFeatureFlags } from "../FeatureFlagProvider"
 
 const CONSENT_COOKIE_NAME = "royal_transfer_cookie_consent"
 const CONSENT_COOKIE_EXPIRY_DAYS = 365
@@ -15,6 +16,12 @@ export default function CookieBanner() {
   const [isVisible, setIsVisible] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const { trackEvent } = useAnalytics()
+  const { flags, setFeatureFlag } = useFeatureFlags()
+  
+  // Helper function to check if cookie consent exists
+  const hasConsentCookie = useCallback(() => {
+    return getCookie(CONSENT_COOKIE_NAME) !== null;
+  }, []);
 
   // Check screen size for responsive layout
   useEffect(() => {
@@ -35,27 +42,36 @@ export default function CookieBanner() {
 
   // Check if user has already set cookie preferences
   useEffect(() => {
-    // Small delay to prevent banner from flashing if consent already exists
-    const timer = setTimeout(() => {
-      const consentCookie = getCookie(CONSENT_COOKIE_NAME)
-      if (!consentCookie) {
-        setIsVisible(true)
-      } else {
-        try {
-          const savedPreferences = JSON.parse(consentCookie)
-          // Apply saved preferences
-          if (savedPreferences.analytics) {
-            enableAnalytics()
-          }
-        } catch (error) {
-          console.error("Error parsing consent cookie:", error)
-          setIsVisible(true)
+    // Only show banner if the feature flag is enabled and consent isn't already given
+    if (flags.showCookieBanner && !hasConsentCookie()) {
+      // Small delay to prevent banner from flashing if consent already exists
+      const timer = setTimeout(() => {
+        setIsVisible(true);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [flags.showCookieBanner, hasConsentCookie]);
+
+  // Listen for parent window messages (for cross-domain communication)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Validate message source (optional security improvement)
+      // if (event.origin !== 'https://admin.yoursite.com') return;
+      
+      if (event.data && event.data.type === 'updateFeatureFlags') {
+        const newFlags = event.data.flags;
+        if (typeof newFlags.showCookieBanner === 'boolean') {
+          setFeatureFlag('showCookieBanner', newFlags.showCookieBanner);
         }
       }
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [])
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [setFeatureFlag]);
 
   // Save consent preferences to cookie
   const saveConsent = (consentType: CookieConsentType) => {
@@ -116,7 +132,8 @@ export default function CookieBanner() {
     }
   }
 
-  if (!isVisible) return null
+  // Don't render if flag is disabled or banner shouldn't be visible
+  if (!flags.showCookieBanner || !isVisible) return null
 
   return (
     <div className="fixed bottom-4 inset-x-0 z-[999] flex justify-center px-4 pointer-events-none">

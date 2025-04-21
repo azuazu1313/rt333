@@ -156,14 +156,15 @@ const BookingSuccess = () => {
             </div>
             
             <h1 className="text-3xl font-bold mb-4">Booking Confirmed!</h1>
-            <p className="text-lg text-gray-600 mb-8">
+            <p className="text-lg text-gray-600 mb-6">
               Thank you for booking with Royal Transfer EU. Your transfer has been successfully confirmed.
             </p>
             
             {bookingReference && (
-              <div className="mb-8 text-left bg-gray-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-500 mb-2">Booking Reference:</p>
-                <p className="font-mono text-base font-medium">{bookingReference}</p>
+              <div className="mb-8 text-center bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <p className="text-sm text-gray-500 mb-2">Booking Reference</p>
+                <p className="font-mono text-3xl font-bold">{bookingReference}</p>
+                <p className="text-sm text-gray-500 mt-2">Please keep this reference for your records</p>
               </div>
             )}
             
