@@ -62,7 +62,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { bookingState } = useBooking();
+  const { bookingState, setBookingState } = useBooking();
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   
   // Flag to track component initialization
@@ -326,7 +326,6 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     };
 
     // Also update booking context with display names
-    const { setBookingState } = useBooking();
     setBookingState(prev => ({
       ...prev,
       from: pickupValue,
