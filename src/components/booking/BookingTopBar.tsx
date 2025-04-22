@@ -5,7 +5,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { DatePicker } from '../ui/date-picker';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
-import { PlacesAutocomplete } from '../ui/places-autocomplete';
+import { GooglePlacesAutocomplete } from '../ui/GooglePlacesAutocomplete';
 
 const formatDateForUrl = (date: Date) => {
   if (!date || isNaN(date.getTime())) {
@@ -210,7 +210,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     setHasChanges(hasFormChanges);
   }, [formData, isOneWay, pickupValue, dropoffValue]);
 
-  // Update input handlers - mark as user interaction
+  // Handle place selection from autocomplete
   const handlePickupChange = (value: string) => {
     userInteractedRef.current = true;
     setPickupValue(value);
@@ -357,7 +357,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
           <div className="flex flex-col space-y-4 md:hidden">
             {/* Mobile Pickup Location */}
             {googleMapsLoaded ? (
-              <PlacesAutocomplete
+              <GooglePlacesAutocomplete
                 value={pickupValue}
                 onChange={handlePickupChange}
                 placeholder="From"
@@ -378,7 +378,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
             {/* Mobile Dropoff Location */}
             {googleMapsLoaded ? (
-              <PlacesAutocomplete
+              <GooglePlacesAutocomplete
                 value={dropoffValue}
                 onChange={handleDropoffChange}
                 placeholder="To"
@@ -475,7 +475,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
             <div className="flex-1 grid grid-cols-[1fr_1fr_1.5fr_1fr] gap-4">
               {/* Desktop Pickup Location */}
               {googleMapsLoaded ? (
-                <PlacesAutocomplete
+                <GooglePlacesAutocomplete
                   value={pickupValue}
                   onChange={handlePickupChange}
                   placeholder="From"
@@ -496,7 +496,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 
               {/* Desktop Dropoff Location */}
               {googleMapsLoaded ? (
-                <PlacesAutocomplete
+                <GooglePlacesAutocomplete
                   value={dropoffValue}
                   onChange={handleDropoffChange}
                   placeholder="To"
