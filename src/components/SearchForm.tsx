@@ -240,7 +240,7 @@ const SearchForm = () => {
         </div>
 
         <div className="space-y-6">
-          {/* Pickup Location - Uses Google Places Autocomplete Element */}
+          {/* Pickup Location */}
           {googleMapsLoaded ? (
             <GooglePlacesAutocomplete
               value={formData.pickup}
@@ -261,7 +261,7 @@ const SearchForm = () => {
             </div>
           )}
 
-          {/* Dropoff Location - Uses Google Places Autocomplete Element */}
+          {/* Dropoff Location */}
           {googleMapsLoaded ? (
             <GooglePlacesAutocomplete
               value={formData.dropoff}
