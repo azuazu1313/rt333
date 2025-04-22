@@ -6,6 +6,7 @@ import { DatePicker } from '../ui/date-picker';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { GooglePlacesAutocomplete } from '../ui/GooglePlacesAutocomplete';
+import { useBooking } from '../../contexts/BookingContext';
 
 const formatDateForUrl = (date: Date) => {
   if (!date || isNaN(date.getTime())) {
@@ -61,6 +62,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { bookingState } = useBooking();
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   
   // Flag to track component initialization
@@ -78,9 +80,9 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   const [displayPassengers, setDisplayPassengers] = useState(parseInt(passengers, 10));
   const [hasChanges, setHasChanges] = useState(false);
   
-  // Input field states
-  const [pickupValue, setPickupValue] = useState(from);
-  const [dropoffValue, setDropoffValue] = useState(to);
+  // Input field states - use the display names from context if available
+  const [pickupValue, setPickupValue] = useState(bookingState.fromDisplay || from);
+  const [dropoffValue, setDropoffValue] = useState(bookingState.toDisplay || to);
   
   // Store original URL values for comparison
   const originalValuesRef = useRef({
@@ -134,15 +136,24 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
     setHasChanges(false);
     isInitializedRef.current = true;
 
+    // Use the display names from context if available
+    if (bookingState.fromDisplay) {
+      setPickupValue(bookingState.fromDisplay);
+    }
+    
+    if (bookingState.toDisplay) {
+      setDropoffValue(bookingState.toDisplay);
+    }
+
     console.log("BookingTopBar initialized with:", {
       type,
       isOneWay: isOneWayFromProps,
-      from,
-      to,
+      from: pickupValue,
+      to: dropoffValue,
       date,
       returnDate
     });
-  }, [from, to, type, date, returnDate, passengers, isOneWayFromProps]);
+  }, [from, to, type, date, returnDate, passengers, isOneWayFromProps, bookingState.fromDisplay, bookingState.toDisplay]);
 
   // Setup effect for user interaction tracking
   useEffect(() => {
@@ -313,6 +324,20 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       departureDate: isOneWay ? formData.departureDate : undefined,
       dateRange: !isOneWay ? formData.dateRange : undefined
     };
+
+    // Also update booking context with display names
+    const { setBookingState } = useBooking();
+    setBookingState(prev => ({
+      ...prev,
+      from: pickupValue,
+      to: dropoffValue,
+      fromDisplay: pickupValue,
+      toDisplay: dropoffValue,
+      isReturn: !isOneWay,
+      departureDate: formattedDepartureDate,
+      returnDate: formattedReturnDate !== '0' ? formattedReturnDate : undefined,
+      passengers: formData.passengers
+    }));
 
     // Reset change detection before navigation
     setHasChanges(false);
