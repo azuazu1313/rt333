@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Users, ArrowRight, Minus, Plus } from 'lucide-react';
+import { MapPin, Users, ArrowRight, Plus, Minus } from 'lucide-react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { DatePicker } from './ui/date-picker';
 import { DateRangePicker } from './ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { GooglePlacesAutocomplete } from './ui/GooglePlacesAutocomplete';
+import { useBooking } from '../contexts/BookingContext';
 
 const formatDateForUrl = (date: Date) => {
+  if (!date || isNaN(date.getTime())) {
+    return '';
+  }
   const year = date.getFullYear().toString().slice(-2);
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const day = date.getDate().toString().padStart(2, '0');
@@ -15,22 +19,20 @@ const formatDateForUrl = (date: Date) => {
 };
 
 const parseDateFromUrl = (dateStr: string): Date | undefined => {
-  if (!dateStr || dateStr.length !== 6) return undefined;
+  if (!dateStr || dateStr === '0' || dateStr.length !== 6) {
+    return undefined;
+  }
   
   try {
     const year = parseInt(`20${dateStr.slice(0, 2)}`);
-    const month = parseInt(dateStr.slice(2, 4)) - 1; // JS months are 0-based
+    const month = parseInt(dateStr.slice(2, 4)) - 1;
     const day = parseInt(dateStr.slice(4, 6));
     
-    const date = new Date(year, month, day);
+    const date = new Date(year, month, day, 12, 0, 0, 0);
     
-    // Validate the date is valid
     if (isNaN(date.getTime())) {
       return undefined;
     }
-    
-    // Set to noon to avoid timezone issues
-    date.setHours(12, 0, 0, 0);
     
     return date;
   } catch (error) {
@@ -44,6 +46,7 @@ const SearchForm = () => {
   const location = useLocation();
   const params = useParams();
   const { trackEvent } = useAnalytics();
+  const { setBookingState } = useBooking();
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
 
   // Store original values for comparison and restoration
@@ -62,6 +65,8 @@ const SearchForm = () => {
   const [formData, setFormData] = useState({
     pickup: '',
     dropoff: '',
+    pickupDisplay: '', // Store the display version
+    dropoffDisplay: '', // Store the display version
     departureDate: undefined as Date | undefined,
     dateRange: undefined as DateRange | undefined
   });
@@ -94,9 +99,15 @@ const SearchForm = () => {
         const departureDate = parseDateFromUrl(date);
         const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
         
+        // Decode and format locations (from and to) for display
+        const fromDecoded = decodeURIComponent(from.replace(/-/g, ' '));
+        const toDecoded = decodeURIComponent(to.replace(/-/g, ' '));
+        
         const newFormData = {
-          pickup: decodeURIComponent(from.replace(/-/g, ' ')),
-          dropoff: decodeURIComponent(to.replace(/-/g, ' ')),
+          pickup: fromDecoded,
+          dropoff: toDecoded,
+          pickupDisplay: fromDecoded,
+          dropoffDisplay: toDecoded,
           departureDate: isRoundTrip ? undefined : departureDate,
           dateRange: isRoundTrip ? {
             from: departureDate,
@@ -117,7 +128,7 @@ const SearchForm = () => {
         };
       }
     }
-  }, [location.pathname, params]);
+  }, [location.pathname, params, setBookingState]);
 
   const handlePassengerChange = (increment: boolean) => {
     const newValue = Math.max(1, Math.min(100, increment ? passengers + 1 : passengers - 1));
@@ -182,6 +193,7 @@ const SearchForm = () => {
       return;
     }
 
+    // Store URL-friendly versions of pickup and dropoff
     const encodedPickup = encodeURIComponent(pickup.toLowerCase().replace(/\s+/g, '-'));
     const encodedDropoff = encodeURIComponent(dropoff.toLowerCase().replace(/\s+/g, '-'));
     
@@ -210,6 +222,19 @@ const SearchForm = () => {
       dateRange: formData.dateRange,
       passengers
     };
+    
+    // Store the display names in booking context
+    setBookingState(prev => ({
+      ...prev,
+      from: pickup,
+      to: dropoff,
+      fromDisplay: formData.pickupDisplay || pickup,
+      toDisplay: formData.dropoffDisplay || dropoff,
+      isReturn,
+      departureDate: formattedDepartureDate,
+      returnDate: returnDateParam !== '0' ? returnDateParam : undefined,
+      passengers
+    }));
     
     navigate(path);
     
@@ -244,7 +269,11 @@ const SearchForm = () => {
           {googleMapsLoaded ? (
             <GooglePlacesAutocomplete
               value={formData.pickup}
-              onChange={(value) => setFormData(prev => ({ ...prev, pickup: value }))}
+              onChange={(value) => setFormData(prev => ({ 
+                ...prev, 
+                pickup: value,
+                pickupDisplay: value
+              }))}
               placeholder="Pickup location"
               className="w-full"
             />
@@ -255,7 +284,11 @@ const SearchForm = () => {
                 type="text"
                 placeholder="Pickup location"
                 value={formData.pickup}
-                onChange={(e) => setFormData(prev => ({ ...prev, pickup: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  pickup: e.target.value,
+                  pickupDisplay: e.target.value
+                }))}
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
@@ -265,7 +298,11 @@ const SearchForm = () => {
           {googleMapsLoaded ? (
             <GooglePlacesAutocomplete
               value={formData.dropoff}
-              onChange={(value) => setFormData(prev => ({ ...prev, dropoff: value }))}
+              onChange={(value) => setFormData(prev => ({ 
+                ...prev, 
+                dropoff: value,
+                dropoffDisplay: value
+              }))}
               placeholder="Dropoff location"
               className="w-full"
             />
@@ -276,7 +313,11 @@ const SearchForm = () => {
                 type="text"
                 placeholder="Dropoff location"
                 value={formData.dropoff}
-                onChange={(e) => setFormData(prev => ({ ...prev, dropoff: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  dropoff: e.target.value,
+                  dropoffDisplay: e.target.value
+                }))}
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
