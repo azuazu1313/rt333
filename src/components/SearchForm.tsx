@@ -5,7 +5,7 @@ import { DatePicker } from './ui/date-picker';
 import { DateRangePicker } from './ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { useAnalytics } from '../hooks/useAnalytics';
-import { PlacesAutocomplete } from './ui/places-autocomplete';
+import { GooglePlacesAutocomplete } from './ui/GooglePlacesAutocomplete';
 
 const formatDateForUrl = (date: Date) => {
   const year = date.getFullYear().toString().slice(-2);
@@ -240,9 +240,9 @@ const SearchForm = () => {
         </div>
 
         <div className="space-y-6">
-          {/* Pickup Location - Uses Places Autocomplete */}
+          {/* Pickup Location - Uses Google Places Autocomplete Element */}
           {googleMapsLoaded ? (
-            <PlacesAutocomplete
+            <GooglePlacesAutocomplete
               value={formData.pickup}
               onChange={(value) => setFormData(prev => ({ ...prev, pickup: value }))}
               placeholder="Pickup location"
@@ -261,9 +261,9 @@ const SearchForm = () => {
             </div>
           )}
 
-          {/* Dropoff Location - Uses Places Autocomplete */}
+          {/* Dropoff Location - Uses Google Places Autocomplete Element */}
           {googleMapsLoaded ? (
-            <PlacesAutocomplete
+            <GooglePlacesAutocomplete
               value={formData.dropoff}
               onChange={(value) => setFormData(prev => ({ ...prev, dropoff: value }))}
               placeholder="Dropoff location"
