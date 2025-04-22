@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
 
-// Define our props interface
 interface GooglePlacesAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
@@ -15,54 +14,55 @@ export function GooglePlacesAutocomplete({
   placeholder,
   className = ''
 }: GooglePlacesAutocompleteProps) {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const placesListenerRef = useRef<google.maps.MapsEventListener | null>(null);
+  
+  // Flag to prevent onChange being called redundantly during place selection
+  const isSelectingRef = useRef(false);
 
   // Initialize the autocomplete when the component mounts
   useEffect(() => {
-    // Check if Google Maps API is ready
-    const checkGoogleMapsLoaded = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        initializeAutocomplete();
-      } else {
-        setTimeout(checkGoogleMapsLoaded, 100);
-      }
-    };
-
-    // Initialize the autocomplete
     const initializeAutocomplete = () => {
-      if (!inputRef.current) return;
+      if (!inputRef.current || !window.google?.maps?.places) return;
       
+      // Clear any existing autocomplete
+      if (placesListenerRef.current && autocompleteRef.current) {
+        google.maps.event.removeListener(placesListenerRef.current);
+        google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      }
+
       setIsLoading(true);
 
       try {
-        // Clear any existing autocomplete
-        if (placesListenerRef.current && autocompleteRef.current) {
-          google.maps.event.removeListener(placesListenerRef.current);
-          google.maps.event.clearInstanceListeners(autocompleteRef.current);
-        }
-
-        // Initialize Google Places Autocomplete
-        autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
-          types: ['geocode'], // Only use 'geocode' type to avoid mixing error
-          fields: ['formatted_address', 'geometry', 'name', 'address_components']
-        });
+        // Create a new Autocomplete instance
+        autocompleteRef.current = new window.google.maps.places.Autocomplete(
+          inputRef.current,
+          {
+            types: ['geocode', 'establishment'], // Allow both addresses and business names
+            fields: ['formatted_address', 'geometry', 'name', 'address_components'],
+          }
+        );
 
         // Add listener for place selection
         placesListenerRef.current = autocompleteRef.current.addListener('place_changed', () => {
           const place = autocompleteRef.current?.getPlace();
           
           if (place) {
-            console.log('Place selected:', place);
+            isSelectingRef.current = true;
             
-            // Prefer formatted_address as it's the most complete representation
-            if (place.formatted_address) {
-              onChange(place.formatted_address);
-            } else if (place.name) {
-              onChange(place.name);
-            }
+            // Get the formatted address or name as fallback
+            let selectedValue = place.formatted_address || place.name || '';
+            
+            // Update the parent component state
+            onChange(selectedValue);
+            
+            // Reset the selecting flag after a short delay to allow React to process the state update
+            setTimeout(() => {
+              isSelectingRef.current = false;
+            }, 100);
           }
         });
       } catch (error) {
@@ -72,33 +72,41 @@ export function GooglePlacesAutocomplete({
       }
     };
 
-    checkGoogleMapsLoaded();
+    // Initialize when Google Maps API is available
+    if (window.google?.maps?.places) {
+      initializeAutocomplete();
+    } else {
+      // Poll for Google Maps API availability
+      const checkGoogleMapsLoaded = setInterval(() => {
+        if (window.google?.maps?.places) {
+          clearInterval(checkGoogleMapsLoaded);
+          initializeAutocomplete();
+        }
+      }, 100);
 
-    // Cleanup function
+      // Clean up interval
+      return () => clearInterval(checkGoogleMapsLoaded);
+    }
+
     return () => {
+      // Clean up listeners when component unmounts
       if (placesListenerRef.current) {
         google.maps.event.removeListener(placesListenerRef.current);
-        placesListenerRef.current = null;
       }
       
       if (autocompleteRef.current) {
         google.maps.event.clearInstanceListeners(autocompleteRef.current);
-        autocompleteRef.current = null;
       }
     };
-  }, [onChange]);
+  }, []); // Only run on mount
 
-  // Handle manual input changes
+  // Handle input changes from user typing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
-  };
-
-  // Update the input value when the prop changes
-  useEffect(() => {
-    if (inputRef.current && inputRef.current.value !== value) {
-      inputRef.current.value = value;
+    // Only propagate changes if not in the middle of a place selection
+    if (!isSelectingRef.current) {
+      onChange(e.target.value);
     }
-  }, [value]);
+  };
 
   return (
     <div className={`relative ${className}`}>
@@ -108,8 +116,17 @@ export function GooglePlacesAutocomplete({
         type="text"
         value={value}
         onChange={handleInputChange}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
         placeholder={placeholder}
-        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 h-[42px]"
+        className={`
+          w-full pl-10 pr-${isLoading ? '10' : '4'} py-2 
+          border border-gray-200 rounded-md 
+          focus:outline-none focus:ring-2 focus:ring-blue-600 
+          h-[42px] transition-all
+          ${isFocused ? 'border-blue-300' : ''}
+        `}
+        autoComplete="off"
       />
       {isLoading && (
         <div className="absolute right-3 top-3">
