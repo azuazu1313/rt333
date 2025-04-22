@@ -5,6 +5,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { DatePicker } from '../ui/date-picker';
 import { DateRangePicker } from '../ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
+import { PlacesAutocomplete } from '../ui/places-autocomplete';
 
 const formatDateForUrl = (date: Date) => {
   if (!date || isNaN(date.getTime())) {
@@ -60,6 +61,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   
   // Flag to track component initialization
   const isInitializedRef = useRef(false);
@@ -112,6 +114,19 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
         } as DateRange | undefined,
     passengers: parseInt(passengers, 10)
   });
+
+  // Check if Google Maps API is loaded
+  useEffect(() => {
+    const checkGoogleMapsLoaded = () => {
+      if (window.google && window.google.maps) {
+        setGoogleMapsLoaded(true);
+      } else {
+        setTimeout(checkGoogleMapsLoaded, 100);
+      }
+    };
+    
+    checkGoogleMapsLoaded();
+  }, []);
 
   // Initialize component once
   useEffect(() => {
@@ -196,14 +211,14 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   }, [formData, isOneWay, pickupValue, dropoffValue]);
 
   // Update input handlers - mark as user interaction
-  const handlePickupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePickupChange = (value: string) => {
     userInteractedRef.current = true;
-    setPickupValue(e.target.value);
+    setPickupValue(value);
   };
 
-  const handleDropoffChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDropoffChange = (value: string) => {
     userInteractedRef.current = true;
-    setDropoffValue(e.target.value);
+    setDropoffValue(value);
   };
 
   const handlePassengerChange = (increment: boolean) => {
@@ -340,27 +355,47 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
         <div className="max-w-7xl mx-auto">
           {/* Mobile View */}
           <div className="flex flex-col space-y-4 md:hidden">
-            <div className="relative">
-              <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="From"
+            {/* Mobile Pickup Location */}
+            {googleMapsLoaded ? (
+              <PlacesAutocomplete
                 value={pickupValue}
                 onChange={handlePickupChange}
-                className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                placeholder="From"
+                className="w-full"
               />
-            </div>
+            ) : (
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="From"
+                  value={pickupValue}
+                  onChange={(e) => handlePickupChange(e.target.value)}
+                  className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                />
+              </div>
+            )}
 
-            <div className="relative">
-              <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="To"
+            {/* Mobile Dropoff Location */}
+            {googleMapsLoaded ? (
+              <PlacesAutocomplete
                 value={dropoffValue}
                 onChange={handleDropoffChange}
-                className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                placeholder="To"
+                className="w-full"
               />
-            </div>
+            ) : (
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="To"
+                  value={dropoffValue}
+                  onChange={(e) => handleDropoffChange(e.target.value)}
+                  className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                />
+              </div>
+            )}
 
             {isOneWay ? (
               <DatePicker
@@ -438,27 +473,47 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
           {/* Desktop View */}
           <div className="hidden md:flex items-center gap-4">
             <div className="flex-1 grid grid-cols-[1fr_1fr_1.5fr_1fr] gap-4">
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="From"
+              {/* Desktop Pickup Location */}
+              {googleMapsLoaded ? (
+                <PlacesAutocomplete
                   value={pickupValue}
                   onChange={handlePickupChange}
-                  className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                  placeholder="From"
+                  className="w-full"
                 />
-              </div>
+              ) : (
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="From"
+                    value={pickupValue}
+                    onChange={(e) => handlePickupChange(e.target.value)}
+                    className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                  />
+                </div>
+              )}
 
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="To"
+              {/* Desktop Dropoff Location */}
+              {googleMapsLoaded ? (
+                <PlacesAutocomplete
                   value={dropoffValue}
                   onChange={handleDropoffChange}
-                  className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                  placeholder="To"
+                  className="w-full"
                 />
-              </div>
+              ) : (
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="To"
+                    value={dropoffValue}
+                    onChange={(e) => handleDropoffChange(e.target.value)}
+                    className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                  />
+                </div>
+              )}
 
               {isOneWay ? (
                 <DatePicker

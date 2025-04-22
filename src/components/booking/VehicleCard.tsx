@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Info } from 'lucide-react';
+import { Star, Info, Users, Briefcase as Suitcase } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface VehicleCardProps {
@@ -34,15 +34,16 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className={`bg-white rounded-xl shadow-lg p-6 relative ${
+      className={`bg-white rounded-xl shadow-lg p-6 relative h-full flex flex-col ${
         isSelected ? 'ring-2 ring-black' : ''
       }`}
+      whileHover={{ y: -5 }}
     >
       {/* Selected Badge */}
       <div 
         className={`absolute top-4 left-4 px-3 py-1 rounded-full text-sm font-medium transition-opacity duration-300 ${
           isSelected 
-            ? 'opacity-100 bg-gray-100 text-gray-600' 
+            ? 'opacity-100 bg-green-100 text-green-800' 
             : 'opacity-0'
         }`}
       >
@@ -50,7 +51,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
       </div>
 
       {/* Vehicle Image */}
-      <div className="relative aspect-[16/9] mb-4">
+      <div className="relative aspect-[16/9] mb-4 flex items-center justify-center">
         <img
           src={image}
           alt={`${name} - ${seats}-passenger vehicle for Royal Transfer EU services with space for ${suitcases} suitcases`}
@@ -59,7 +60,7 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
       </div>
 
       {/* Vehicle Details */}
-      <div className="space-y-4">
+      <div className="space-y-4 flex-grow">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold">{name}</h3>
           <button
@@ -67,7 +68,6 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
             className="flex items-center text-gray-500 hover:text-black transition-colors p-2 hover:bg-gray-100 rounded-lg group"
             aria-label={`Learn more about ${name}`}
           >
-            <span className="mr-2 text-[10px] md:text-sm group-hover:text-black">Learn more</span>
             <Info className="w-5 h-5" />
           </button>
         </div>
@@ -93,35 +93,39 @@ const VehicleCard: React.FC<VehicleCardProps> = ({
 
         {/* Capacity */}
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm text-gray-600">Seats</div>
-            <div className="font-medium">{seats} people</div>
+          <div className="flex items-center space-x-2">
+            <Users className="h-4 w-4 text-gray-500" />
+            <div className="text-sm">
+              <span className="font-medium">{seats}</span> passengers
+            </div>
           </div>
-          <div>
-            <div className="text-sm text-gray-600">Suitcases</div>
-            <div className="font-medium">{suitcases} medium</div>
+          <div className="flex items-center space-x-2">
+            <Suitcase className="h-4 w-4 text-gray-500" />
+            <div className="text-sm">
+              <span className="font-medium">{suitcases}</span> luggage
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Price & Actions */}
-        <div className="flex items-center justify-between pt-4">
-          <div>
-            <div className="text-sm text-gray-600">From</div>
-            <div className="text-2xl font-bold">€{price.toFixed(2)}</div>
-          </div>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={onSelect}
-            className={`px-6 py-2 rounded-lg transition-colors ${
-              isSelected
-                ? 'bg-gray-100 text-gray-600'
-                : 'bg-black text-white hover:bg-gray-800'
-            }`}
-            aria-pressed={isSelected}
-          >
-            {isSelected ? 'Selected' : 'Choose'}
-          </motion.button>
+      {/* Price & Actions */}
+      <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100">
+        <div>
+          <div className="text-sm text-gray-600">From</div>
+          <div className="text-2xl font-bold">€{price.toFixed(2)}</div>
         </div>
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={onSelect}
+          className={`px-6 py-2 rounded-lg transition-colors ${
+            isSelected
+              ? 'bg-green-100 text-green-800 border border-green-200'
+              : 'bg-black text-white hover:bg-gray-800'
+          }`}
+          aria-pressed={isSelected}
+        >
+          {isSelected ? 'Selected' : 'Choose'}
+        </motion.button>
       </div>
     </motion.div>
   );

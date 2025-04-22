@@ -5,6 +5,7 @@ import { DatePicker } from './ui/date-picker';
 import { DateRangePicker } from './ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { PlacesAutocomplete } from './ui/places-autocomplete';
 
 const formatDateForUrl = (date: Date) => {
   const year = date.getFullYear().toString().slice(-2);
@@ -43,6 +44,7 @@ const SearchForm = () => {
   const location = useLocation();
   const params = useParams();
   const { trackEvent } = useAnalytics();
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
 
   // Store original values for comparison and restoration
   const originalValuesRef = useRef({
@@ -63,6 +65,19 @@ const SearchForm = () => {
     departureDate: undefined as Date | undefined,
     dateRange: undefined as DateRange | undefined
   });
+
+  // Check if Google Maps API is loaded
+  useEffect(() => {
+    const checkGoogleMapsLoaded = () => {
+      if (window.google && window.google.maps) {
+        setGoogleMapsLoaded(true);
+      } else {
+        setTimeout(checkGoogleMapsLoaded, 100);
+      }
+    };
+    
+    checkGoogleMapsLoaded();
+  }, []);
 
   // Initialize form data from URL if coming from booking flow
   useEffect(() => {
@@ -103,14 +118,6 @@ const SearchForm = () => {
       }
     }
   }, [location.pathname, params]);
-
-  const handlePickupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, pickup: e.target.value }));
-  };
-
-  const handleDropoffChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, dropoff: e.target.value }));
-  };
 
   const handlePassengerChange = (increment: boolean) => {
     const newValue = Math.max(1, Math.min(100, increment ? passengers + 1 : passengers - 1));
@@ -233,29 +240,47 @@ const SearchForm = () => {
         </div>
 
         <div className="space-y-6">
-          {/* Pickup Location */}
-          <div className="relative">
-            <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Pickup location"
+          {/* Pickup Location - Uses Places Autocomplete */}
+          {googleMapsLoaded ? (
+            <PlacesAutocomplete
               value={formData.pickup}
-              onChange={handlePickupChange}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+              onChange={(value) => setFormData(prev => ({ ...prev, pickup: value }))}
+              placeholder="Pickup location"
+              className="w-full"
             />
-          </div>
+          ) : (
+            <div className="relative">
+              <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Pickup location"
+                value={formData.pickup}
+                onChange={(e) => setFormData(prev => ({ ...prev, pickup: e.target.value }))}
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
+            </div>
+          )}
 
-          {/* Dropoff Location */}
-          <div className="relative">
-            <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Dropoff location"
+          {/* Dropoff Location - Uses Places Autocomplete */}
+          {googleMapsLoaded ? (
+            <PlacesAutocomplete
               value={formData.dropoff}
-              onChange={handleDropoffChange}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+              onChange={(value) => setFormData(prev => ({ ...prev, dropoff: value }))}
+              placeholder="Dropoff location"
+              className="w-full"
             />
-          </div>
+          ) : (
+            <div className="relative">
+              <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Dropoff location"
+                value={formData.dropoff}
+                onChange={(e) => setFormData(prev => ({ ...prev, dropoff: e.target.value }))}
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+              />
+            </div>
+          )}
 
           {/* Date Selection */}
           {isReturn ? (
