@@ -41,8 +41,8 @@ export function GooglePlacesAutocomplete({
         autocompleteRef.current = new window.google.maps.places.Autocomplete(
           inputRef.current,
           {
-            types: ['geocode', 'establishment'], // Allow both addresses and business names
-            fields: ['formatted_address', 'geometry', 'name', 'address_components'],
+            types: ['geocode', 'establishment', 'airport'], // Make sure we include airports
+            fields: ['formatted_address', 'geometry', 'name', 'address_components', 'types'],
           }
         );
 
@@ -53,13 +53,15 @@ export function GooglePlacesAutocomplete({
           if (place) {
             isSelectingRef.current = true;
             
-            // Get the formatted address or name as fallback
-            let selectedValue = place.formatted_address || place.name || '';
+            // Get the best display name for the selected place
+            const displayName = getDisplayName(place);
             
-            // Update the parent component state
-            onChange(selectedValue);
+            if (displayName) {
+              // Update the parent component state
+              onChange(displayName);
+            }
             
-            // Reset the selecting flag after a short delay to allow React to process the state update
+            // Reset the selecting flag after a short delay
             setTimeout(() => {
               isSelectingRef.current = false;
             }, 100);
@@ -70,6 +72,54 @@ export function GooglePlacesAutocomplete({
       } finally {
         setIsLoading(false);
       }
+    };
+
+    // Determine the best display name for a place
+    const getDisplayName = (place: google.maps.places.PlaceResult): string => {
+      // Check if it's an airport or transport hub
+      const isAirport = place.types?.includes('airport') || 
+                        place.name?.toLowerCase().includes('airport') ||
+                        place.name?.toLowerCase().includes('terminal') ||
+                        /\([A-Z]{3}\)/.test(place.name || ''); // Matches airport codes like (MXP)
+      
+      const isStation = place.types?.includes('transit_station') ||
+                        place.types?.includes('train_station') ||
+                        place.types?.includes('bus_station') ||
+                        place.name?.toLowerCase().includes('station');
+                        
+      const isPort = place.name?.toLowerCase().includes('port') ||
+                     place.name?.toLowerCase().includes('terminal') ||
+                     place.name?.toLowerCase().includes('cruise');
+      
+      // For airports, stations, and ports, prioritize the name
+      if (isAirport || isStation || isPort) {
+        return place.name || '';
+      }
+      
+      // Next check if we have a descriptive formatted address
+      if (place.formatted_address) {
+        // For other places like cities, make the formatted address more readable
+        return formatAddress(place.formatted_address);
+      }
+      
+      // Fallback to the name
+      return place.name || '';
+    };
+
+    // Format address to be more readable and clean
+    const formatAddress = (address: string): string => {
+      // Remove any hyphens or underscores between words
+      address = address.replace(/(\w)-(\w)/g, '$1 $2');
+      
+      // Capitalize each segment for better readability
+      const segments = address.split(',');
+      const formattedSegments = segments.map(segment => {
+        // Trim and capitalize first letter of each word
+        return segment.trim().replace(/\b\w/g, c => c.toUpperCase());
+      });
+      
+      // Join segments with commas and spaces for better readability
+      return formattedSegments.join(', ');
     };
 
     // Initialize when Google Maps API is available
