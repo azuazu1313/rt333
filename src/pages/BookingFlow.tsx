@@ -13,10 +13,17 @@ const BookingFlow = () => {
   // Initialize booking state from URL parameters
   useEffect(() => {
     if (from && to && date) {
+      // Decode the URL parameters
+      const fromDecoded = decodeURIComponent(from.replace(/-/g, ' '));
+      const toDecoded = decodeURIComponent(to.replace(/-/g, ' '));
+      
       setBookingState(prev => ({
         ...prev,
-        from: decodeURIComponent(from.replace(/-/g, ' ')),
-        to: decodeURIComponent(to.replace(/-/g, ' ')),
+        from: fromDecoded,
+        to: toDecoded,
+        // Preserve any display names if they exist, otherwise use the decoded values
+        fromDisplay: prev.fromDisplay || fromDecoded,
+        toDisplay: prev.toDisplay || toDecoded,
         isReturn: type === '2',
         departureDate: date,
         returnDate: returnDate !== '0' ? returnDate : undefined,
