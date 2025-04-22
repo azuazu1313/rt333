@@ -46,7 +46,7 @@ const SearchForm = () => {
   const location = useLocation();
   const params = useParams();
   const { trackEvent } = useAnalytics();
-  const { setBookingState } = useBooking();
+  const { bookingState, setBookingState } = useBooking();
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
 
   // Store original values for comparison and restoration
@@ -54,6 +54,8 @@ const SearchForm = () => {
     isReturn: true,
     pickup: '',
     dropoff: '',
+    pickupDisplay: '',
+    dropoffDisplay: '',
     departureDate: undefined as Date | undefined,
     dateRange: undefined as DateRange | undefined,
     passengers: 1
@@ -84,7 +86,52 @@ const SearchForm = () => {
     checkGoogleMapsLoaded();
   }, []);
 
-  // Initialize form data from URL if coming from booking flow
+  // First, check if we have display data from context (coming back from booking flow)
+  useEffect(() => {
+    // Only apply this if the form is empty (we're initializing)
+    if ((!formData.pickup || !formData.dropoff) && 
+        (bookingState.fromDisplay || bookingState.toDisplay)) {
+      console.log("Initializing form from context display values", {
+        fromDisplay: bookingState.fromDisplay,
+        toDisplay: bookingState.toDisplay
+      });
+      
+      setFormData(prev => ({
+        ...prev,
+        pickup: bookingState.fromDisplay || bookingState.from || '',
+        dropoff: bookingState.toDisplay || bookingState.to || '',
+        pickupDisplay: bookingState.fromDisplay || bookingState.from || '',
+        dropoffDisplay: bookingState.toDisplay || bookingState.to || ''
+      }));
+      
+      if (bookingState.isReturn !== undefined) {
+        setIsReturn(bookingState.isReturn);
+      }
+      
+      if (bookingState.passengers) {
+        setPassengers(bookingState.passengers);
+      }
+      
+      if (bookingState.departureDate) {
+        const departureDate = parseDateFromUrl(bookingState.departureDate);
+        const returnDate = bookingState.returnDate ? parseDateFromUrl(bookingState.returnDate) : undefined;
+        
+        if (bookingState.isReturn && departureDate && returnDate) {
+          setFormData(prev => ({
+            ...prev,
+            dateRange: { from: departureDate, to: returnDate }
+          }));
+        } else if (departureDate) {
+          setFormData(prev => ({
+            ...prev,
+            departureDate
+          }));
+        }
+      }
+    }
+  }, [bookingState]);
+
+  // Then initialize from URL if coming from booking flow
   useEffect(() => {
     // Check if we're on the pre-filled home route
     if (location.pathname.startsWith('/home/transfer/')) {
@@ -122,6 +169,8 @@ const SearchForm = () => {
           isReturn: isRoundTrip,
           pickup: newFormData.pickup,
           dropoff: newFormData.dropoff,
+          pickupDisplay: newFormData.pickupDisplay,
+          dropoffDisplay: newFormData.dropoffDisplay,
           departureDate: newFormData.departureDate,
           dateRange: newFormData.dateRange,
           passengers: Math.max(1, parseInt(passengerCount || '1', 10))
@@ -218,6 +267,8 @@ const SearchForm = () => {
       isReturn,
       pickup: formData.pickup,
       dropoff: formData.dropoff,
+      pickupDisplay: formData.pickupDisplay,
+      dropoffDisplay: formData.dropoffDisplay,
       departureDate: formData.departureDate,
       dateRange: formData.dateRange,
       passengers
