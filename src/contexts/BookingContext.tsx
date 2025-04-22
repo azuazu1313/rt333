@@ -7,6 +7,8 @@ interface BookingState {
   selectedVehicle: typeof vehicles[0];
   from?: string;
   to?: string;
+  fromDisplay?: string; // Store the display name for from location
+  toDisplay?: string;   // Store the display name for to location
   isReturn?: boolean;
   departureDate?: string;
   returnDate?: string;
@@ -22,6 +24,8 @@ interface BookingState {
     selectedExtras: Set<string>;
     pickup?: string; // Added to store pickup location from form
     dropoff?: string; // Added to store dropoff location from form
+    pickupDisplay?: string; // Display name for pickup
+    dropoffDisplay?: string; // Display name for dropoff
   };
   paymentDetails: {
     method: 'card' | 'cash';
