@@ -41,7 +41,8 @@ export function GooglePlacesAutocomplete({
         autocompleteRef.current = new window.google.maps.places.Autocomplete(
           inputRef.current,
           {
-            types: ['geocode', 'establishment', 'airport'], // Make sure we include airports
+            // Remove the 'types' parameter that was causing the error
+            // This allows all place types to be suggested
             fields: ['formatted_address', 'geometry', 'name', 'address_components', 'types'],
           }
         );
