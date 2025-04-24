@@ -1,7 +1,7 @@
 export const vehicles = [
   {
     id: 'economy-sedan',
-    name: 'Economy Sedan',
+    name: 'Standard Sedan',
     image: 'https://www.pngplay.com/wp-content/uploads/13/Volkswagen-Passat-Transparent-PNG.png',
     rating: 4.9,
     reviews: 161,
@@ -198,7 +198,7 @@ export const vehicles = [
     sampleVehicles: [
       'Setra 515 HD',
       'Mercedes-Benz Tourismo',
-      'MAN Lion’s Coach'
+      "MAN Lion's Coach"
     ],
     features: [
       { icon: 'https://i.imgur.com/icon1.png', title: 'Tour Group', description: 'Large parties or company trips' },
