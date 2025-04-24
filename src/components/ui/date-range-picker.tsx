@@ -29,15 +29,22 @@ export function DateRangePicker({
     setSelectedRange(range)
   }
 
-  const handleOkClick = () => {
+  const handleOkClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
     onDateRangeChange(selectedRange)
     setOpen(false)
   }
 
-  const handleClearClick = () => {
+  const handleClearClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
     setSelectedRange(undefined)
     onDateRangeChange(undefined)
     setOpen(false)
+  }
+
+  // Prevent clicks within the popover from propagating to the document
+  const handlePopoverClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
   }
 
   return (
@@ -75,37 +82,40 @@ export function DateRangePicker({
         avoidCollisions={false}
         sticky="always"
         style={{ zIndex: 100 }}
+        onClick={handlePopoverClick}
       >
-        <Calendar
-          mode="range"
-          selected={selectedRange}
-          onSelect={handleRangeSelect}
-          initialFocus
-          defaultMonth={selectedRange?.from}
-          classNames={{
-            day_selected: "bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
-            day_today: "text-black font-semibold",
-            day_range_start: "day-range-start bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
-            day_range_end: "day-range-end bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
-            day_range_middle: "aria-selected:bg-gray-100 aria-selected:text-gray-900"
-          }}
-        />
-        <div className="flex justify-between p-3 border-t">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClearClick}
-            className="text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900"
-          >
-            Clear
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleOkClick}
-            className="bg-black text-white hover:bg-gray-800"
-          >
-            Confirm
-          </Button>
+        <div onClick={e => e.stopPropagation()}>
+          <Calendar
+            mode="range"
+            selected={selectedRange}
+            onSelect={handleRangeSelect}
+            initialFocus
+            defaultMonth={selectedRange?.from}
+            classNames={{
+              day_selected: "bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
+              day_today: "text-black font-semibold",
+              day_range_start: "day-range-start bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
+              day_range_end: "day-range-end bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
+              day_range_middle: "aria-selected:bg-gray-100 aria-selected:text-gray-900"
+            }}
+          />
+          <div className="flex justify-between p-3 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearClick}
+              className="text-gray-700 border-gray-300 hover:bg-gray-100 hover:text-gray-900"
+            >
+              Clear
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleOkClick}
+              className="bg-black text-white hover:bg-gray-800"
+            >
+              Confirm
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
