@@ -51,7 +51,7 @@ const SearchForm = () => {
 
   // Store original values for comparison and restoration
   const originalValuesRef = useRef({
-    isReturn: true,
+    isReturn: false,
     pickup: '',
     dropoff: '',
     pickupDisplay: '',
@@ -61,8 +61,8 @@ const SearchForm = () => {
     passengers: 1
   });
 
-  // Current form state
-  const [isReturn, setIsReturn] = useState(true);
+  // Current form state - Changed default to false (One Way)
+  const [isReturn, setIsReturn] = useState(false);
   const [passengers, setPassengers] = useState(1);
   const [formData, setFormData] = useState({
     pickup: '',
@@ -88,12 +88,13 @@ const SearchForm = () => {
 
   // First, check if we have display data from context (coming back from booking flow)
   useEffect(() => {
-    // Only apply this if the form is empty (we're initializing)
-    if ((!formData.pickup || !formData.dropoff) && 
-        (bookingState.fromDisplay || bookingState.toDisplay)) {
+    // Only apply this if the form is empty or we're coming back from booking
+    if (bookingState.fromDisplay || bookingState.toDisplay) {
       console.log("Initializing form from context display values", {
         fromDisplay: bookingState.fromDisplay,
-        toDisplay: bookingState.toDisplay
+        toDisplay: bookingState.toDisplay,
+        from: bookingState.from,
+        to: bookingState.to
       });
       
       setFormData(prev => ({
@@ -146,15 +147,16 @@ const SearchForm = () => {
         const departureDate = parseDateFromUrl(date);
         const returnDateParsed = returnDate && returnDate !== '0' ? parseDateFromUrl(returnDate) : undefined;
         
-        // Decode and format locations (from and to) for display
-        const fromDecoded = decodeURIComponent(from.replace(/-/g, ' '));
-        const toDecoded = decodeURIComponent(to.replace(/-/g, ' '));
+        // Decode locations (from and to) for display
+        // First check if we already have display versions in the booking context
+        const fromDisplay = bookingState.fromDisplay || decodeURIComponent(from.replace(/-/g, ' '));
+        const toDisplay = bookingState.toDisplay || decodeURIComponent(to.replace(/-/g, ' '));
         
         const newFormData = {
-          pickup: fromDecoded,
-          dropoff: toDecoded,
-          pickupDisplay: fromDecoded,
-          dropoffDisplay: toDecoded,
+          pickup: fromDisplay,
+          dropoff: toDisplay,
+          pickupDisplay: fromDisplay,
+          dropoffDisplay: toDisplay,
           departureDate: isRoundTrip ? undefined : departureDate,
           dateRange: isRoundTrip ? {
             from: departureDate,
@@ -177,7 +179,7 @@ const SearchForm = () => {
         };
       }
     }
-  }, [location.pathname, params, setBookingState]);
+  }, [location.pathname, params, bookingState.fromDisplay, bookingState.toDisplay]);
 
   const handlePassengerChange = (increment: boolean) => {
     const newValue = Math.max(1, Math.min(100, increment ? passengers + 1 : passengers - 1));
@@ -228,6 +230,17 @@ const SearchForm = () => {
     }
   };
 
+  const handlePlaceSelect = (field: 'pickup' | 'dropoff', displayName: string, placeData?: google.maps.places.PlaceResult) => {
+    // Store both the display name and URL-friendly version
+    setFormData(prev => ({
+      ...prev,
+      [field]: displayName,
+      [`${field}Display`]: displayName
+    }));
+    
+    console.log(`Selected ${field}:`, displayName);
+  };
+
   const handleSubmit = () => {
     const pickup = formData.pickup;
     const dropoff = formData.dropoff;
@@ -242,7 +255,7 @@ const SearchForm = () => {
       return;
     }
 
-    // Store URL-friendly versions of pickup and dropoff
+    // Store URL-friendly versions of pickup and dropoff (lowercase for URL)
     const encodedPickup = encodeURIComponent(pickup.toLowerCase().replace(/\s+/g, '-'));
     const encodedDropoff = encodeURIComponent(dropoff.toLowerCase().replace(/\s+/g, '-'));
     
@@ -274,13 +287,13 @@ const SearchForm = () => {
       passengers
     };
     
-    // Store the display names in booking context
+    // Store the display names and URL-friendly names in booking context
     setBookingState(prev => ({
       ...prev,
-      from: pickup,
+      from: pickup, 
       to: dropoff,
-      fromDisplay: formData.pickupDisplay || pickup,
-      toDisplay: formData.dropoffDisplay || dropoff,
+      fromDisplay: formData.pickupDisplay,
+      toDisplay: formData.dropoffDisplay,
       isReturn,
       departureDate: formattedDepartureDate,
       returnDate: returnDateParam !== '0' ? returnDateParam : undefined,
@@ -299,19 +312,19 @@ const SearchForm = () => {
         <div className="flex bg-gray-100 p-1 rounded-lg">
           <button
             className={`flex-1 py-2 text-center rounded-lg transition-colors ${
-              isReturn ? 'bg-blue-600 text-white' : 'text-gray-700'
-            }`}
-            onClick={() => handleTripTypeChange(false)}
-          >
-            Round Trip
-          </button>
-          <button
-            className={`flex-1 py-2 text-center rounded-lg transition-colors ${
               !isReturn ? 'bg-blue-600 text-white' : 'text-gray-700'
             }`}
             onClick={() => handleTripTypeChange(true)}
           >
             One Way
+          </button>
+          <button
+            className={`flex-1 py-2 text-center rounded-lg transition-colors ${
+              isReturn ? 'bg-blue-600 text-white' : 'text-gray-700'
+            }`}
+            onClick={() => handleTripTypeChange(false)}
+          >
+            Round Trip
           </button>
         </div>
 
@@ -325,6 +338,7 @@ const SearchForm = () => {
                 pickup: value,
                 pickupDisplay: value
               }))}
+              onPlaceSelect={(displayName, placeData) => handlePlaceSelect('pickup', displayName, placeData)}
               placeholder="Pickup location"
               className="w-full"
             />
@@ -354,6 +368,7 @@ const SearchForm = () => {
                 dropoff: value,
                 dropoffDisplay: value
               }))}
+              onPlaceSelect={(displayName, placeData) => handlePlaceSelect('dropoff', displayName, placeData)}
               placeholder="Dropoff location"
               className="w-full"
             />
