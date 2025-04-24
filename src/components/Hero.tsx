@@ -7,8 +7,8 @@ const Hero = () => {
   useEffect(() => {
     // This is more of a backup since we're already using link preload in the HTML
     const imagesToPreload = [
-      'https://i.imghippo.com/files/GSIu4447oeQ.webp',
-      'https://i.imghippo.com/files/MJSV1132ko.webp'
+      'https://i.imghippo.com/files/ohfj7576RE.webp',
+      'https://i.imghippo.com/files/ZKj2573fQ.webp'
     ];
 
     imagesToPreload.forEach(src => {
@@ -41,21 +41,21 @@ const Hero = () => {
           <source
             media="(max-width: 767px)"
             srcSet="https://i.imghippo.com/files/f9510A.png"
-            type="image/jpeg"
+            type="image/png"
             fetchPriority="high"
           />
           
           {/* Desktop Image */}
           <source
             media="(min-width: 768px)"
-            srcSet="https://i.imghippo.com/filesi/ZKj2573fQ.webp"
+            srcSet="https://i.imghippo.com/files/ZKj2573fQ.webp"
             type="image/webp"
             fetchPriority="high"
           />
           <source
             media="(min-width: 768px)"
             srcSet="https://i.imghippo.com/files/Axi3104t.png"
-            type="image/jpeg"
+            type="image/png"
             fetchPriority="high"
           />
           
@@ -65,7 +65,7 @@ const Hero = () => {
             alt="Luxury sedan transfer service by Royal Transfer EU - professional driver waiting by an elegant black car on a scenic European road"
             className="w-full h-full object-cover"
             fetchPriority="high"
-            loading="lazy"
+            loading="eager"
             width="1920"
             height="1080"
           />
