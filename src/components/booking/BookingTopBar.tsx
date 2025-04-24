@@ -222,14 +222,14 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   }, [formData, isOneWay, pickupValue, dropoffValue]);
 
   // Handle place selection from autocomplete
-  const handlePickupChange = (value: string) => {
+  const handlePlaceSelect = (field: 'pickup' | 'dropoff', displayName: string) => {
     userInteractedRef.current = true;
-    setPickupValue(value);
-  };
-
-  const handleDropoffChange = (value: string) => {
-    userInteractedRef.current = true;
-    setDropoffValue(value);
+    
+    if (field === 'pickup') {
+      setPickupValue(displayName);
+    } else {
+      setDropoffValue(displayName);
+    }
   };
 
   const handlePassengerChange = (increment: boolean) => {
@@ -286,7 +286,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
   const handleUpdateRoute = () => {
     if (!hasChanges) return;
 
-    // Get values from current state
+    // Get values from current state - use actual display values for the URL
     const encodedFrom = encodeURIComponent(pickupValue.toLowerCase().replace(/\s+/g, '-'));
     const encodedTo = encodeURIComponent(dropoffValue.toLowerCase().replace(/\s+/g, '-'));
     
@@ -330,8 +330,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
       ...prev,
       from: pickupValue,
       to: dropoffValue,
-      fromDisplay: pickupValue,
-      toDisplay: dropoffValue,
+      fromDisplay: pickupValue, // Preserve case for display
+      toDisplay: dropoffValue,  // Preserve case for display
       isReturn: !isOneWay,
       departureDate: formattedDepartureDate,
       returnDate: formattedReturnDate !== '0' ? formattedReturnDate : undefined,
@@ -352,23 +352,23 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
           <div className="flex h-full">
             <button
               className={`w-32 relative z-10 transition-colors ${
-                !isOneWay ? 'text-white' : 'text-gray-700 hover:text-gray-900'
-              }`}
-              onClick={() => handleTripTypeChange(false)}
-            >
-              Round Trip
-            </button>
-            <button
-              className={`w-32 relative z-10 transition-colors ${
                 isOneWay ? 'text-white' : 'text-gray-700 hover:text-gray-900'
               }`}
               onClick={() => handleTripTypeChange(true)}
             >
               One Way
             </button>
+            <button
+              className={`w-32 relative z-10 transition-colors ${
+                !isOneWay ? 'text-white' : 'text-gray-700 hover:text-gray-900'
+              }`}
+              onClick={() => handleTripTypeChange(false)}
+            >
+              Round Trip
+            </button>
             <div 
               className={`absolute inset-y-0 w-32 bg-black transition-transform duration-300 ${
-                isOneWay ? 'left-32' : 'left-0'
+                isOneWay ? 'left-0' : 'left-32'
               }`}
             />
           </div>
@@ -383,7 +383,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
             {googleMapsLoaded ? (
               <GooglePlacesAutocomplete
                 value={pickupValue}
-                onChange={handlePickupChange}
+                onChange={(value) => handlePlaceSelect('pickup', value)}
+                onPlaceSelect={(displayName) => handlePlaceSelect('pickup', displayName)}
                 placeholder="From"
                 className="w-full"
               />
@@ -394,7 +395,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                   type="text"
                   placeholder="From"
                   value={pickupValue}
-                  onChange={(e) => handlePickupChange(e.target.value)}
+                  onChange={(e) => handlePlaceSelect('pickup', e.target.value)}
                   className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
@@ -404,7 +405,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
             {googleMapsLoaded ? (
               <GooglePlacesAutocomplete
                 value={dropoffValue}
-                onChange={handleDropoffChange}
+                onChange={(value) => handlePlaceSelect('dropoff', value)}
+                onPlaceSelect={(displayName) => handlePlaceSelect('dropoff', displayName)}
                 placeholder="To"
                 className="w-full"
               />
@@ -415,7 +417,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                   type="text"
                   placeholder="To"
                   value={dropoffValue}
-                  onChange={(e) => handleDropoffChange(e.target.value)}
+                  onChange={(e) => handlePlaceSelect('dropoff', e.target.value)}
                   className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
@@ -501,7 +503,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
               {googleMapsLoaded ? (
                 <GooglePlacesAutocomplete
                   value={pickupValue}
-                  onChange={handlePickupChange}
+                  onChange={(value) => handlePlaceSelect('pickup', value)}
+                  onPlaceSelect={(displayName) => handlePlaceSelect('pickup', displayName)}
                   placeholder="From"
                   className="w-full"
                 />
@@ -512,7 +515,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                     type="text"
                     placeholder="From"
                     value={pickupValue}
-                    onChange={(e) => handlePickupChange(e.target.value)}
+                    onChange={(e) => handlePlaceSelect('pickup', e.target.value)}
                     className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                   />
                 </div>
@@ -522,7 +525,8 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
               {googleMapsLoaded ? (
                 <GooglePlacesAutocomplete
                   value={dropoffValue}
-                  onChange={handleDropoffChange}
+                  onChange={(value) => handlePlaceSelect('dropoff', value)}
+                  onPlaceSelect={(displayName) => handlePlaceSelect('dropoff', displayName)}
                   placeholder="To"
                   className="w-full"
                 />
@@ -533,7 +537,7 @@ const BookingTopBar: React.FC<BookingTopBarProps> = ({
                     type="text"
                     placeholder="To"
                     value={dropoffValue}
-                    onChange={(e) => handleDropoffChange(e.target.value)}
+                    onChange={(e) => handlePlaceSelect('dropoff', e.target.value)}
                     className="w-full pl-10 pr-4 h-[42px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                   />
                 </div>
