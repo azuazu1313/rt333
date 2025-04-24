@@ -34,13 +34,13 @@ const Hero = () => {
           {/* Mobile Image */}
           <source
             media="(max-width: 767px)"
-            srcSet="https://i.imghippo.com/files/GSIu4447oeQ.webp"
+            srcSet="https://i.imghippo.com/files/ohfj7576RE.webp"
             type="image/webp"
             fetchPriority="high"
           />
           <source
             media="(max-width: 767px)"
-            srcSet="https://i.imgur.com/pfnf4hc.jpeg"
+            srcSet="https://i.imghippo.com/files/f9510A.png"
             type="image/jpeg"
             fetchPriority="high"
           />
@@ -48,24 +48,24 @@ const Hero = () => {
           {/* Desktop Image */}
           <source
             media="(min-width: 768px)"
-            srcSet="https://i.imghippo.com/files/MJSV1132ko.webp"
+            srcSet="https://i.imghippo.com/filesi/ZKj2573fQ.webp"
             type="image/webp"
             fetchPriority="high"
           />
           <source
             media="(min-width: 768px)"
-            srcSet="https://i.imgur.com/4U5ngny.jpeg"
+            srcSet="https://i.imghippo.com/files/Axi3104t.png"
             type="image/jpeg"
             fetchPriority="high"
           />
           
           {/* Fallback Image */}
           <img
-            src="https://i.imgur.com/4U5ngny.jpeg"
+            src="https://i.imghippo.com/files/Axi3104t.png"
             alt="Luxury sedan transfer service by Royal Transfer EU - professional driver waiting by an elegant black car on a scenic European road"
             className="w-full h-full object-cover"
             fetchPriority="high"
-            loading="eager"
+            loading="lazy"
             width="1920"
             height="1080"
           />
