@@ -107,13 +107,17 @@ export default function CookieBanner() {
   }
 
   // Accept all cookies
-  const acceptAll = () => {
-    saveConsent("all")
+  const acceptAll = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    saveConsent("all");
   }
 
   // Accept only necessary cookies
-  const acceptNecessary = () => {
-    saveConsent("necessary")
+  const acceptNecessary = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    saveConsent("necessary");
   }
 
   // Enable analytics based on consent
@@ -135,8 +139,19 @@ export default function CookieBanner() {
   // Don't render if flag is disabled or banner shouldn't be visible
   if (!flags.showCookieBanner || !isVisible) return null
 
+  // Handle learn more link click
+  const handleLearnMoreClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    trackEvent("Cookie Consent", "Learn More Click", "");
+    window.open("/cookie-policy", "_blank");
+  };
+
   return (
-    <div className="fixed bottom-4 inset-x-0 z-[999] flex justify-center px-4 pointer-events-none">
+    <div 
+      className="fixed bottom-4 inset-x-0 z-[999] flex justify-center px-4 pointer-events-none"
+      onClick={(e) => e.stopPropagation()}
+    >
       <Banner 
         rounded="pill"
         size="sm"
@@ -144,7 +159,7 @@ export default function CookieBanner() {
       >
         {isMobile ? (
           // Mobile layout - stacked with Learn more above buttons
-          <div className="w-full px-2 py-1">
+          <div className="w-full px-2 py-1" onClick={(e) => e.stopPropagation()}>
             <div className="flex flex-col gap-2">
               <p className="text-xs text-center">
                 We use cookies for a better experience
@@ -153,7 +168,10 @@ export default function CookieBanner() {
               <Link 
                 to="/cookie-policy"
                 className="text-[10px] text-center text-gray-500 hover:text-gray-700 hover:underline mx-auto"
-                onClick={() => trackEvent("Cookie Consent", "Learn More Click", "")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  trackEvent("Cookie Consent", "Learn More Click", "");
+                }}
               >
                 Learn more
               </Link>
@@ -178,7 +196,7 @@ export default function CookieBanner() {
           </div>
         ) : (
           // Desktop layout - inline
-          <div className="w-full px-2">
+          <div className="w-full px-2" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-4">
               <p className="text-sm whitespace-nowrap">
                 We use cookies for a better experience
@@ -202,7 +220,7 @@ export default function CookieBanner() {
                 <Link 
                   to="/cookie-policy"
                   className="text-xs text-gray-500 hover:text-gray-700 hover:underline"
-                  onClick={() => trackEvent("Cookie Consent", "Learn More Click", "")}
+                  onClick={handleLearnMoreClick}
                 >
                   Learn more
                 </Link>
