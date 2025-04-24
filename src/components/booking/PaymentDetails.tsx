@@ -43,8 +43,11 @@ const PaymentDetails = () => {
       // Generate booking reference right before checkout
       const bookingReference = generateBookingReference();
 
-      // First, create the trip record in the database to ensure it exists
-      await createTripRecord(bookingReference);
+      // Store the booking reference in the context
+      setBookingState(prev => ({
+        ...prev,
+        bookingReference
+      }));
 
       // Prepare booking data for the checkout session
       const bookingData = {
@@ -63,23 +66,19 @@ const PaymentDetails = () => {
           firstName: bookingState.personalDetails?.firstName,
           lastName: bookingState.personalDetails?.lastName,
           email: customerEmail,
+          phone: bookingState.personalDetails?.phone,
           user_id: user?.id || null
         },
         extras: Array.from(bookingState.personalDetails?.selectedExtras || []),
         amount: calculateTotal(), 
-        discountCode: discountCode || null
+        discountCode: discountCode || null,
+        payment_method: paymentMethod
       };
 
       console.log("Sending booking data:", bookingData);
 
       // Track attempt to create stripe checkout
       trackEvent('Payment', 'Stripe Checkout Initiated', bookingReference, calculateTotal());
-
-      // Store the booking reference in the context
-      setBookingState(prev => ({
-        ...prev,
-        bookingReference
-      }));
 
       // Call the Supabase Edge Function to create a checkout session
       const response = await fetch(
@@ -114,78 +113,6 @@ const PaymentDetails = () => {
     }
   };
 
-  // Create a trip record in the database
-  const createTripRecord = async (bookingRef: string) => {
-    try {
-      if (!bookingState.personalDetails?.email) {
-        throw new Error('Email is required to create a booking');
-      }
-
-      // Prepare trip data
-      const tripData = {
-        user_id: user?.id || null,
-        booking_reference: bookingRef,
-        pickup_address: bookingState.personalDetails?.pickup || bookingState.from || '',
-        dropoff_address: bookingState.personalDetails?.dropoff || bookingState.to || '',
-        estimated_distance_km: 0, // Will be calculated by admin
-        estimated_duration_min: 0, // Will be calculated by admin
-        estimated_price: calculateTotal(),
-        datetime: bookingState.departureDate || new Date().toISOString(),
-        is_scheduled: true,
-        status: 'pending',
-        vehicle_type: bookingState.selectedVehicle?.name || '',
-        passengers: bookingState.passengers || 1,
-        // Store name WITHOUT title prefix
-        customer_name: `${bookingState.personalDetails?.firstName || ''} ${bookingState.personalDetails?.lastName || ''}`.trim(),
-        customer_email: bookingState.personalDetails?.email || userData?.email || '',
-        customer_phone: bookingState.personalDetails?.phone || userData?.phone || '',
-        is_return: bookingState.isReturn || false,
-        return_datetime: bookingState.returnDate || null,
-        extra_items: Array.from(bookingState.personalDetails?.selectedExtras || []).join(','),
-        payment_method: paymentMethod,
-        notes: '',
-        customer_title: bookingState.personalDetails?.title
-      };
-
-      console.log('Creating trip record:', tripData);
-
-      // If no user ID but we have an email, try to find a user with that email
-      if (!tripData.user_id && tripData.customer_email) {
-        const { data: existingUser } = await supabase
-          .from('users')
-          .select('id')
-          .eq('email', tripData.customer_email)
-          .single();
-        
-        if (existingUser?.id) {
-          console.log('Found existing user with matching email:', existingUser.id);
-          tripData.user_id = existingUser.id;
-        }
-      }
-
-      // Insert into trips table
-      const { data, error } = await supabase
-        .from('trips')
-        .insert([tripData])
-        .select();
-
-      if (error) {
-        console.error('Error creating trip record:', error);
-        throw error;
-      }
-
-      console.log('Trip record created:', data);
-      
-      // Track successful trip creation
-      trackEvent('Booking', 'Trip Record Created', bookingRef);
-
-      return data;
-    } catch (error) {
-      console.error('Error creating trip record:', error);
-      throw error;
-    }
-  };
-
   const isValidEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -203,8 +130,62 @@ const PaymentDetails = () => {
         // Generate booking reference for cash payment
         const bookingReference = generateBookingReference();
         
-        // First, create the trip record in the database
-        await createTripRecord(bookingReference);
+        // Ensure email is valid
+        let customerEmail = userData?.email;
+        
+        // Fallback to the form data if not available in userData
+        if (!customerEmail && bookingState.personalDetails?.email) {
+          customerEmail = bookingState.personalDetails.email;
+        }
+        
+        // Validate email
+        if (!customerEmail || !isValidEmail(customerEmail)) {
+          throw new Error("Invalid email address. Please enter a valid email in your profile or booking details.");
+        }
+        
+        // Prepare booking data for the cash payment
+        const bookingData = {
+          booking_reference: bookingReference,
+          trip: {
+            from: bookingState.personalDetails?.pickup || bookingState.from || 'Unknown location',
+            to: bookingState.personalDetails?.dropoff || bookingState.to || 'Unknown location',
+            type: bookingState.isReturn ? 'round-trip' : 'one-way',
+            date: bookingState.departureDate || new Date().toISOString(),
+            returnDate: bookingState.returnDate || null,
+            passengers: bookingState.passengers || 1
+          },
+          vehicle: bookingState.selectedVehicle,
+          customer: {
+            title: bookingState.personalDetails?.title,
+            firstName: bookingState.personalDetails?.firstName,
+            lastName: bookingState.personalDetails?.lastName,
+            email: customerEmail,
+            phone: bookingState.personalDetails?.phone,
+            user_id: user?.id || null
+          },
+          extras: Array.from(bookingState.personalDetails?.selectedExtras || []),
+          amount: calculateTotal(),
+          discountCode: discountCode || null,
+          payment_method: 'cash'
+        };
+        
+        // Call the Edge Function to create the booking
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify(bookingData)
+          }
+        );
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to create booking');
+        }
         
         // Update booking state
         setBookingState(prev => ({
@@ -221,7 +202,6 @@ const PaymentDetails = () => {
         trackEvent('Booking', 'Cash Payment Booking', bookingReference, calculateTotal());
         
         // Navigate to success page for cash payment using React Router
-        // This prevents page reload and maintains scroll position
         navigate(`/booking-success?reference=${bookingReference}`, { replace: true });
       } catch (error: any) {
         console.error('Error processing cash booking:', error);
