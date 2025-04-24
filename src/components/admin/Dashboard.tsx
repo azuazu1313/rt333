@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, TrendingUp, Settings, ShieldCheck, Loader2, RefreshCw, Calendar, FileText, LogIn, Car } from 'lucide-react';
+import { Users, TrendingUp, Settings, ShieldCheck, Loader2, RefreshCw, Calendar, FileText, LogIn, Car, ExternalLink, Clock, ChevronRight, X, BarChart2, Filter } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../ui/use-toast';
-import { format, subDays } from 'date-fns';
+import { format, subDays, formatDistanceToNow } from 'date-fns';
 import { useError } from '../../contexts/ErrorContext';
+import { useNavigate } from 'react-router-dom';
 
 // Session refresh cooldown and retry configuration
 const SESSION_REFRESH_COOLDOWN = 60000; // 1 minute in milliseconds
@@ -40,10 +41,15 @@ const Dashboard = () => {
     },
     loading: true
   });
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [chartData, setChartData] = useState<any>(null);
+  const [chartTimeframe, setChartTimeframe] = useState<'7d' | '30d'>('7d');
+  
   const { userData, refreshSession } = useAuth();
   const { toast } = useToast();
   const { captureError } = useError();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const navigate = useNavigate();
   
   // Refs to track session refresh state
   const lastRefreshAttemptRef = useRef(0);
@@ -55,6 +61,64 @@ const Dashboard = () => {
       fetchStats();
     }
   }, [userData]);
+
+  // Generate mock chart data when a modal is opened
+  useEffect(() => {
+    if (activeModal === 'signups' || activeModal === 'logins') {
+      generateMockChartData();
+    }
+  }, [activeModal, chartTimeframe]);
+
+  const generateMockChartData = () => {
+    const days = chartTimeframe === '7d' ? 7 : 30;
+    const today = new Date();
+    
+    const data = {
+      labels: [],
+      datasets: []
+    };
+    
+    // Generate date labels going back the specified number of days
+    for (let i = days - 1; i >= 0; i--) {
+      const date = subDays(today, i);
+      data.labels.push(format(date, 'MMM d'));
+    }
+    
+    // Generate dataset for the active modal
+    if (activeModal === 'signups') {
+      data.datasets = [
+        {
+          label: 'All Signups',
+          data: Array.from({ length: days }, () => Math.floor(Math.random() * 25) + 5),
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        },
+        {
+          label: 'Partner Signups',
+          data: Array.from({ length: days }, () => Math.floor(Math.random() * 10) + 1),
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        }
+      ];
+    } else if (activeModal === 'logins') {
+      data.datasets = [
+        {
+          label: 'Total Logins',
+          data: Array.from({ length: days }, () => Math.floor(Math.random() * 45) + 15),
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        },
+        {
+          label: 'Unique Users',
+          data: Array.from({ length: days }, () => Math.floor(Math.random() * 30) + 10),
+          borderColor: '#8b5cf6',
+          backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        }
+      ];
+    }
+    
+    setChartData(data);
+  };
 
   // Safe session refresh with rate limiting and exponential backoff
   const safeRefreshSession = async () => {
@@ -556,6 +620,31 @@ const Dashboard = () => {
     }
   };
 
+  // Handler for clicking on a stat card
+  const handleStatCardClick = (cardType: string, filterValue: string = '') => {
+    // For cards that should show modals
+    if (cardType === 'signups' || cardType === 'logins') {
+      setActiveModal(cardType);
+      generateMockChartData(); // Generate mock chart data for demo
+      return;
+    }
+    
+    // For cards that should navigate to a filtered view
+    if (cardType === 'users') {
+      navigate('/admin/users');
+    } else if (cardType === 'active-users') {
+      navigate('/admin/users?status=active');
+    } else if (cardType === 'admin-users') {
+      navigate('/admin/users?role=admin');
+    } else if (cardType === 'partner-users') {
+      navigate('/admin/users?role=partner');
+    } else if (cardType === 'trips') {
+      navigate(`/admin/bookings${filterValue ? `?status=${filterValue}` : ''}`);
+    } else if (cardType === 'drivers') {
+      navigate(`/admin/drivers${filterValue ? `?availability=${filterValue}` : ''}`);
+    }
+  };
+
   if (stats.loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -581,55 +670,101 @@ const Dashboard = () => {
       {/* Users Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Users */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
-          <div className="flex items-center">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-full">
-              <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700 transition-all hover:shadow-md cursor-pointer"
+          onClick={() => handleStatCardClick('users')}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-full">
+                <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Users</p>
+                <p className="text-2xl font-semibold dark:text-white">{stats.users.total}</p>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Users</p>
-              <p className="text-2xl font-semibold dark:text-white">{stats.users.total}</p>
+            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+              <span>Customers: {stats.users.total - stats.users.admin - stats.users.partner}</span>
+              <span>Admins: {stats.users.admin}</span>
+              <span>Partners: {stats.users.partner}</span>
             </div>
           </div>
         </div>
 
         {/* Active Users */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
-          <div className="flex items-center">
-            <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-full">
-              <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700 transition-all hover:shadow-md cursor-pointer"
+          onClick={() => handleStatCardClick('active-users')}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-full">
+                <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Active Users</p>
+                <p className="text-2xl font-semibold dark:text-white">{stats.users.active}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Non-suspended accounts</p>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Active Users</p>
-              <p className="text-2xl font-semibold dark:text-white">{stats.users.active}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Non-suspended accounts</p>
-            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {Math.round((stats.users.active / stats.users.total) * 100)}% of total users are active
+            </p>
           </div>
         </div>
 
         {/* Admin Users */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
-          <div className="flex items-center">
-            <div className="p-3 bg-purple-100 dark:bg-purple-900/50 rounded-full">
-              <Settings className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700 transition-all hover:shadow-md cursor-pointer"
+          onClick={() => handleStatCardClick('admin-users')}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="p-3 bg-purple-100 dark:bg-purple-900/50 rounded-full">
+                <Settings className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Admin Users</p>
+                <p className="text-2xl font-semibold dark:text-white">{stats.users.admin}</p>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Admin Users</p>
-              <p className="text-2xl font-semibold dark:text-white">{stats.users.admin}</p>
-            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Only {stats.users.admin} users have full admin privileges
+            </p>
           </div>
         </div>
 
-        {/* Partner Users - Replaced Support Users */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
-          <div className="flex items-center">
-            <div className="p-3 bg-yellow-100 dark:bg-yellow-900/50 rounded-full">
-              <Car className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+        {/* Partner Users */}
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700 transition-all hover:shadow-md cursor-pointer"
+          onClick={() => handleStatCardClick('partner-users')}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="p-3 bg-yellow-100 dark:bg-yellow-900/50 rounded-full">
+                <Car className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Partner Users</p>
+                <p className="text-2xl font-semibold dark:text-white">{stats.users.partner}</p>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Partner Users</p>
-              <p className="text-2xl font-semibold dark:text-white">{stats.users.partner}</p>
-            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {stats.drivers.total} partners have completed driver registration
+            </p>
           </div>
         </div>
       </div>
@@ -637,11 +772,17 @@ const Dashboard = () => {
       {/* Health Checks */}
       <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Signup Metrics */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
-          <h3 className="text-lg font-medium mb-4 dark:text-white flex items-center">
-            <Users className="w-5 h-5 mr-2 text-blue-500 dark:text-blue-400" />
-            Signup Activity
-          </h3>
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700 transition-all hover:shadow-md cursor-pointer"
+          onClick={() => handleStatCardClick('signups')}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium dark:text-white flex items-center">
+              <Users className="w-5 h-5 mr-2 text-blue-500 dark:text-blue-400" />
+              Signup Activity
+            </h3>
+            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+          </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-gray-500 dark:text-gray-400">Last 24 hours</span>
@@ -656,14 +797,25 @@ const Dashboard = () => {
               <span className="text-lg font-medium dark:text-white">{stats.signups.last30d}</span>
             </div>
           </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {stats.signups.last24h > 0 ? 'Last signup was ' + formatDistanceToNow(new Date(), { addSuffix: true }) : 'No signups in the last 24 hours'}
+            </p>
+          </div>
         </div>
         
         {/* Login Metrics */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
-          <h3 className="text-lg font-medium mb-4 dark:text-white flex items-center">
-            <LogIn className="w-5 h-5 mr-2 text-green-500 dark:text-green-400" />
-            Login Activity
-          </h3>
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700 transition-all hover:shadow-md cursor-pointer"
+          onClick={() => handleStatCardClick('logins')}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium dark:text-white flex items-center">
+              <LogIn className="w-5 h-5 mr-2 text-green-500 dark:text-green-400" />
+              Login Activity
+            </h3>
+            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+          </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-gray-500 dark:text-gray-400">Last 24 hours</span>
@@ -678,46 +830,121 @@ const Dashboard = () => {
               <span className="text-lg font-medium dark:text-white">{stats.logins.last30d}</span>
             </div>
           </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Average of {Math.round(stats.logins.last7d / 7)} logins per day this week
+            </p>
+          </div>
         </div>
         
         {/* Trip Metrics */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
-          <h3 className="text-lg font-medium mb-4 dark:text-white flex items-center">
-            <Calendar className="w-5 h-5 mr-2 text-purple-500 dark:text-purple-400" />
-            Trip Status
-          </h3>
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700 transition-all hover:shadow-md cursor-pointer"
+          onClick={() => handleStatCardClick('trips')}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium dark:text-white flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-purple-500 dark:text-purple-400" />
+              Trip Status
+            </h3>
+            <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+          </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-gray-500 dark:text-gray-400">Total Trips</span>
-              <span className="text-lg font-medium dark:text-white">{stats.trips.total}</span>
+              <div className="flex items-center group">
+                <span className="text-lg font-medium dark:text-white">{stats.trips.total}</span>
+                <ExternalLink 
+                  className="h-3.5 w-3.5 ml-1 text-gray-400 dark:text-gray-500 group-hover:text-blue-500 dark:group-hover:text-blue-400" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStatCardClick('trips');
+                  }}
+                />
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-500 dark:text-gray-400">Pending Trips</span>
-              <span className="text-lg font-medium dark:text-white">{stats.trips.pending}</span>
+              <div className="flex items-center group">
+                <span className="text-lg font-medium dark:text-white">{stats.trips.pending}</span>
+                <ExternalLink 
+                  className="h-3.5 w-3.5 ml-1 text-gray-400 dark:text-gray-500 group-hover:text-blue-500 dark:group-hover:text-blue-400" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStatCardClick('trips', 'pending');
+                  }}
+                />
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-500 dark:text-gray-400">Completed Trips</span>
-              <span className="text-lg font-medium dark:text-white">{stats.trips.completed}</span>
+              <div className="flex items-center group">
+                <span className="text-lg font-medium dark:text-white">{stats.trips.completed}</span>
+                <ExternalLink 
+                  className="h-3.5 w-3.5 ml-1 text-gray-400 dark:text-gray-500 group-hover:text-blue-500 dark:group-hover:text-blue-400" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStatCardClick('trips', 'completed');
+                  }}
+                />
+              </div>
             </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Completion rate: {stats.trips.total > 0 ? Math.round((stats.trips.completed / stats.trips.total) * 100) : 0}%
+            </p>
           </div>
         </div>
       </div>
 
       {/* Driver Activity */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700 mb-8">
-        <h3 className="text-lg font-medium mb-4 dark:text-white">Driver Status</h3>
+      <div 
+        className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700 mb-8 transition-all hover:shadow-md cursor-pointer"
+        onClick={() => handleStatCardClick('drivers')}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium dark:text-white">Driver Status</h3>
+          <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
             <div className="flex items-center justify-between">
               <span className="text-gray-500 dark:text-gray-400">Total Drivers</span>
-              <span className="text-xl font-medium dark:text-white">{stats.drivers.total}</span>
+              <div className="flex items-center group">
+                <span className="text-xl font-medium dark:text-white">{stats.drivers.total}</span>
+                <ExternalLink 
+                  className="h-3.5 w-3.5 ml-1 text-gray-400 dark:text-gray-500 group-hover:text-blue-500 dark:group-hover:text-blue-400" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStatCardClick('drivers');
+                  }}
+                />
+              </div>
             </div>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              {stats.drivers.total} out of {stats.users.partner} partners have completed registration
+            </p>
           </div>
           <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
             <div className="flex items-center justify-between">
               <span className="text-gray-500 dark:text-gray-400">Available Drivers</span>
-              <span className="text-xl font-medium dark:text-white">{stats.drivers.active}</span>
+              <div className="flex items-center group">
+                <span className="text-xl font-medium dark:text-white">{stats.drivers.active}</span>
+                <ExternalLink 
+                  className="h-3.5 w-3.5 ml-1 text-gray-400 dark:text-gray-500 group-hover:text-blue-500 dark:group-hover:text-blue-400" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStatCardClick('drivers', 'available');
+                  }}
+                />
+              </div>
             </div>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              {stats.drivers.active > 0
+                ? `${Math.round((stats.drivers.active / stats.drivers.total) * 100)}% of drivers currently available`
+                : "No drivers currently available"}
+            </p>
           </div>
         </div>
       </div>
@@ -735,6 +962,277 @@ const Dashboard = () => {
         </div>
         <p className="text-gray-500 dark:text-gray-400">Coming soon: Activity charts and detailed analytics</p>
       </div>
+
+      {/* Modal for Signup Activity */}
+      {activeModal === 'signups' && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full">
+            <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Signup Activity Details</h3>
+              <button onClick={() => setActiveModal(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Timeframe:</span>
+                  <div className="flex p-1 bg-gray-100 dark:bg-gray-700 rounded-md">
+                    <button 
+                      onClick={() => setChartTimeframe('7d')}
+                      className={`px-3 py-1 text-sm rounded-md ${
+                        chartTimeframe === '7d' 
+                          ? 'bg-white dark:bg-gray-600 shadow text-gray-800 dark:text-white' 
+                          : 'text-gray-600 dark:text-gray-300'
+                      }`}
+                    >
+                      7 Days
+                    </button>
+                    <button 
+                      onClick={() => setChartTimeframe('30d')}
+                      className={`px-3 py-1 text-sm rounded-md ${
+                        chartTimeframe === '30d' 
+                          ? 'bg-white dark:bg-gray-600 shadow text-gray-800 dark:text-white' 
+                          : 'text-gray-600 dark:text-gray-300'
+                      }`}
+                    >
+                      30 Days
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="flex space-x-2">
+                  {/* Filter options for a real implementation */}
+                  <button className="flex items-center px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-md">
+                    <Filter className="h-4 w-4 mr-1.5 text-gray-500 dark:text-gray-400" />
+                    <span>Filter</span>
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 h-80 flex items-center justify-center">
+                {/* This would be replaced with an actual Chart.js or similar component */}
+                <div className="text-center">
+                  <BarChart2 className="h-16 w-16 mx-auto mb-4 text-blue-500 dark:text-blue-400" />
+                  <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">Signup Trends</p>
+                  <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                    This chart would display signup trends over time. Users can filter by role, date range, and other factors.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-700 dark:text-blue-300 text-sm">New Users</h4>
+                  <p className="text-2xl font-bold text-blue-800 dark:text-blue-200 mt-2">{stats.signups.last24h}</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Last 24 hours</p>
+                </div>
+                
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                  <h4 className="font-medium text-green-700 dark:text-green-300 text-sm">Partner Signups</h4>
+                  <p className="text-2xl font-bold text-green-800 dark:text-green-200 mt-2">
+                    {Math.floor(stats.signups.last7d * 0.3)} {/* Mock data */}
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">Last 7 days</p>
+                </div>
+                
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                  <h4 className="font-medium text-purple-700 dark:text-purple-300 text-sm">Conversion Rate</h4>
+                  <p className="text-2xl font-bold text-purple-800 dark:text-purple-200 mt-2">62%</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">Visitor to signup</p>
+                </div>
+              </div>
+              
+              <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Top Signup Sources</h4>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 rounded-full bg-blue-500 mr-2"></div>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Direct</span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">45%</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Referrals</span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">30%</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 rounded-full bg-yellow-500 mr-2"></div>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Social Media</span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">15%</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 rounded-full bg-purple-500 mr-2"></div>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">Other</span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">10%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end p-6 border-t dark:border-gray-700">
+              <button 
+                onClick={() => navigate('/admin/users')}
+                className="px-4 py-2 border border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                View All Users
+              </button>
+              <button 
+                onClick={() => setActiveModal(null)}
+                className="ml-3 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal for Login Activity */}
+      {activeModal === 'logins' && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full">
+            <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Login Activity Details</h3>
+              <button onClick={() => setActiveModal(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Timeframe:</span>
+                  <div className="flex p-1 bg-gray-100 dark:bg-gray-700 rounded-md">
+                    <button 
+                      onClick={() => setChartTimeframe('7d')}
+                      className={`px-3 py-1 text-sm rounded-md ${
+                        chartTimeframe === '7d' 
+                          ? 'bg-white dark:bg-gray-600 shadow text-gray-800 dark:text-white' 
+                          : 'text-gray-600 dark:text-gray-300'
+                      }`}
+                    >
+                      7 Days
+                    </button>
+                    <button 
+                      onClick={() => setChartTimeframe('30d')}
+                      className={`px-3 py-1 text-sm rounded-md ${
+                        chartTimeframe === '30d' 
+                          ? 'bg-white dark:bg-gray-600 shadow text-gray-800 dark:text-white' 
+                          : 'text-gray-600 dark:text-gray-300'
+                      }`}
+                    >
+                      30 Days
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="flex space-x-2">
+                  {/* Filter options for a real implementation */}
+                  <select className="px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                    <option>All Roles</option>
+                    <option>Admin</option>
+                    <option>Partner</option>
+                    <option>Customer</option>
+                  </select>
+                  
+                  <select className="px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                    <option>All Devices</option>
+                    <option>Desktop</option>
+                    <option>Mobile</option>
+                    <option>Tablet</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 h-80 flex items-center justify-center">
+                {/* This would be replaced with an actual Chart.js or similar component */}
+                <div className="text-center">
+                  <BarChart2 className="h-16 w-16 mx-auto mb-4 text-green-500 dark:text-green-400" />
+                  <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">Login Trends</p>
+                  <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                    This chart would display login activity over time, showing trends by device, location, and user role.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                  <h4 className="font-medium text-green-700 dark:text-green-300 text-sm">Active Sessions</h4>
+                  <p className="text-2xl font-bold text-green-800 dark:text-green-200 mt-2">
+                    {Math.floor(stats.logins.last24h * 0.4)} {/* Mock data */}
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">Current active users</p>
+                </div>
+                
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-700 dark:text-blue-300 text-sm">Login Success Rate</h4>
+                  <p className="text-2xl font-bold text-blue-800 dark:text-blue-200 mt-2">
+                    98.2%
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Last 7 days</p>
+                </div>
+                
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
+                  <h4 className="font-medium text-yellow-700 dark:text-yellow-300 text-sm">Avg. Session Duration</h4>
+                  <p className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mt-2">18m</p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">Per session</p>
+                </div>
+              </div>
+              
+              <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white">Recent Login Activity</h4>
+                  <button className="text-blue-600 dark:text-blue-400 text-sm hover:underline">View All</button>
+                </div>
+                <div className="space-y-3">
+                  {/* Sample login log entries */}
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white text-sm">John Smith</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Admin • Chrome on Windows</p>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Just now</p>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white text-sm">Emma Johnson</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Partner • Safari on iPhone</p>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">5 minutes ago</p>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white text-sm">Michael Chen</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Customer • Firefox on macOS</p>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">15 minutes ago</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end p-6 border-t dark:border-gray-700">
+              <button 
+                onClick={() => setActiveModal(null)}
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
