@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
-import { useToast } from '../ui/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../ui/use-toast';
+import { adminApi } from '../../lib/adminApi';
 import { 
   Globe, 
   DollarSign, 
@@ -61,6 +61,7 @@ const PlatformSettings: React.FC = () => {
   const [showMaintenance, setShowMaintenance] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
   const [fetchAttempted, setFetchAttempted] = useState(false);
+  const [refreshingSession, setRefreshingSession] = useState(false);
 
   const { toast } = useToast();
   const { userData, refreshSession } = useAuth();
@@ -88,6 +89,7 @@ const PlatformSettings: React.FC = () => {
     try {
       setLoading(true);
       setFetchAttempted(true);
+      setRefreshingSession(true);
       
       // Check for admin role
       if (userData?.user_role !== 'admin') {
@@ -95,43 +97,41 @@ const PlatformSettings: React.FC = () => {
         return;
       }
       
-      // Get the current session for the JWT token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Authentication required');
+      // Always refresh the session before fetching settings to ensure fresh JWT
+      try {
+        await refreshSession();
+      } catch (refreshError) {
+        console.warn('Session refresh failed, attempting to fetch settings anyway:', refreshError);
+      } finally {
+        setRefreshingSession(false);
       }
 
-      // Use the Supabase Edge Function to fetch settings
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const response = await fetch(`${supabaseUrl}/functions/v1/admin-fetch-settings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error ${response.status}`);
-      }
-
-      const data = await response.json();
+      // Use the adminApi to fetch settings through the edge function
+      const settingsData = await adminApi.fetchPlatformSettings();
       
-      if (data) {
-        setSettings(data);
-        setOriginalSettings(data);
+      if (settingsData) {
+        setSettings(settingsData);
+        setOriginalSettings(settingsData);
       } else {
         // No settings record exists yet, create a default one
         await saveSettings(settings);
         setOriginalSettings(settings);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching platform settings:', error);
       
       // Check if this is a permission error
-      if (error.message?.includes('permission denied') || error.message?.includes('not authorized')) {
-        setAccessError("You don't have permission to access platform settings. This section is restricted to administrators only.");
+      if (error.message?.includes('permission denied') || 
+          error.message?.includes('not authorized') ||
+          error.message?.includes('JWT expired')) {
+        setAccessError("Unable to access platform settings. Please try logging out and back in.");
+        
+        // Attempt to refresh session one more time
+        try {
+          await refreshSession();
+        } catch (refreshError) {
+          console.error('Refresh session failed after permission error:', refreshError);
+        }
       } else {
         toast({
           variant: "destructive",
@@ -153,48 +153,23 @@ const PlatformSettings: React.FC = () => {
         throw new Error('Admin permissions required');
       }
       
-      // Get the current session for the JWT token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Authentication required');
-      }
-
-      // Use the Supabase Edge Function to update settings
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const response = await fetch(`${supabaseUrl}/functions/v1/admin-update-settings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          ...settingsData,
-          last_updated_by: userData.id
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error ${response.status}`);
-      }
-
-      const result = await response.json();
+      // Use the adminApi to save settings through the edge function
+      const updatedSettings = await adminApi.updatePlatformSettings(settingsData);
       
-      if (result) {
-        setSettings(result);
-        setOriginalSettings(result);
+      if (updatedSettings) {
+        setSettings(updatedSettings);
+        setOriginalSettings(updatedSettings);
       }
       
       toast({
         title: "Settings Saved",
         description: "Platform settings have been updated successfully.",
-        variant: "success"
       });
       
       // Update original settings to reset change detection
       setOriginalSettings(settingsData);
       setHasChanges(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving settings:', error);
       toast({
         variant: "destructive",
@@ -248,9 +223,9 @@ const PlatformSettings: React.FC = () => {
         description: enable
           ? "The system is now in maintenance mode. Only admins can access it."
           : "The system is now back online for all users.",
-        variant: enable ? "destructive" : "success"
+        variant: enable ? "destructive" : "default"
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error toggling maintenance mode:', error);
       toast({
         variant: "destructive",
@@ -279,9 +254,25 @@ const PlatformSettings: React.FC = () => {
           <p className="text-red-600 dark:text-red-400 max-w-md mx-auto">
             {accessError}
           </p>
-          <p className="text-sm text-red-500 dark:text-red-400 mt-4">
-            Please contact a system administrator if you believe you should have access.
-          </p>
+          <div className="mt-6">
+            <button
+              onClick={() => {
+                setAccessError(null);
+                setLoading(true);
+                refreshSession().then(() => fetchSettings());
+              }}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+              {refreshingSession ? (
+                <>
+                  <Loader2 className="inline-block w-4 h-4 mr-2 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                "Retry Access"
+              )}
+            </button>
+          </div>
         </div>
       </div>
     );
