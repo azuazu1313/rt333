@@ -29,23 +29,17 @@ export const adminApi = {
       }
       
       const data = await response.json();
-      return {
-        data,
-        error: null
-      };
+      return data;
     } catch (error) {
       console.error('Error in adminApi.fetchDrivers:', error);
-      return {
-        data: null,
-        error
-      };
+      throw error;
     }
   },
   
   /**
    * Fetches driver documents with admin permissions
    */
-  async fetchDriverDocuments(driverId: string) {
+  async fetchDriverDocuments(driverId) {
     try {
       // Get current session for auth token
       const { data: { session } } = await supabase.auth.getSession();
@@ -79,7 +73,7 @@ export const adminApi = {
   /**
    * Fetches driver activity logs with admin permissions
    */
-  async fetchDriverLogs(driverId: string) {
+  async fetchDriverLogs(driverId) {
     try {
       // Get current session for auth token
       const { data: { session } } = await supabase.auth.getSession();
@@ -113,7 +107,7 @@ export const adminApi = {
   /**
    * Approves a driver verification with admin permissions
    */
-  async approveDriver(driverId: string) {
+  async approveDriver(driverId) {
     try {
       // Get current session for auth token
       const { data: { session } } = await supabase.auth.getSession();
@@ -147,7 +141,7 @@ export const adminApi = {
   /**
    * Declines a driver verification with admin permissions
    */
-  async declineDriver(driverId: string, declineReason: string) {
+  async declineDriver(driverId, declineReason) {
     try {
       // Get current session for auth token
       const { data: { session } } = await supabase.auth.getSession();
@@ -181,7 +175,7 @@ export const adminApi = {
   /**
    * Toggles driver availability with admin permissions
    */
-  async toggleDriverAvailability(driverId: string, newStatus: boolean, adminNote?: string) {
+  async toggleDriverAvailability(driverId, newStatus, adminNote) {
     try {
       // Get current session for auth token
       const { data: { session } } = await supabase.auth.getSession();
@@ -248,7 +242,7 @@ export const adminApi = {
   /**
    * Updates platform settings with admin permissions
    */
-  async updatePlatformSettings(settings: any) {
+  async updatePlatformSettings(settings) {
     try {
       // Get current session for auth token
       const { data: { session } } = await supabase.auth.getSession();
