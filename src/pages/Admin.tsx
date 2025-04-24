@@ -17,7 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { userData, loading } = useAuth();
+  const { userData, loading, refreshSession } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -36,6 +36,13 @@ const AdminLayout = () => {
       }
     }
   }, [userData, loading, navigate]);
+
+  // Refresh session when component mounts to ensure fresh JWT
+  useEffect(() => {
+    if (!loading && userData?.user_role === 'admin') {
+      refreshSession().catch(err => console.warn('Failed to refresh session on admin page load:', err));
+    }
+  }, [userData, loading]);
 
   // Filter tabs based on user role
   const getAllTabs = () => [
