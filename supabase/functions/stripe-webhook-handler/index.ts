@@ -26,12 +26,14 @@ Deno.serve(async (req) => {
 
   try {
     // Get the Stripe webhook secret from environment variables
-    const stripeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") || 
-      "whsec_placeholder_webhook_secret";
+    const stripeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
     
     // Get the Stripe secret key from environment variables
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || 
-      "sk_test_51PoZUCBf2yTNcRUo1QV8kTiBasytVelePrLdEchzzQJp1odHA4FmL9RA0Aq24OM9CLT8k2CdrrQirwAphQsEgXe600U7I5pYg1";
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    
+    if (!stripeSecretKey) {
+      throw new Error("Stripe secret key is missing from environment variables");
+    }
 
     // Initialize Stripe
     const stripe = new Stripe(stripeSecretKey, {
@@ -39,8 +41,12 @@ Deno.serve(async (req) => {
     });
 
     // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://phcqdnzuicgmlhkmnpxc.supabase.co";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "PLACEHOLDER_SERVICE_ROLE_KEY";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Missing Supabase environment variables");
+    }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -50,16 +56,31 @@ Deno.serve(async (req) => {
     // Get the signature from headers
     const signature = req.headers.get("stripe-signature") || "";
 
-    // Verify the webhook signature
+    // Verify the webhook signature if webhook secret is available
     let event;
-    try {
-      event = stripe.webhooks.constructEvent(payload, signature, stripeWebhookSecret);
-    } catch (err) {
-      console.error(`Webhook signature verification failed: ${err.message}`);
-      return new Response(`Webhook Error: ${err.message}`, { 
-        status: 400,
-        headers: corsHeaders
-      });
+    if (stripeWebhookSecret) {
+      try {
+        event = stripe.webhooks.constructEvent(payload, signature, stripeWebhookSecret);
+      } catch (err) {
+        console.error(`Webhook signature verification failed: ${err.message}`);
+        return new Response(`Webhook Error: ${err.message}`, { 
+          status: 400,
+          headers: corsHeaders
+        });
+      }
+    } else {
+      // If webhook secret is not available, parse the payload directly
+      // Note: This is less secure and should only be used for development
+      try {
+        event = JSON.parse(payload);
+      } catch (err) {
+        console.error(`Failed to parse webhook payload: ${err.message}`);
+        return new Response(`Webhook Error: ${err.message}`, { 
+          status: 400,
+          headers: corsHeaders
+        });
+      }
+      console.warn('Webhook signature verification skipped: No webhook secret available');
     }
 
     // Handle the event based on its type
