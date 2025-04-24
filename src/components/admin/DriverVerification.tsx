@@ -3,21 +3,24 @@ import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
-  Users, 
   FileText, 
+  Upload, 
   CheckCircle, 
-  XCircle, 
   Clock, 
-  Calendar,
-  Loader2, 
-  Search, 
+  AlertCircle, 
+  Loader2,
   AlertTriangle,
-  RefreshCw,
   Eye,
-  Download,
-  Filter
+  Calendar,
+  Info,
+  XCircle, 
+  RefreshCw, 
+  Search, 
+  Filter, 
+  Users,
+  ShieldAlert
 } from 'lucide-react';
-import { format, parseISO, isAfter } from 'date-fns';
+import { format, isBefore, addDays } from 'date-fns';
 import { adminApi } from '../../lib/adminApi';
 
 interface Driver {
@@ -45,8 +48,8 @@ interface Document {
   file_url: string;
   uploaded_at: string;
   verified: boolean;
-  name: string;
   expiry_date: string | null;
+  name: string;
 }
 
 interface ActivityLog {
@@ -82,29 +85,53 @@ const DriverVerification: React.FC = () => {
   const [showDeclineConfirm, setShowDeclineConfirm] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [processingAction, setProcessingAction] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const { toast } = useToast();
-  const { userData } = useAuth();
+  const { userData, refreshSession } = useAuth();
 
   useEffect(() => {
-    fetchDrivers();
-  }, []);
+    if (userData?.user_role === 'admin') {
+      fetchDrivers().catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+    } else {
+      setError('Admin permissions required to access this page');
+      setLoading(false);
+    }
+  }, [userData]);
 
   const fetchDrivers = async () => {
     try {
+      setError(null);
       setRefreshing(true);
       
-      // Call the edge function to fetch drivers with admin privileges
-      const driversData = await adminApi.fetchDrivers();
+      if (userData?.user_role !== 'admin') {
+        throw new Error('Admin permissions required');
+      }
       
-      setDrivers(driversData || []);
-    } catch (error: any) {
+      // Refresh session to ensure we have fresh JWT
+      try {
+        await refreshSession();
+      } catch (refreshError) {
+        console.warn('Error refreshing session:', refreshError);
+        // Continue anyway
+      }
+
+      // Call the adminApi to fetch drivers
+      const fetchedDrivers = await adminApi.fetchDrivers();
+      
+      if (Array.isArray(fetchedDrivers)) {
+        setDrivers(fetchedDrivers);
+      } else {
+        console.error('Unexpected response format:', fetchedDrivers);
+        throw new Error('Received invalid data from server');
+      }
+    } catch (error) {
       console.error('Error fetching drivers:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to fetch drivers. Please try again.",
-      });
+      setError(error.message || 'Failed to fetch drivers. Please try again.');
+      throw error;
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -125,6 +152,7 @@ const DriverVerification: React.FC = () => {
   const fetchDriverDocuments = async (driverId: string) => {
     try {
       setLoadingDocuments(true);
+      setError(null);
       
       // Use the admin API to fetch documents
       const documentsData = await adminApi.fetchDriverDocuments(driverId);
@@ -145,6 +173,7 @@ const DriverVerification: React.FC = () => {
   const fetchDriverLogs = async (driverId: string) => {
     try {
       setLoadingLogs(true);
+      setError(null);
       
       // Use the admin API to fetch activity logs
       const logsData = await adminApi.fetchDriverLogs(driverId);
@@ -167,6 +196,7 @@ const DriverVerification: React.FC = () => {
     
     try {
       setProcessingAction(true);
+      setError(null);
       
       // Call the admin API to approve the driver
       await adminApi.approveDriver(selectedDriver.id);
@@ -193,7 +223,7 @@ const DriverVerification: React.FC = () => {
       toast({
         title: "Driver Approved",
         description: "Driver has been successfully verified.",
-        variant: "success"
+        variant: "default"
       });
       
       // Fetch updated logs
@@ -216,6 +246,7 @@ const DriverVerification: React.FC = () => {
     
     try {
       setProcessingAction(true);
+      setError(null);
       
       // Call the admin API to decline the driver
       await adminApi.declineDriver(selectedDriver.id, declineReason);
@@ -259,6 +290,8 @@ const DriverVerification: React.FC = () => {
 
   const toggleDriverAvailability = async (driver: Driver, newStatus: boolean) => {
     try {
+      setError(null);
+      
       // Call the admin API to toggle driver availability
       await adminApi.toggleDriverAvailability(driver.id, newStatus);
       
@@ -322,16 +355,59 @@ const DriverVerification: React.FC = () => {
   const isDocumentExpired = (document: Document): boolean => {
     if (!document.expiry_date) return false;
     
-    const expiryDate = parseISO(document.expiry_date);
+    const expiryDate = new Date(document.expiry_date);
     const today = new Date();
     
-    return isAfter(today, expiryDate);
+    return isBefore(expiryDate, today);
   };
+
+  if (error && !drivers.length) {
+    return (
+      <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-6 border border-red-200 dark:border-red-800">
+        <div className="flex items-start">
+          <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400 mt-0.5 mr-2" />
+          <div>
+            <h3 className="text-lg font-medium text-red-800 dark:text-red-300">Error</h3>
+            <p className="mt-2 text-red-700 dark:text-red-400">{error}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                fetchDrivers().catch(err => {
+                  setError(err.message);
+                  setLoading(false);
+                });
+              }}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading && !drivers.length) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (userData?.user_role !== 'admin') {
+    return (
+      <div className="bg-yellow-50 dark:bg-yellow-900/30 p-6 rounded-lg">
+        <div className="flex items-start">
+          <ShieldAlert className="h-6 w-6 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-2" />
+          <div>
+            <h3 className="text-lg font-medium text-yellow-700 dark:text-yellow-300">Admin Access Required</h3>
+            <p className="mt-2 text-yellow-600 dark:text-yellow-400">
+              You need administrator privileges to access the driver verification page.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -384,7 +460,7 @@ const DriverVerification: React.FC = () => {
       {/* Drivers grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {filteredDrivers.length > 0 ? (
-          filteredDrivers.map(driver => (
+          filteredDrivers.map((driver) => (
             <div 
               key={driver.id}
               className="bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
@@ -426,7 +502,7 @@ const DriverVerification: React.FC = () => {
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {driver._isPartnerWithoutProfile 
-                      ? `Partner Since: ${format(parseISO(driver.created_at), 'PP')}` 
+                      ? `Partner Since: ${format(new Date(driver.created_at), 'PP')}` 
                       : `Documents: ${driver._documentCount || 0} uploaded`}
                   </div>
                   
@@ -613,7 +689,7 @@ const DriverVerification: React.FC = () => {
                                     {formatDocumentType(document.doc_type)}
                                   </p>
                                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    Uploaded: {format(parseISO(document.uploaded_at), 'PPp')}
+                                    Uploaded: {format(new Date(document.uploaded_at), 'PPp')}
                                   </p>
                                 </div>
                               </div>
@@ -631,8 +707,8 @@ const DriverVerification: React.FC = () => {
                                   </span>
                                 )}
                                 
-                                <a
-                                  href={document.file_url}
+                                <a 
+                                  href={document.file_url} 
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
@@ -641,20 +717,9 @@ const DriverVerification: React.FC = () => {
                                 >
                                   <Eye className="h-4 w-4" />
                                 </a>
-                                
-                                <a
-                                  href={document.file_url}
-                                  download
-                                  className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-                                  title="Download Document"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Download className="h-4 w-4" />
-                                </a>
                               </div>
                             </div>
                             
-                            {/* Display expiry date if available */}
                             {document.expiry_date && (
                               <div className={`mt-2 text-xs p-1 rounded ${
                                 isDocumentExpired(document)
@@ -663,7 +728,7 @@ const DriverVerification: React.FC = () => {
                               }`}>
                                 <span className="flex items-center">
                                   <Calendar className="h-3 w-3 mr-1" />
-                                  Expires: {format(parseISO(document.expiry_date), 'PP')}
+                                  Expires: {format(new Date(document.expiry_date), 'PP')}
                                   {isDocumentExpired(document) && (
                                     <span className="ml-2 font-medium">EXPIRED</span>
                                   )}
@@ -703,7 +768,7 @@ const DriverVerification: React.FC = () => {
                                   )}
                                 </p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  {format(parseISO(log.created_at), 'PPp')}
+                                  {format(new Date(log.created_at), 'PPp')}
                                 </p>
                                 {log.details && log.details.reason && (
                                   <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 bg-gray-50 dark:bg-gray-700 p-1 rounded">
@@ -806,7 +871,7 @@ const DriverVerification: React.FC = () => {
                 value={declineReason}
                 onChange={(e) => setDeclineReason(e.target.value)}
                 placeholder="Enter reason for declining verification..."
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 rows={3}
                 required
               ></textarea>
