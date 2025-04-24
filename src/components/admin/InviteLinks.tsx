@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Copy, Loader2, AlertCircle, Trash2, RefreshCw, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/use-toast';
@@ -37,10 +37,35 @@ const InviteLinks = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
+  
+  // Auto-refresh interval (30 seconds)
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const autoRefreshEnabled = useRef<boolean>(true);
 
-  const fetchInviteLinks = async () => {
+  useEffect(() => {
+    fetchInviteLinks();
+    
+    // Set up auto-refresh interval
+    if (autoRefreshEnabled.current) {
+      refreshIntervalRef.current = setInterval(() => {
+        fetchInviteLinks(true); // Silent refresh
+      }, 30000); // Every 30 seconds
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const fetchInviteLinks = async (silent: boolean = false) => {
     try {
-      setIsRefreshing(true);
+      if (!silent) {
+        setIsRefreshing(true);
+      }
+      
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
         throw new Error('Not authenticated');
@@ -56,23 +81,93 @@ const InviteLinks = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setInviteLinks(data || []);
+
+      // Process the data to check for expired links
+      const processedLinks = checkExpiredLinks(data || []);
+      setInviteLinks(processedLinks);
+      
+      // If links have been auto-marked as expired, update them in the database
+      const expiredLinks = processedLinks.filter(link => 
+        link.status === 'expired' && 
+        link.autoExpiredById && 
+        link.autoExpiredById === userData.user.id
+      );
+      
+      if (expiredLinks.length > 0) {
+        await updateExpiredLinksInDatabase(expiredLinks);
+        
+        if (!silent) {
+          toast({
+            title: "Expired Links Updated",
+            description: `${expiredLinks.length} invite links have been automatically marked as expired.`,
+          });
+        }
+      }
     } catch (err) {
       console.error('Error fetching invite links:', err);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to fetch invite links",
-      });
+      if (!silent) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch invite links",
+        });
+      }
     } finally {
-      setIsRefreshing(false);
+      if (!silent) {
+        setIsRefreshing(false);
+      }
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchInviteLinks();
-  }, []);
+  // Function to check and mark expired links
+  const checkExpiredLinks = (links: InviteLink[]): (InviteLink & { autoExpiredById?: string })[] => {
+    const now = new Date();
+    const { data } = supabase.auth.getUser();
+    const currentUserId = data?.user?.id;
+
+    return links.map(link => {
+      // Only check active links that have an expiration date
+      if (link.status === 'active' && link.expires_at) {
+        const expiryDate = new Date(link.expires_at);
+        
+        // If expired, mark it as expired
+        if (expiryDate < now) {
+          return {
+            ...link,
+            status: 'expired',
+            autoExpiredById: currentUserId // Track which user auto-marked this
+          };
+        }
+      }
+      return link;
+    });
+  };
+
+  // Function to update expired links in the database
+  const updateExpiredLinksInDatabase = async (links: (InviteLink & { autoExpiredById?: string })[]) => {
+    try {
+      // Only process links that were auto-expired
+      const linksToUpdate = links.filter(link => link.autoExpiredById);
+      
+      if (linksToUpdate.length === 0) return;
+      
+      // Extract just the IDs to update
+      const linkIds = linksToUpdate.map(link => link.id);
+      
+      // Update all expired links with a single query
+      const { error } = await supabase
+        .from('invite_links')
+        .update({ status: 'expired' })
+        .in('id', linkIds);
+
+      if (error) {
+        console.error('Error updating expired links:', error);
+      }
+    } catch (err) {
+      console.error('Error in bulk update of expired links:', err);
+    }
+  };
 
   const generateInviteLink = async () => {
     try {
@@ -179,6 +274,55 @@ const InviteLinks = () => {
         description: "Failed to update invite link",
       });
     }
+  };
+  
+  // Toggle auto-refresh functionality
+  const toggleAutoRefresh = () => {
+    autoRefreshEnabled.current = !autoRefreshEnabled.current;
+    
+    if (autoRefreshEnabled.current) {
+      refreshIntervalRef.current = setInterval(() => {
+        fetchInviteLinks(true); // Silent refresh
+      }, 30000);
+      
+      toast({
+        title: "Auto-refresh Enabled",
+        description: "Invite links will refresh every 30 seconds",
+      });
+    } else {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+      
+      toast({
+        title: "Auto-refresh Disabled",
+        description: "Invite links will no longer auto-refresh",
+      });
+    }
+  };
+
+  // Calculate time to expiry for display
+  const getExpiryTimeRemaining = (expiryDate: string | null) => {
+    if (!expiryDate) return null;
+    
+    const expiry = new Date(expiryDate);
+    const now = new Date();
+    
+    if (expiry <= now) {
+      return "Expired";
+    }
+    
+    const diffMs = expiry.getTime() - now.getTime();
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (diffHrs > 24) {
+      const days = Math.floor(diffHrs / 24);
+      return `${days}d ${diffHrs % 24}h remaining`;
+    }
+    
+    return `${diffHrs}h ${diffMins}m remaining`;
   };
 
   // Filter invite links based on search query
@@ -295,14 +439,26 @@ const InviteLinks = () => {
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium dark:text-white">Invite Links History</h3>
-          <button
-            onClick={() => fetchInviteLinks()}
-            disabled={isRefreshing}
-            className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-          >
-            <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => fetchInviteLinks()}
+              disabled={isRefreshing}
+              className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+            <button
+              onClick={toggleAutoRefresh}
+              className={`text-xs px-2 py-1 rounded-full ${
+                autoRefreshEnabled.current
+                  ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}
+            >
+              {autoRefreshEnabled.current ? 'Auto-refresh: ON' : 'Auto-refresh: OFF'}
+            </button>
+          </div>
         </div>
 
         {/* Search field */}
@@ -327,69 +483,96 @@ const InviteLinks = () => {
           <p className="text-gray-500 dark:text-gray-400 text-center py-8">No invite links found</p>
         ) : (
           <div className="space-y-4">
-            {filteredInviteLinks.map((link) => (
-              <div key={link.id} className={`border rounded-lg p-4 ${
-                link.status === 'expired' ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700' : 
-                link.status === 'used' ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800' : 
-                'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-              }`}>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <p className="font-medium dark:text-white">Role: <span className="capitalize">{link.role}</span></p>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        link.status === 'active' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 
-                        link.status === 'used' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' : 
-                        'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                      }`}>
-                        {link.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">Code: {link.code}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      Created: {format(new Date(link.created_at), 'PPp')}
-                    </p>
-                    {link.expires_at && (
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        Expires: {format(new Date(link.expires_at), 'PPp')}
-                      </p>
-                    )}
-                    {link.creator && (
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        Created by: {link.creator.name} ({link.creator.email})
-                      </p>
-                    )}
-                    {link.used_at && (
-                      <>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                          Used: {format(new Date(link.used_at), 'PPp')}
-                        </p>
-                        {link.used_by_user && (
-                          <p className="text-sm text-gray-600 dark:text-gray-300">
-                            Used by: {link.used_by_user.name} ({link.used_by_user.email})
-                          </p>
-                        )}
-                      </>
-                    )}
-                    {link.note && (
-                      <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 p-2 rounded border border-gray-200 dark:border-gray-600">
-                        <p className="font-medium">Note:</p>
-                        <p>{link.note}</p>
+            {filteredInviteLinks.map((link) => {
+              // Get expiry time remaining info for active links
+              const expiryInfo = link.status === 'active' && link.expires_at 
+                ? getExpiryTimeRemaining(link.expires_at)
+                : null;
+              
+              // Check if link is about to expire (less than 1 hour)
+              const isNearExpiry = link.status === 'active' && link.expires_at && 
+                (new Date(link.expires_at).getTime() - new Date().getTime()) < 60 * 60 * 1000;
+              
+              return (
+                <div key={link.id} className={`border rounded-lg p-4 ${
+                  link.status === 'expired' ? 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700' : 
+                  link.status === 'used' ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800' : 
+                  'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                }`}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <p className="font-medium dark:text-white">Role: <span className="capitalize">{link.role}</span></p>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          link.status === 'active' 
+                            ? isNearExpiry 
+                              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                              : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
+                            : link.status === 'used' 
+                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' 
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                        }`}>
+                          {link.status}
+                          {isNearExpiry && ' (expiring soon)'}
+                        </span>
                       </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">Code: {link.code}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        Created: {format(new Date(link.created_at), 'PPp')}
+                      </p>
+                      {link.expires_at && (
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Expires: {format(new Date(link.expires_at), 'PPp')}
+                          {expiryInfo && (
+                            <span className={`ml-2 text-xs ${
+                              expiryInfo === "Expired" 
+                                ? "text-red-500 dark:text-red-400" 
+                                : isNearExpiry
+                                  ? "text-yellow-500 dark:text-yellow-400"
+                                  : "text-green-500 dark:text-green-400"
+                            }`}>
+                              ({expiryInfo})
+                            </span>
+                          )}
+                        </p>
+                      )}
+                      {link.creator && (
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Created by: {link.creator.name} ({link.creator.email})
+                        </p>
+                      )}
+                      {link.used_at && (
+                        <>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
+                            Used: {format(new Date(link.used_at), 'PPp')}
+                          </p>
+                          {link.used_by_user && (
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                              Used by: {link.used_by_user.name} ({link.used_by_user.email})
+                            </p>
+                          )}
+                        </>
+                      )}
+                      {link.note && (
+                        <div className="mt-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 p-2 rounded border border-gray-200 dark:border-gray-600">
+                          <p className="font-medium">Note:</p>
+                          <p>{link.note}</p>
+                        </div>
+                      )}
+                    </div>
+                    {link.status === 'active' && (
+                      <button
+                        onClick={() => markInviteLinkAsExpired(link.id)}
+                        className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                        title="Mark as expired"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                     )}
                   </div>
-                  {link.status === 'active' && (
-                    <button
-                      onClick={() => markInviteLinkAsExpired(link.id)}
-                      className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                      title="Mark as expired"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
