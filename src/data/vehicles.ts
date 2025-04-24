@@ -105,34 +105,13 @@ export const vehicles = [
     ]
   },
   {
-    id: 'premium-minivan',
-    name: 'Premium Minivan',
-    image: 'https://i.imgur.com/premium-minivan.png',
-    rating: 4.93,
-    reviews: 95,
-    seats: 7,
-    suitcases: 7,
-    price: 1599.99,
-    description: 'Premium minivan with extra comfort for 7 and 7 luggage.',
-    sampleVehicles: [
-      'Mercedes-Benz V-Class',
-      'Volkswagen Multivan',
-      'Toyota Proace Verso'
-    ],
-    features: [
-      { icon: 'https://i.imgur.com/icon1.png', title: 'Premium Comfort', description: 'Luxe seating' },
-      { icon: 'https://i.imgur.com/icon2.png', title: 'Onboard WiFi', description: 'Internet included' },
-      { icon: 'https://i.imgur.com/icon3.png', title: 'VIP Service', description: 'Premium details' }
-    ]
-  },
-  {
     id: 'vip-minivan',
     name: 'VIP Minivan',
     image: 'https://i.imgur.com/vip-minivan.png',
     rating: 4.97,
     reviews: 76,
-    seats: 6,
-    suitcases: 6,
+    seats: 7,
+    suitcases: 7,
     price: 1899.99,
     description: 'VIP minivan for luxury small group travel: 6 pax + 6 luggage.',
     sampleVehicles: [
@@ -164,26 +143,6 @@ export const vehicles = [
       { icon: 'https://i.imgur.com/icon1.png', title: 'Mega Storage', description: 'Big & small luggage' },
       { icon: 'https://i.imgur.com/icon2.png', title: 'Individual Seats', description: 'Comfortable for all' },
       { icon: 'https://i.imgur.com/icon3.png', title: 'A/C', description: 'Fully climate-controlled' }
-    ]
-  },
-  {
-    id: 'sprinter-12',
-    name: 'Sprinter up to 12 pax',
-    image: 'https://i.imgur.com/sprinter-12.png',
-    rating: 4.9,
-    reviews: 47,
-    seats: 12,
-    suitcases: 24,
-    price: 2499.99,
-    description: 'Sprinter minibus for up to 12 and 12 big + 12 small luggage.',
-    sampleVehicles: [
-      'Mercedes-Benz Sprinter 12-seater',
-      'Volkswagen Crafter 12-seater'
-    ],
-    features: [
-      { icon: 'https://i.imgur.com/icon1.png', title: 'Big Groups', description: 'Seats up to 12' },
-      { icon: 'https://i.imgur.com/icon2.png', title: 'Luggage Max', description: 'Large boot capacity' },
-      { icon: 'https://i.imgur.com/icon3.png', title: 'Modern Interior', description: 'Power & A/C' }
     ]
   },
   {
