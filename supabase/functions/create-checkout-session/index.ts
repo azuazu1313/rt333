@@ -18,8 +18,7 @@ Deno.serve(async (req) => {
 
   try {
     // Get the Stripe secret key from environment variables
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || 
-      "sk_test_51PoZUCBf2yTNcRUo1QV8kTiBasytVelePrLdEchzzQJp1odHA4FmL9RA0Aq24OM9CLT8k2CdrrQirwAphQsEgXe600U7I5pYg1";
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
     
     if (!stripeSecretKey) {
       throw new Error("Stripe secret key is missing from environment variables.");
@@ -31,12 +30,12 @@ Deno.serve(async (req) => {
     });
 
     // Initialize Supabase client with service role key to bypass RLS
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://phcqdnzuicgmlhkmnpxc.supabase.co";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoY3Fkbnp1aWNnbWxoa21ucHhjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcxNDY2NjYwOSwiZXhwIjoyMDMwMjQyNjA5fQ.Z9kxU10kc3LJbehY39S62iMaCG04cwXAg8cTcj-_IVQ";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     // Make sure we have the service role key to bypass RLS
-    if (!supabaseServiceKey || supabaseServiceKey === "PLACEHOLDER_SERVICE_ROLE_KEY") {
-      throw new Error("Supabase service role key is missing or invalid");
+    if (!supabaseServiceKey) {
+      throw new Error("Supabase service role key is missing");
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
