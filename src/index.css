@@ -226,3 +226,28 @@ textarea:invalid {
   white-space: nowrap;
   border-width: 0;
 }
+
+/* Custom styles for horizontal scrollable containers */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile-friendly filter pills */
+.filter-pills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+  .filter-pills-container {
+    flex-wrap: nowrap;
+    padding-bottom: 0.75rem;
+  }
+}
