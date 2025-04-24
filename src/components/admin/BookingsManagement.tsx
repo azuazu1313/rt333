@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, Info, FileDown, Filter, ChevronDown, ChevronUp, Calendar, Clock, MapPin, User, Phone, Mail, RefreshCw } from 'lucide-react';
+import { Search, Loader2, Info, FileDown, Filter, ChevronDown, ChevronUp, Calendar, Clock, MapPin, User, Phone, Mail, RefreshCw, CreditCard, BarChart2, AlertCircle, CalendarCheck, Users as UsersIcon, CheckCircle, MapPinned } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { format } from 'date-fns';
+import { format, addHours, isAfter, isBefore } from 'date-fns';
 import { useToast } from '../ui/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import BookingDetailModal from './booking/BookingDetailModal';
@@ -10,6 +10,7 @@ import BookingLogModal from './booking/BookingLogModal';
 import BookingFeesModal from './booking/BookingFeesModal';
 import BookingReminderModal from './booking/BookingReminderModal';
 import BookingExportModal from './booking/BookingExportModal';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const BookingsManagement = () => {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -19,6 +20,7 @@ const BookingsManagement = () => {
   const [driverFilter, setDriverFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [dateRangeFilter, setDateRangeFilter] = useState('upcoming');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
@@ -31,15 +33,68 @@ const BookingsManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [itemsPerPage] = useState(20);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    total: 0,
+    revenue: { total: 0, pending: 0 },
+    needAttention: 0,
+    priority: 0,
+    unassigned: 0,
+    pendingPayment: 0,
+    cancelled: 0,
+    locationStats: null
+  });
+  
   const { toast } = useToast();
   const { userData, refreshSession } = useAuth();
   const filterContainerRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
+    // Process URL params on initial load
+    const statusParam = searchParams.get('status');
+    if (statusParam) {
+      setStatusFilter(statusParam);
+    }
+    
+    const priorityParam = searchParams.get('priority');
+    if (priorityParam) {
+      setPriorityFilter(priorityParam);
+    }
+    
+    const paymentParam = searchParams.get('payment');
+    if (paymentParam) {
+      setPaymentStatusFilter(paymentParam);
+    }
+    
+    const dateParam = searchParams.get('date');
+    if (dateParam) {
+      setDateRangeFilter(dateParam);
+    }
+    
+    const driverParam = searchParams.get('driver');
+    if (driverParam) {
+      setDriverFilter(driverParam);
+    }
+    
     if (userData?.user_role === 'admin' || userData?.user_role === 'support') {
       fetchBookings();
+      fetchBookingStats();
     }
-  }, [userData, currentPage, statusFilter, driverFilter, priorityFilter, dateRangeFilter]);
+  }, [userData, currentPage, statusFilter, driverFilter, priorityFilter, dateRangeFilter, paymentStatusFilter, searchParams]);
+
+  // Update URL params when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== 'all') params.set('status', statusFilter);
+    if (priorityFilter !== 'all') params.set('priority', priorityFilter);
+    if (paymentStatusFilter !== 'all') params.set('payment', paymentStatusFilter);
+    if (dateRangeFilter !== 'upcoming') params.set('date', dateRangeFilter);
+    if (driverFilter !== 'all') params.set('driver', driverFilter);
+    
+    setSearchParams(params);
+  }, [statusFilter, driverFilter, priorityFilter, dateRangeFilter, paymentStatusFilter]);
 
   const scrollFilters = (direction: 'left' | 'right') => {
     if (!filterContainerRef.current) return;
@@ -51,6 +106,106 @@ const BookingsManagement = () => {
       container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
     } else {
       container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const fetchBookingStats = async () => {
+    try {
+      // Get basic stats about bookings to populate our stat cards
+      const now = new Date();
+      const next24Hours = addHours(now, 24);
+      
+      // Total bookings
+      const { count: totalCount, error: totalError } = await supabase
+        .from('trips')
+        .select('*', { count: 'exact', head: true });
+        
+      // Upcoming bookings in the next 24 hours
+      const { count: attentionCount, error: attentionError } = await supabase
+        .from('trips')
+        .select('*', { count: 'exact', head: true })
+        .lte('datetime', next24Hours.toISOString())
+        .gte('datetime', now.toISOString())
+        .not('status', 'eq', 'completed')
+        .not('status', 'eq', 'cancelled');
+        
+      // Priority bookings
+      const { count: priorityCount, error: priorityError } = await supabase
+        .from('trips')
+        .select('*', { count: 'exact', head: true })
+        .gt('priority', 0);
+        
+      // Unassigned bookings
+      const { count: unassignedCount, error: unassignedError } = await supabase
+        .from('trips')
+        .select('*', { count: 'exact', head: true })
+        .is('driver_id', null)
+        .not('status', 'eq', 'completed')
+        .not('status', 'eq', 'cancelled');
+        
+      // Cancelled bookings
+      const { count: cancelledCount, error: cancelledError } = await supabase
+        .from('trips')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'cancelled');
+       
+      // For revenue, we need to do a bit more calculation
+      const { data: completedTrips, error: revenueError } = await supabase
+        .from('trips')
+        .select(`
+          id, 
+          estimated_price,
+          custom_fees,
+          payments(amount, status)
+        `)
+        .eq('status', 'completed');
+        
+      // Calculate total and pending revenue
+      let totalRevenue = 0;
+      let pendingRevenue = 0;
+      let pendingCount = 0;
+      
+      if (completedTrips) {
+        completedTrips.forEach(trip => {
+          const baseAmount = trip.estimated_price || 0;
+          let customFeesTotal = 0;
+          
+          // Add any custom fees
+          if (trip.custom_fees && Array.isArray(trip.custom_fees)) {
+            trip.custom_fees.forEach((fee: any) => {
+              customFeesTotal += parseFloat(fee.amount) || 0;
+            });
+          }
+          
+          const tripTotal = baseAmount + customFeesTotal;
+          totalRevenue += tripTotal;
+          
+          // Check if payment is pending
+          const paid = trip.payments && trip.payments.some((p: any) => p.status === 'completed');
+          if (!paid) {
+            pendingRevenue += tripTotal;
+            pendingCount++;
+          }
+        });
+      }
+      
+      // Set the stats state
+      setStats({
+        total: totalCount || 0,
+        revenue: {
+          total: totalRevenue,
+          pending: pendingRevenue
+        },
+        needAttention: attentionCount || 0,
+        priority: priorityCount || 0,
+        unassigned: unassignedCount || 0,
+        pendingPayment: pendingCount,
+        cancelled: cancelledCount || 0,
+        locationStats: null
+      });
+      
+    } catch (error) {
+      console.error('Error fetching booking stats:', error);
     }
   };
 
@@ -101,6 +256,15 @@ const BookingsManagement = () => {
         query = query.eq('priority', parseInt(priorityFilter));
       }
       
+      // Apply payment status filter
+      if (paymentStatusFilter === 'pending') {
+        // This is a simplified approach. In a real implementation, you would need 
+        // a more sophisticated query to check payment status from the payments table
+        query = query.eq('payments.status', 'pending');
+      } else if (paymentStatusFilter === 'paid') {
+        query = query.eq('payments.status', 'completed');
+      }
+      
       // Apply date filter
       const now = new Date();
       if (dateRangeFilter === 'upcoming') {
@@ -113,6 +277,11 @@ const BookingsManagement = () => {
         query = query
           .gte('datetime', startOfDay.toISOString())
           .lte('datetime', endOfDay.toISOString());
+      } else if (dateRangeFilter === 'next24h') {
+        const next24Hours = addHours(now, 24);
+        query = query
+          .gte('datetime', now.toISOString())
+          .lte('datetime', next24Hours.toISOString());
       }
       
       // Apply search if provided
@@ -174,6 +343,9 @@ const BookingsManagement = () => {
         booking.id === bookingId ? { ...booking, status: newStatus } : booking
       ));
 
+      // Refresh stats since status has changed
+      fetchBookingStats();
+
       toast({
         title: "Success",
         description: "Booking status updated successfully.",
@@ -231,6 +403,9 @@ const BookingsManagement = () => {
         booking.id === bookingId ? { ...booking, priority } : booking
       ));
 
+      // Refresh stats since priority has changed
+      fetchBookingStats();
+
       toast({
         title: "Priority Updated",
         description: `Booking priority set to ${priority === 2 ? 'Urgent' : priority === 1 ? 'High' : 'Normal'}.`,
@@ -259,6 +434,9 @@ const BookingsManagement = () => {
       setBookings(bookings.map(booking => 
         booking.id === bookingId ? { ...booking, custom_fees: fees } : booking
       ));
+
+      // Refresh stats since fees have changed (affects revenue)
+      fetchBookingStats();
 
       toast({
         title: "Fees Updated",
@@ -408,7 +586,240 @@ const BookingsManagement = () => {
     }
   };
 
-  if (loading) {
+  // Handle card click
+  const handleStatCardClick = (cardType: string) => {
+    switch(cardType) {
+      case 'total':
+        // Reset filters to show all bookings
+        setStatusFilter('all');
+        setPriorityFilter('all');
+        setDateRangeFilter('all');
+        setPaymentStatusFilter('all');
+        setDriverFilter('all');
+        break;
+        
+      case 'revenue':
+        // Set filters to show completed bookings with payment
+        setStatusFilter('completed');
+        setPaymentStatusFilter('paid');
+        setActiveModal('revenue');
+        break;
+        
+      case 'needAttention':
+        // Set filter to next 24 hours and not completed
+        setDateRangeFilter('next24h');
+        break;
+        
+      case 'priority':
+        // Set priority filter to high and urgent
+        setPriorityFilter('1');
+        break;
+        
+      case 'unassigned':
+        // Set filter to unassigned trips
+        setDriverFilter('unassigned');
+        break;
+        
+      case 'pendingPayment':
+        // Set filter to show pending payments
+        setPaymentStatusFilter('pending');
+        break;
+        
+      case 'cancelled':
+        // Set filter to show cancelled bookings
+        setStatusFilter('cancelled');
+        break;
+        
+      case 'locations':
+        // Show locations modal with heatmap
+        setActiveModal('locations');
+        break;
+    }
+  };
+
+  // JSX for Dashboard Cards
+  const renderStatCards = () => {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+        {/* Total Bookings Card */}
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5 border border-transparent dark:border-gray-700 hover:shadow-md cursor-pointer transition-shadow"
+          onClick={() => handleStatCardClick('total')}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Bookings</p>
+              <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{stats.total}</p>
+            </div>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-md">
+              <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center">
+              <ChevronRight className="h-3.5 w-3.5 mr-1" />
+              View all bookings
+            </span>
+          </div>
+        </div>
+        
+        {/* Revenue Card */}
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5 border border-transparent dark:border-gray-700 hover:shadow-md cursor-pointer transition-shadow"
+          onClick={() => handleStatCardClick('revenue')}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Revenue</p>
+              <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">
+                €{stats.revenue.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              </p>
+            </div>
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-md">
+              <CreditCard className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center">
+              <ChevronRight className="h-3.5 w-3.5 mr-1" />
+              See revenue breakdown
+            </span>
+          </div>
+        </div>
+        
+        {/* Need Attention Card */}
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5 border border-transparent dark:border-gray-700 hover:shadow-md cursor-pointer transition-shadow"
+          onClick={() => handleStatCardClick('needAttention')}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Need Attention</p>
+              <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{stats.needAttention}</p>
+            </div>
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-md">
+              <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center">
+              <ChevronRight className="h-3.5 w-3.5 mr-1" />
+              Next 24 hours
+            </span>
+          </div>
+        </div>
+        
+        {/* Priority Bookings Card */}
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5 border border-transparent dark:border-gray-700 hover:shadow-md cursor-pointer transition-shadow"
+          onClick={() => handleStatCardClick('priority')}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Priority Bookings</p>
+              <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{stats.priority}</p>
+            </div>
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-md">
+              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center">
+              <ChevronRight className="h-3.5 w-3.5 mr-1" />
+              High & urgent priority
+            </span>
+          </div>
+        </div>
+        
+        {/* Additional Cards - Shown in a collapsible section on mobile */}
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5 border border-transparent dark:border-gray-700 hover:shadow-md cursor-pointer transition-shadow"
+          onClick={() => handleStatCardClick('unassigned')}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Unassigned</p>
+              <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{stats.unassigned}</p>
+            </div>
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-md">
+              <UsersIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center">
+              <ChevronRight className="h-3.5 w-3.5 mr-1" />
+              Need driver assignment
+            </span>
+          </div>
+        </div>
+        
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5 border border-transparent dark:border-gray-700 hover:shadow-md cursor-pointer transition-shadow"
+          onClick={() => handleStatCardClick('pendingPayment')}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pending Payment</p>
+              <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{stats.pendingPayment}</p>
+            </div>
+            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-md">
+              <CreditCard className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center">
+              <ChevronRight className="h-3.5 w-3.5 mr-1" />
+              Awaiting payment
+            </span>
+          </div>
+        </div>
+        
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5 border border-transparent dark:border-gray-700 hover:shadow-md cursor-pointer transition-shadow"
+          onClick={() => handleStatCardClick('cancelled')}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Cancelled</p>
+              <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{stats.cancelled}</p>
+            </div>
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-md">
+              <X className="h-5 w-5 text-red-600 dark:text-red-400" />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center">
+              <ChevronRight className="h-3.5 w-3.5 mr-1" />
+              View cancellation reasons
+            </span>
+          </div>
+        </div>
+        
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5 border border-transparent dark:border-gray-700 hover:shadow-md cursor-pointer transition-shadow"
+          onClick={() => handleStatCardClick('locations')}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Top Locations</p>
+              <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">5</p>
+            </div>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-md">
+              <MapPinned className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center">
+              <ChevronRight className="h-3.5 w-3.5 mr-1" />
+              View location heatmap
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading && bookings.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" />
@@ -452,6 +863,9 @@ const BookingsManagement = () => {
           </button>
         </div>
       </div>
+
+      {/* Dashboard Stat Cards */}
+      {renderStatCards()}
 
       {/* Filters - Mobile Dropdown */}
       <div className={`md:hidden bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 mb-4 overflow-hidden transition-all duration-300 ease-in-out ${showFilters ? 'max-h-96' : 'max-h-0'}`}>
@@ -501,6 +915,19 @@ const BookingsManagement = () => {
             </div>
             
             <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment</label>
+              <select
+                value={paymentStatusFilter}
+                onChange={(e) => setPaymentStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-white"
+              >
+                <option value="all">All Payments</option>
+                <option value="pending">Pending</option>
+                <option value="paid">Paid</option>
+              </select>
+            </div>
+            
+            <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
               <select
                 value={dateRangeFilter}
@@ -509,6 +936,7 @@ const BookingsManagement = () => {
               >
                 <option value="all">All Dates</option>
                 <option value="upcoming">Upcoming</option>
+                <option value="next24h">Next 24 Hours</option>
                 <option value="past">Past</option>
                 <option value="today">Today</option>
               </select>
@@ -641,6 +1069,16 @@ const BookingsManagement = () => {
                 Upcoming
               </button>
               <button
+                onClick={() => setDateRangeFilter('next24h')}
+                className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
+                  dateRangeFilter === 'next24h'
+                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                }`}
+              >
+                Next 24h
+              </button>
+              <button
                 onClick={() => setDateRangeFilter('today')}
                 className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
                   dateRangeFilter === 'today'
@@ -650,22 +1088,50 @@ const BookingsManagement = () => {
               >
                 Today
               </button>
+            </div>
+            
+            {/* Payment Status Filters */}
+            <div className="h-5 border-l border-gray-200 dark:border-gray-700 mx-2"></div>
+            <div className="flex items-center space-x-2 flex-nowrap">
               <button
-                onClick={() => setDateRangeFilter('past')}
+                onClick={() => setPaymentStatusFilter('all')}
                 className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
-                  dateRangeFilter === 'past'
-                    ? 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-200'
+                  paymentStatusFilter === 'all'
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
                     : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                 }`}
               >
-                Past
+                All Payments
+              </button>
+              <button
+                onClick={() => setPaymentStatusFilter('pending')}
+                className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
+                  paymentStatusFilter === 'pending'
+                    ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                }`}
+              >
+                Pending
+              </button>
+              <button
+                onClick={() => setPaymentStatusFilter('paid')}
+                className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
+                  paymentStatusFilter === 'paid'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                }`}
+              >
+                Paid
               </button>
             </div>
             
             {/* Refresh Button */}
             <div className="h-5 border-l border-gray-200 dark:border-gray-700 mx-2"></div>
             <button 
-              onClick={fetchBookings}
+              onClick={() => {
+                fetchBookings();
+                fetchBookingStats();
+              }}
               disabled={isRefreshing}
               className="flex items-center px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 whitespace-nowrap"
             >
@@ -918,6 +1384,278 @@ const BookingsManagement = () => {
           onClose={() => setShowExportModal(false)}
           onExport={exportBookings}
         />
+      )}
+
+      {/* Revenue Modal */}
+      {activeModal === 'revenue' && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full">
+            <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Revenue Breakdown</h3>
+              <button onClick={() => setActiveModal(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</div>
+                  <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                    €{stats.revenue.total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  </div>
+                  <div className="mt-1 text-sm text-green-500 dark:text-green-400 flex items-center">
+                    <TrendingUp className="h-4 w-4 mr-1" /> 
+                    8.2% vs. last month
+                  </div>
+                </div>
+                
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Pending Payments</div>
+                  <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                    €{stats.revenue.pending.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  </div>
+                  <div className="mt-1 text-sm text-orange-500 dark:text-orange-400">
+                    {stats.pendingPayment} bookings awaiting payment
+                  </div>
+                </div>
+                
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Average Booking Value</div>
+                  <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                    €{stats.revenue.total > 0 && stats.total > 0 
+                      ? (stats.revenue.total / (stats.total - stats.cancelled)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) 
+                      : '0.00'}
+                  </div>
+                  <div className="mt-1 text-sm text-blue-500 dark:text-blue-400">
+                    For completed bookings
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm h-64 flex items-center justify-center mb-6">
+                <div className="text-center">
+                  <BarChart2 className="h-16 w-16 mx-auto mb-4 text-blue-500 dark:text-blue-400" />
+                  <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">Revenue Over Time</p>
+                  <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                    This chart would display revenue trends over time, with filters for day, week, month, and quarter.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Revenue by Payment Method</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mr-2">
+                        <div className="bg-blue-600 dark:bg-blue-500 h-2.5 rounded-full" style={{width: "65%"}}></div>
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Credit Card (65%)</div>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mr-2">
+                        <div className="bg-green-600 dark:bg-green-500 h-2.5 rounded-full" style={{width: "20%"}}></div>
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Cash (20%)</div>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mr-2">
+                        <div className="bg-purple-600 dark:bg-purple-500 h-2.5 rounded-full" style={{width: "15%"}}></div>
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">PayPal (15%)</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Fees & Refunds</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center border-b dark:border-gray-700 py-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Processing Fees</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">€{(stats.revenue.total * 0.029).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b dark:border-gray-700 py-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Custom Fees</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">€{(stats.revenue.total * 0.05).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b dark:border-gray-700 py-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Refunds Issued</span>
+                      <span className="text-sm font-medium text-red-600 dark:text-red-400">-€{(stats.revenue.total * 0.02).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">Net Revenue</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        €{(stats.revenue.total * 0.941).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end p-6 border-t dark:border-gray-700">
+              <button 
+                onClick={() => {
+                  setStatusFilter('completed');
+                  setPaymentStatusFilter('paid');
+                  setActiveModal(null);
+                }}
+                className="px-4 py-2 border border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center mr-3"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                View Completed Bookings
+              </button>
+              <button 
+                onClick={() => setActiveModal(null)}
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Locations Modal */}
+      {activeModal === 'locations' && (
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full">
+            <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Bookings by Location</h3>
+              <button onClick={() => setActiveModal(null)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Top Pickup Locations</h4>
+                  <div className="space-y-2">
+                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md flex items-center justify-between">
+                      <div className="flex items-start">
+                        <MapPin className="h-4 w-4 text-blue-500 dark:text-blue-400 mt-0.5 mr-2" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">Airport Terminal 1</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Berlin, Germany</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">42</span>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md flex items-center justify-between">
+                      <div className="flex items-start">
+                        <MapPin className="h-4 w-4 text-blue-500 dark:text-blue-400 mt-0.5 mr-2" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">Central Station</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Berlin, Germany</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">28</span>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md flex items-center justify-between">
+                      <div className="flex items-start">
+                        <MapPin className="h-4 w-4 text-blue-500 dark:text-blue-400 mt-0.5 mr-2" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">Grand Hyatt Hotel</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Berlin, Germany</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">15</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Top Dropoff Locations</h4>
+                  <div className="space-y-2">
+                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md flex items-center justify-between">
+                      <div className="flex items-start">
+                        <MapPin className="h-4 w-4 text-red-500 dark:text-red-400 mt-0.5 mr-2" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">Alexanderplatz</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Berlin, Germany</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">38</span>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md flex items-center justify-between">
+                      <div className="flex items-start">
+                        <MapPin className="h-4 w-4 text-red-500 dark:text-red-400 mt-0.5 mr-2" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">Marriott Hotel</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Berlin, Germany</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">24</span>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md flex items-center justify-between">
+                      <div className="flex items-start">
+                        <MapPin className="h-4 w-4 text-red-500 dark:text-red-400 mt-0.5 mr-2" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">Brandenburg Gate</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Berlin, Germany</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">19</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 h-64 flex items-center justify-center">
+                <div className="text-center">
+                  <MapPinned className="h-16 w-16 mx-auto mb-4 text-purple-500 dark:text-purple-400" />
+                  <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">Location Heatmap</p>
+                  <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                    This area would display an interactive map showing booking density across different areas.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                  <h4 className="font-medium text-purple-700 dark:text-purple-300 text-sm">Most Popular Route</h4>
+                  <p className="text-sm font-bold text-purple-800 dark:text-purple-200 mt-2">
+                    Airport → City Center
+                  </p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                    30% of all bookings
+                  </p>
+                </div>
+                
+                <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4">
+                  <h4 className="font-medium text-indigo-700 dark:text-indigo-300 text-sm">Avg. Trip Distance</h4>
+                  <p className="text-sm font-bold text-indigo-800 dark:text-indigo-200 mt-2">
+                    18.5 km
+                  </p>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">
+                    Across all completed trips
+                  </p>
+                </div>
+                
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-700 dark:text-blue-300 text-sm">Busiest Pickup Time</h4>
+                  <p className="text-sm font-bold text-blue-800 dark:text-blue-200 mt-2">
+                    2:00 PM - 4:00 PM
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    Peak airport arrival time
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end p-6 border-t dark:border-gray-700">
+              <button 
+                onClick={() => setActiveModal(null)}
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Add custom styles for hiding scrollbars while maintaining scroll behavior */}
