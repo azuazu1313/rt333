@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Crown, User, Loader2 } from 'lucide-react';
+import { Crown, User, Loader2, Briefcase } from 'lucide-react';
 import { smoothScrollTo } from '../utils/smoothScroll';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,6 +21,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { trackEvent } = useAnalytics();
   const isAdmin = userData?.user_role === 'admin';
+  const isPartner = userData?.user_role === 'partner';
 
   const handleCTAClick = () => {
     setIsMenuOpen(false);
@@ -82,33 +83,41 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
     }
   };
 
-  const handleAdminPortalClick = async (e: React.MouseEvent) => {
+  const handlePortalClick = async (portalType: 'admin' | 'partner', e: React.MouseEvent) => {
     e.preventDefault();
-    trackEvent('Navigation', 'Admin Portal Click');
+    trackEvent('Navigation', `${portalType === 'admin' ? 'Admin' : 'Partner'} Portal Click`);
     
     try {
       // Get current session and extract token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        // If no session, just redirect to admin portal login
-        window.open('https://app.royaltransfer.eu', '_blank');
+        // If no session, just redirect to portal login
+        window.open(`https://app.royaltransfer.eu/${portalType}`, '_blank');
         return;
       }
 
       // Encode the token to make it URL safe
       const encodedToken = encodeURIComponent(session.access_token);
       
-      // Open admin portal with token
-      window.open(`https://app.royaltransfer.eu?token=${encodedToken}`, '_blank');
+      // Open portal with token
+      window.open(`https://app.royaltransfer.eu/${portalType}?token=${encodedToken}`, '_blank');
     } catch (error) {
-      console.error('Error preparing admin portal redirect:', error);
-      trackEvent('Error', 'Admin Portal Redirect Error', JSON.stringify(error));
+      console.error(`Error preparing ${portalType} portal redirect:`, error);
+      trackEvent('Error', `${portalType} Portal Redirect Error`, JSON.stringify(error));
       // Fallback to regular link if something goes wrong
-      window.open('https://app.royaltransfer.eu', '_blank');
+      window.open(`https://app.royaltransfer.eu/${portalType}`, '_blank');
     }
     
     setShowUserMenu(false);
     setIsMenuOpen(false);
+  };
+
+  const handleAdminPortalClick = (e: React.MouseEvent) => {
+    handlePortalClick('admin', e);
+  };
+
+  const handlePartnerPortalClick = (e: React.MouseEvent) => {
+    handlePortalClick('partner', e);
   };
 
   useEffect(() => {
@@ -266,6 +275,17 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                           Admin Portal
                         </a>
                       )}
+                      {isPartner && (
+                        <a 
+                          href="#" 
+                          onClick={handlePartnerPortalClick}
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
+                        >
+                          <Briefcase className="w-4 h-4 mr-2" aria-hidden="true" />
+                          Partner Portal
+                        </a>
+                      )}
                       <Link 
                         to="/profile" 
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -405,6 +425,22 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                               }}
                             >
                               <span>Admin Portal</span>
+                              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-black group-hover:w-full transition-all duration-300"></span>
+                            </a>
+                          </div>
+                        )}
+                        {isPartner && (
+                          <div className="flex">
+                            <a
+                              href="#"
+                              className="relative py-2 text-gray-700 group"
+                              onClick={(e) => {
+                                handlePartnerPortalClick(e);
+                                setIsMenuOpen(false);
+                                trackEvent('Navigation', 'Mobile Menu Click', 'Partner Portal');
+                              }}
+                            >
+                              <span>Partner Portal</span>
                               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-black group-hover:w-full transition-all duration-300"></span>
                             </a>
                           </div>
