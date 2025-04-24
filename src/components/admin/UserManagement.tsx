@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, Save, ChevronLeft, ChevronRight, MoreVertical, Edit, UserX, UserCheck, AlertTriangle, Trash2 } from 'lucide-react';
+import { Search, Loader2, Save, ChevronLeft, ChevronRight, MoreVertical, Edit, UserX, UserCheck, AlertTriangle, Trash2, Filter, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../ui/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
@@ -45,9 +45,11 @@ const UserManagement = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
   const { userData, refreshSession } = useAuth();
   const initLoadDone = useRef(false);
+  const filterContainerRef = useRef<HTMLDivElement>(null);
 
   // When component mounts, ensure the session is refreshed to get updated JWT claims
   useEffect(() => {
@@ -325,6 +327,20 @@ const UserManagement = () => {
     fetchUsers();
   };
 
+  // Scroll filters horizontally
+  const scrollFilters = (direction: 'left' | 'right') => {
+    if (!filterContainerRef.current) return;
+    
+    const container = filterContainerRef.current;
+    const scrollAmount = container.clientWidth * 0.75;
+    
+    if (direction === 'left') {
+      container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    } else {
+      container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
   const filteredUsers = users;
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
   const totalPages = Math.ceil(totalCount / usersPerPage);
@@ -351,58 +367,221 @@ const UserManagement = () => {
 
   return (
     <div>
-      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h2 className="text-xl font-semibold dark:text-white">User Management</h2>
-        <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-4">
-          {/* Search field */}
-          <div className="relative w-full md:w-auto">
-            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search name, email, phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 w-full md:w-64"
-            />
+      {/* Header and Controls */}
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold dark:text-white">User Management</h2>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="sm:hidden p-2 border border-gray-200 dark:border-gray-700 rounded-md"
+            >
+              <Filter className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            </button>
           </div>
+          
+          <div className="flex items-center">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                className="pl-9 pr-4 py-2 w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 dark:text-white rounded-md"
+              />
+            </div>
+            
+            <button
+              onClick={handleSearch}
+              className="ml-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 hidden sm:block"
+            >
+              Search
+            </button>
+          </div>
+        </div>
+        
+        {/* Mobile Filters Dropdown */}
+        <div className={`sm:hidden bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 overflow-hidden transition-all duration-300 ease-in-out ${showFilters ? 'max-h-60' : 'max-h-0'}`}>
+          {showFilters && (
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Role Filter
+                </label>
+                <select
+                  value={roleFilter}
+                  onChange={(e) => {
+                    setRoleFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 dark:text-white rounded-md"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="admin">Admin</option>
+                  <option value="customer">Customer</option>
+                  <option value="driver">Driver</option>
+                  <option value="support">Support</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Status Filter
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 dark:text-white rounded-md"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+              
+              <button
+                onClick={() => {
+                  handleSearch();
+                  setShowFilters(false);
+                }}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Apply Filters
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {/* Desktop Filter Pills + Horiztonal Scrollable Container */}
+        <div className="hidden sm:block">
+          <div className="relative">
+            {/* Left Shadow/Fade */}
+            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-gray-900 to-transparent z-10 pointer-events-none"></div>
+            
+            {/* Right Shadow/Fade */}
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-gray-900 to-transparent z-10 pointer-events-none"></div>
+            
+            {/* Horizontal Scrollable Container */}
+            <div 
+              ref={filterContainerRef}
+              className="overflow-x-auto hide-scrollbar py-1 px-2 -mx-2 flex space-x-2"
+            >
+              {/* Role Filters */}
+              <div className="flex items-center space-x-2 flex-nowrap">
+                <button
+                  onClick={() => {
+                    setRoleFilter('all');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
+                    roleFilter === 'all'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  All Roles
+                </button>
+                <button
+                  onClick={() => {
+                    setRoleFilter('admin');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
+                    roleFilter === 'admin'
+                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Admins
+                </button>
+                <button
+                  onClick={() => {
+                    setRoleFilter('driver');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
+                    roleFilter === 'driver'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Drivers
+                </button>
+                <button
+                  onClick={() => {
+                    setRoleFilter('customer');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
+                    roleFilter === 'customer'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Customers
+                </button>
+              </div>
 
-          {/* Role filter */}
-          <select
-            value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setCurrentPage(1); // Reset to first page when changing filter
-            }}
-            className="w-full md:w-auto px-4 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-          >
-            <option value="all">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="customer">Customer</option>
-            <option value="driver">Driver</option>
-            <option value="support">Support</option>
-          </select>
-
-          {/* Status filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setCurrentPage(1); // Reset to first page when changing filter
-            }}
-            className="w-full md:w-auto px-4 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
-          </select>
-
-          <button
-            onClick={handleSearch}
-            className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Search
-          </button>
+              {/* Status Filters */}
+              <div className="h-5 border-l border-gray-200 dark:border-gray-700 mx-2"></div>
+              <div className="flex items-center space-x-2 flex-nowrap">
+                <button
+                  onClick={() => {
+                    setStatusFilter('all');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
+                    statusFilter === 'all'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  All Status
+                </button>
+                <button
+                  onClick={() => {
+                    setStatusFilter('active');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
+                    statusFilter === 'active'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Active
+                </button>
+                <button
+                  onClick={() => {
+                    setStatusFilter('suspended');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap ${
+                    statusFilter === 'suspended'
+                      ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Suspended
+                </button>
+              </div>
+              
+              {/* Refresh Button */}
+              <div className="h-5 border-l border-gray-200 dark:border-gray-700 mx-2"></div>
+              <button 
+                onClick={fetchUsers}
+                className="flex items-center px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 whitespace-nowrap"
+              >
+                <RefreshCw className="h-4 w-4 mr-1.5" />
+                Refresh
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -529,11 +708,11 @@ const UserManagement = () => {
 
       {/* Pagination Controls */}
       {totalCount > usersPerPage && (
-        <div className="flex justify-between items-center mt-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-4 gap-4">
+          <div className="text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left">
             Showing {Math.min((currentPage - 1) * usersPerPage + 1, totalCount)} to {Math.min(currentPage * usersPerPage, totalCount)} of {totalCount} users
           </div>
-          <div className="flex space-x-2">
+          <div className="flex justify-center sm:justify-end space-x-2">
             <button
               onClick={handlePrevPage}
               disabled={currentPage === 1}
@@ -785,6 +964,17 @@ const UserManagement = () => {
           </button>
         </div>
       )}
+
+      {/* Add custom styles for hiding scrollbars while maintaining scroll behavior */}
+      <style jsx>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 };
