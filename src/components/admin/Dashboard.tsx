@@ -635,7 +635,7 @@ const Dashboard = () => {
       </div>
 
       {/* Health Checks */}
-      <div className="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Signup Metrics */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-transparent dark:border-gray-700">
           <h3 className="text-lg font-medium mb-4 dark:text-white flex items-center">
