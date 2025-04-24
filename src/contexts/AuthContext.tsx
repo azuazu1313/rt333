@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { supabase } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import type { Database } from '../types/database';
+import { useToast } from '../components/ui/use-toast';
 
 type UserData = Database['public']['Tables']['users']['Row'];
 
@@ -10,6 +11,8 @@ interface AuthContextType {
   user: User | null;
   userData: UserData | null;
   loading: boolean;
+  isRefreshingSession: boolean;
+  lastRefreshTimestamp: number;
   signUp: (email: string, password: string, name: string, phone?: string, inviteCode?: string) => Promise<{ error: Error | null, data?: { user: User | null } }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null, session: Session | null }>;
   signOut: () => Promise<void>;
@@ -63,10 +66,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshingSession, setIsRefreshingSession] = useState(false);
+  const [lastRefreshTimestamp, setLastRefreshTimestamp] = useState(0);
+  
   const initialStateLoadedRef = useRef(false);
   const authStateChangeSubscribed = useRef(false);
   const tokenAuthAttemptedRef = useRef(false);
-  const isRefreshingRef = useRef(false);
+  
+  const { toast } = useToast();
 
   // Function to fetch user data
   const fetchUserData = async (userId: string) => {
@@ -114,14 +121,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Refresh the session to update JWT claims
   const refreshSession = async () => {
-    // Prevent multiple simultaneous refresh attempts
-    if (isRefreshingRef.current) {
-      console.log('Session refresh already in progress, skipping');
+    // Don't refresh if another refresh is in progress
+    if (isRefreshingSession) {
+      console.log('Session refresh already in progress');
+      return;
+    }
+
+    // Apply rate limiting - only refresh once per 10 seconds
+    const now = Date.now();
+    if (now - lastRefreshTimestamp < 10000) {
+      console.log('Rate limiting session refresh');
       return;
     }
 
     try {
-      isRefreshingRef.current = true;
+      setIsRefreshingSession(true);
+      setLastRefreshTimestamp(now);
       console.log('Refreshing session...');
       
       // Check if we have a current session first
@@ -129,6 +144,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!currentSession) {
         console.log('No current session to refresh');
         await handleSignedOut();
+        
+        // Show toast notification
+        toast({
+          title: "Session Expired",
+          description: "Your session has expired. Please sign in again.",
+          variant: "destructive"
+        });
+        
         return;
       }
       
@@ -153,9 +176,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           console.log('No session returned from refresh');
           await handleSignedOut();
+          
+          // Show toast notification
+          toast({
+            title: "Session Expired",
+            description: "Your session has expired. Please sign in again.",
+            variant: "destructive"
+          });
         }
       } catch (error: any) {
         console.error('Error refreshing session:', error);
+        
         // If refresh token is invalid or not found, sign the user out
         if (error.message?.includes('refresh_token_not_found') || 
             error.error?.message?.includes('refresh_token_not_found') ||
@@ -163,12 +194,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             (error.statusText === 'Bad Request' && error.status === 400)) {
           console.warn('Invalid refresh token, signing out user');
           await handleSignedOut();
+          
+          // Show toast notification
+          toast({
+            title: "Session Expired",
+            description: "Your session has expired. Please sign in again.",
+            variant: "destructive"
+          });
         }
       }
     } catch (error) {
       console.error('Error in refreshSession:', error);
     } finally {
-      isRefreshingRef.current = false;
+      setIsRefreshingSession(false);
     }
   };
 
@@ -581,7 +619,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signOut,
     updateUserData,
-    refreshSession
+    refreshSession,
+    isRefreshingSession,
+    lastRefreshTimestamp
   };
 
   return (
