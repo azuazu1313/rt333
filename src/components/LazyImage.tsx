@@ -32,7 +32,9 @@ const LazyImage: React.FC<LazyImageProps> = ({
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const imageRef = useRef<HTMLImageElement>(null);
+  const maxRetries = 3;
   
   // Use Intersection Observer to detect when the image is in view
   const { ref, inView } = useInView({
@@ -60,10 +62,33 @@ const LazyImage: React.FC<LazyImageProps> = ({
   
   const handleError = () => {
     setIsError(true);
-    // Try fallback if available
-    if (fallbackSrc && imageRef.current) {
+    
+    // Try to retry loading the image a few times
+    if (retryCount < maxRetries) {
+      setRetryCount(prev => prev + 1);
+      
+      // Wait a bit before retrying (exponential backoff)
+      const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
+      
+      setTimeout(() => {
+        setIsError(false);
+        
+        // Try the fallback if available
+        if (fallbackSrc && imageRef.current) {
+          imageRef.current.src = fallbackSrc;
+        } else {
+          // Retry with the same source but add a cache buster
+          const cacheBuster = `?retry=${retryCount}_${new Date().getTime()}`;
+          if (imageRef.current) {
+            imageRef.current.src = `${src}${cacheBuster}`;
+          }
+        }
+      }, delay);
+    } else if (fallbackSrc && imageRef.current) {
+      // Try fallback as last resort
       imageRef.current.src = fallbackSrc;
     }
+    
     onError?.();
   };
   
@@ -98,7 +123,6 @@ const LazyImage: React.FC<LazyImageProps> = ({
             } w-full h-full object-cover`}
             decoding="async"
             fetchPriority={loadingStrategy === 'eager' ? 'high' : 'auto'}
-            
           />
         </picture>
       ) : (
