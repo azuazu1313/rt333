@@ -27,7 +27,7 @@ const TrustBadges = () => {
             >
               <div className="h-12 md:h-16 mb-2 relative">
                 <LazyImage 
-                  src="https://logos-world.net/wp-content/uploads/2020/11/Tripadvisor-Logo.png" 
+                  src="https://files.royaltransfer.eu/assets/Tripadvisor-Logo.png" 
                   alt="Tripadvisor Rating and Reviews Logo - Royal Transfer EU is highly rated on Tripadvisor"
                   className="h-full w-auto object-contain"
                   width={700}
@@ -59,7 +59,7 @@ const TrustBadges = () => {
               <div className="grid grid-cols-3 md:flex md:justify-center items-center gap-4 md:space-x-6">
                 <div className="flex justify-center">
                   <LazyImage 
-                    src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" 
+                    src="https://files.royaltransfer.eu/assets/Visa.png" 
                     alt="Visa payment logo - Royal Transfer EU accepts Visa cards" 
                     className="h-6 md:h-8 w-auto"
                     width={132}
@@ -68,7 +68,7 @@ const TrustBadges = () => {
                 </div>
                 <div className="flex justify-center">
                   <LazyImage 
-                    src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" 
+                    src="https://files.royaltransfer.eu/assets/Mastercard-logo.svg" 
                     alt="MasterCard payment logo - Royal Transfer EU accepts MasterCard" 
                     className="h-6 md:h-8 w-auto"
                     width={118}
@@ -77,7 +77,7 @@ const TrustBadges = () => {
                 </div>
                 <div className="flex justify-center">
                   <LazyImage 
-                    src="https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg" 
+                    src="https://files.royaltransfer.eu/assets/Google_Pay_Logo.png" 
                     alt="Google Pay logo - Royal Transfer EU accepts Google Pay" 
                     className="h-6 md:h-8 w-auto"
                     width={128}
@@ -86,7 +86,7 @@ const TrustBadges = () => {
                 </div>
                 <div className="flex justify-center">
                   <LazyImage 
-                    src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Apple_Pay_logo.svg" 
+                    src="https://files.royaltransfer.eu/assets/applepay.png" 
                     alt="Apple Pay logo - Royal Transfer EU accepts Apple Pay" 
                     className="h-6 md:h-8 w-auto"
                     width={126}
@@ -95,7 +95,7 @@ const TrustBadges = () => {
                 </div>
                 <div className="flex justify-center">
                   <LazyImage 
-                    src="https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg" 
+                    src="https://files.royaltransfer.eu/assets/American_Express_logo.png" 
                     alt="American Express payment logo - Royal Transfer EU accepts American Express cards" 
                     className="h-8 md:h-12 w-auto"
                     width={1000}
@@ -104,7 +104,7 @@ const TrustBadges = () => {
                 </div>
                 <div className="flex justify-center">
                   <LazyImage
-                    src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg"
+                    src="https://files.royaltransfer.eu/assets/Stripe_Logo.png"
                     alt="Stripe secure payment processing logo - Royal Transfer EU uses Stripe for secure payments"
                     className="h-6 md:h-10 w-auto"
                     width={512}
