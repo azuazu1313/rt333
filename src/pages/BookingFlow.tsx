@@ -13,22 +13,38 @@ const BookingFlow = () => {
   // Initialize booking state from URL parameters
   useEffect(() => {
     if (from && to && date) {
-      // Decode the URL parameters
+      // Decode the URL parameters (but preserve case)
       const fromDecoded = decodeURIComponent(from.replace(/-/g, ' '));
       const toDecoded = decodeURIComponent(to.replace(/-/g, ' '));
       
-      setBookingState(prev => ({
-        ...prev,
-        from: fromDecoded,
-        to: toDecoded,
-        // Preserve any display names if they exist, otherwise use the decoded values
-        fromDisplay: prev.fromDisplay || fromDecoded,
-        toDisplay: prev.toDisplay || toDecoded,
-        isReturn: type === '2',
-        departureDate: date,
-        returnDate: returnDate !== '0' ? returnDate : undefined,
-        passengers: parseInt(passengers || '1', 10)
-      }));
+      // Update the booking state with both URL values and display values
+      setBookingState(prev => {
+        // This is critical: we need to decide what to use as display values
+        // 1. If we already have display values in the context, keep them
+        // 2. Otherwise, use the decoded but preserved-case values from URL
+        const fromDisplayValue = prev.fromDisplay || fromDecoded;
+        const toDisplayValue = prev.toDisplay || toDecoded;
+        
+        console.log("BookingFlow initializing with display values:", {
+          fromDisplay: fromDisplayValue,
+          toDisplay: toDisplayValue,
+          from: fromDecoded,
+          to: toDecoded
+        });
+        
+        return {
+          ...prev,
+          from: fromDecoded,
+          to: toDecoded,
+          // Always preserve display values if they exist
+          fromDisplay: fromDisplayValue,
+          toDisplay: toDisplayValue,
+          isReturn: type === '2',
+          departureDate: date,
+          returnDate: returnDate !== '0' ? returnDate : undefined,
+          passengers: parseInt(passengers || '1', 10)
+        };
+      });
     }
   }, [from, to, type, date, returnDate, passengers, setBookingState]);
 
