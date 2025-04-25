@@ -136,9 +136,6 @@ export default function CookieBanner() {
     }
   }
 
-  // Don't render if flag is disabled or banner shouldn't be visible
-  if (!flags.showCookieBanner || !isVisible) return null
-
   // Handle learn more link click
   const handleLearnMoreClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -146,6 +143,9 @@ export default function CookieBanner() {
     trackEvent("Cookie Consent", "Learn More Click", "");
     window.open("/cookie-policy", "_blank");
   };
+
+  // Don't render if flag is disabled or banner shouldn't be visible
+  if (!flags.showCookieBanner || !isVisible) return null
 
   return (
     <div 

@@ -4,6 +4,7 @@ import { MapPin, Loader2 } from 'lucide-react';
 interface GooglePlacesAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
+  onPlaceSelect?: (displayName: string, placeData?: google.maps.places.PlaceResult) => void;
   placeholder: string;
   className?: string;
 }
@@ -11,6 +12,7 @@ interface GooglePlacesAutocompleteProps {
 export function GooglePlacesAutocomplete({
   value,
   onChange,
+  onPlaceSelect,
   placeholder,
   className = ''
 }: GooglePlacesAutocompleteProps) {
@@ -41,8 +43,7 @@ export function GooglePlacesAutocomplete({
         autocompleteRef.current = new window.google.maps.places.Autocomplete(
           inputRef.current,
           {
-            // Remove the 'types' parameter that was causing the error
-            // This allows all place types to be suggested
+            // No types restriction to avoid the error, fields include all we need
             fields: ['formatted_address', 'geometry', 'name', 'address_components', 'types'],
           }
         );
@@ -60,6 +61,11 @@ export function GooglePlacesAutocomplete({
             if (displayName) {
               // Update the parent component state
               onChange(displayName);
+              
+              // If onPlaceSelect callback is provided, call it with the display name and place data
+              if (onPlaceSelect) {
+                onPlaceSelect(displayName, place);
+              }
             }
             
             // Reset the selecting flag after a short delay

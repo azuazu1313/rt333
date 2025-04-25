@@ -85,7 +85,7 @@ export const BookingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Log state changes for debugging
   useEffect(() => {
-    console.log("BookingContext updated:", {
+    console.log("BookingContext location data updated:", {
       from: bookingState.from,
       fromDisplay: bookingState.fromDisplay,
       to: bookingState.to, 
