@@ -34,8 +34,8 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     // Make sure we have the service role key to bypass RLS
-    if (!supabaseServiceKey) {
-      throw new Error("Supabase service role key is missing");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Missing Supabase environment variables");
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
