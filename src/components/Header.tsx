@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useAnalytics } from '../hooks/useAnalytics';
-import OptimizedImage from './OptimizedImage';
+import ImageWithFallback from './ImageWithFallback';
 
 interface HeaderProps {
   isAboutPage?: boolean;
@@ -149,9 +149,8 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             className="flex items-center focus:outline-none h-16 py-2"
             aria-label="Royal Transfer EU Homepage"
           >
-            <OptimizedImage
+            <ImageWithFallback
               src="https://files.royaltransfer.eu/assets/rt-logo-black-950-500.png"
-              webp="https://files.royaltransfer.eu/assets/rt-logo-black-950-500.webp"
               alt="Royal Transfer EU Logo - Professional airport transfers and taxi services across Europe"
               className="h-full w-auto object-contain max-h-16"
               width={170}
@@ -208,14 +207,6 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
               onClick={() => trackEvent('Navigation', 'Menu Click', 'Partners')}
             >
               Partners
-              <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
-            </a>
-            <a 
-              href="/rent" 
-              className="relative py-2 text-gray-700 group"
-              onClick={() => trackEvent('Navigation', 'Menu Click', 'Rent a Car')}
-            >
-              Rent a Car
               <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-black group-hover:w-full group-active:bg-gray-900 transition-all duration-300 -translate-x-1/2"></span>
             </a>
             <a 
@@ -374,9 +365,8 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
 
               <div className="flex flex-col h-full">
                 <div className="flex justify-center items-center p-4 border-b">
-                  <OptimizedImage
+                  <ImageWithFallback
                     src="https://files.royaltransfer.eu/assets/rt-logo-black-950-500.png"
-                    webp="https://files.royaltransfer.eu/assets/rt-logo-black-950-500.webp"
                     alt="Royal Transfer EU Logo - Professional taxi and transfer services"
                     className="h-12 w-auto object-contain"
                     width={150}
@@ -394,7 +384,6 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
                       { href: '/blogs/destinations', label: 'Destinations' },
                       { href: '/faq', label: 'FAQs' },
                       { href: '/partners', label: 'Partners' },
-                      { href: '/rent', label: 'Rent a Car' },
                       { href: '/contact', label: 'Contact' }
                     ].map((link) => (
                       <div key={link.href} className="flex">
