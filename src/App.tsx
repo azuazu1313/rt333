@@ -9,6 +9,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 import { useAnalytics } from './hooks/useAnalytics';
 import { FeatureFlagProvider, useFeatureFlags } from './components/FeatureFlagProvider';
+import { preloadImagesForRoute } from './utils/imagePreloader';
 
 // Import feature flag bridge for cross-domain communication
 import './utils/featureFlagBridge';
@@ -63,6 +64,9 @@ const RouteObserver = () => {
     
     // Update page title based on route
     updatePageTitle(location.pathname);
+    
+    // Preload images for the current route
+    preloadImagesForRoute(location.pathname);
 
     return () => {
       document.documentElement.classList.remove('booking-page');
