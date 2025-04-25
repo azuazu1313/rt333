@@ -2,7 +2,7 @@ export const vehicles = [
   {
     id: 'economy-sedan',
     name: 'Standard Sedan',
-    image: 'https://www.pngplay.com/wp-content/uploads/13/Volkswagen-Passat-Transparent-PNG.png',
+    image: 'https://files.royaltransfer.eu/assets/Standard-Sedan.jpg',
     rating: 4.9,
     reviews: 161,
     seats: 4,
@@ -23,7 +23,7 @@ export const vehicles = [
   {
     id: 'premium-sedan',
     name: 'Premium Sedan',
-    image: 'https://alcf.s3.us-west-1.amazonaws.com/_custom/2024/mercedes-benz/s-class/images.png',
+    image: 'https://files.royaltransfer.eu/assets/Premium-Sedan.jpg',
     rating: 4.8,
     reviews: 143,
     seats: 3,
@@ -44,7 +44,7 @@ export const vehicles = [
   {
     id: 'vip-sedan',
     name: 'VIP Sedan',
-    image: 'https://i.imgur.com/premium-sedan.png',
+    image: 'https://files.royaltransfer.eu/assets/VIP-Sedan.jpg',
     rating: 4.95,
     reviews: 101,
     seats: 2,
@@ -65,7 +65,7 @@ export const vehicles = [
   {
     id: 'standard-minivan',
     name: 'Standard Minivan',
-    image: 'https://i.imgur.com/standard-minivan.png',
+    image: 'https://files.royaltransfer.eu/assets/Standard-Minivan.jpg',
     rating: 4.8,
     reviews: 120,
     seats: 7,
@@ -86,7 +86,7 @@ export const vehicles = [
   {
     id: 'xl-minivan',
     name: 'XL Minivan',
-    image: 'https://i.imgur.com/xl-minivan.png',
+    image: 'https://files.royaltransfer.eu/assets/XL-Minivan.jpg',
     rating: 4.9,
     reviews: 109,
     seats: 8,
@@ -107,7 +107,7 @@ export const vehicles = [
   {
     id: 'vip-minivan',
     name: 'VIP Minivan',
-    image: 'https://i.imgur.com/vip-minivan.png',
+    image: 'https://files.royaltransfer.eu/assets/VIP-Minivan.jpg',
     rating: 4.97,
     reviews: 76,
     seats: 7,
@@ -128,7 +128,7 @@ export const vehicles = [
   {
     id: 'sprinter-8',
     name: 'Sprinter 8 pax',
-    image: 'https://i.imgur.com/sprinter-8.png',
+    image: 'https://files.royaltransfer.eu/assets/Sprinter-8.jpg',
     rating: 4.88,
     reviews: 64,
     seats: 8,
@@ -148,7 +148,7 @@ export const vehicles = [
   {
     id: 'sprinter-16',
     name: 'Sprinter up to 16 pax',
-    image: 'https://i.imgur.com/sprinter-16.png',
+    image: 'https://files.royaltransfer.eu/assets/Sprinter-16.jpg',
     rating: 4.91,
     reviews: 38,
     seats: 16,
@@ -168,7 +168,7 @@ export const vehicles = [
   {
     id: 'sprinter-21',
     name: 'Sprinter up to 21 pax',
-    image: 'https://i.imgur.com/sprinter-21.png',
+    image: 'https://files.royaltransfer.eu/assets/Sprinter-21.jpg',
     rating: 4.92,
     reviews: 22,
     seats: 21,
@@ -188,7 +188,7 @@ export const vehicles = [
   {
     id: 'bus-51',
     name: 'Bus up to 51 pax',
-    image: 'https://i.imgur.com/bus-51.png',
+    image: 'https://files.royaltransfer.eu/assets/Bus-51.jpg',
     rating: 4.95,
     reviews: 12,
     seats: 51,
