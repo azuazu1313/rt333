@@ -85,6 +85,7 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
 
   const handlePortalClick = async (portalType: 'admin' | 'partner', e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     trackEvent('Navigation', `${portalType === 'admin' ? 'Admin' : 'Partner'} Portal Click`);
     
     try {
@@ -374,8 +375,8 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
               <div className="flex flex-col h-full">
                 <div className="flex justify-center items-center p-4 border-b">
                   <OptimizedImage
-                    src="https://i.imgur.com/991MInn.png"
-                    webp="https://i.imghippo.com/files/cDgm3025PmI.webp"
+                    src="https://files.royaltransfer.eu/assets/rt-logo-black-950-500.png"
+                    webp="https://files.royaltransfer.eu/assets/rt-logo-black-950-500.webp"
                     alt="Royal Transfer EU Logo - Professional taxi and transfer services"
                     className="h-12 w-auto object-contain"
                     width={150}
