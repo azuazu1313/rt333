@@ -7,8 +7,8 @@ const Hero = () => {
   useEffect(() => {
     // This is more of a backup since we're already using link preload in the HTML
     const imagesToPreload = [
-      'https://i.imghippo.com/files/ohfj7576RE.webp',
-      'https://i.imghippo.com/files/ZKj2573fQ.webp'
+      'https://files.royaltransfer.eu/assets/mobileherotest.webp',
+      'https://files.royaltransfer.eu/assets/newherotest.webp'
     ];
 
     imagesToPreload.forEach(src => {
@@ -34,13 +34,13 @@ const Hero = () => {
           {/* Mobile Image */}
           <source
             media="(max-width: 767px)"
-            srcSet="https://i.imghippo.com/files/ohfj7576RE.webp"
+            srcSet="https://files.royaltransfer.eu/assets/mobileherotest.webp"
             type="image/webp"
             fetchPriority="high"
           />
           <source
             media="(max-width: 767px)"
-            srcSet="https://i.imghippo.com/files/f9510A.png"
+            srcSet="https://files.royaltransfer.eu/assets/mobileherotest.png"
             type="image/png"
             fetchPriority="high"
           />
@@ -48,20 +48,20 @@ const Hero = () => {
           {/* Desktop Image */}
           <source
             media="(min-width: 768px)"
-            srcSet="https://i.imghippo.com/files/ZKj2573fQ.webp"
+            srcSet="https://files.royaltransfer.eu/assets/newherotest.webp"
             type="image/webp"
             fetchPriority="high"
           />
           <source
             media="(min-width: 768px)"
-            srcSet="https://i.imghippo.com/files/Axi3104t.png"
+            srcSet="https://files.royaltransfer.eu/assets/newherotest.png"
             type="image/png"
             fetchPriority="high"
           />
           
           {/* Fallback Image */}
           <img
-            src="https://i.imghippo.com/files/Axi3104t.png"
+            src="https://files.royaltransfer.eu/assets/newherotest.png"
             alt="Luxury sedan transfer service by Royal Transfer EU - professional driver waiting by an elegant black car on a scenic European road"
             className="w-full h-full object-cover"
             fetchPriority="high"
