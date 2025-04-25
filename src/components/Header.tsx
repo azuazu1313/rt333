@@ -149,8 +149,8 @@ const Header = ({ isAboutPage = false, hideSignIn = false }: HeaderProps) => {
             aria-label="Royal Transfer EU Homepage"
           >
             <OptimizedImage
-              src="https://i.imgur.com/991MInn.png"
-              webp="https://i.imghippo.com/files/cDgm3025PmI.webp"
+              src="https://files.royaltransfer.eu/assets/rt-logo-black-950-500.png"
+              webp="https://files.royaltransfer.eu/assets/rt-logo-black-950-500.webp"
               alt="Royal Transfer EU Logo - Professional airport transfers and taxi services across Europe"
               className="h-full w-auto object-contain max-h-16"
               width={170}
