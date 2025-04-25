@@ -1,22 +1,27 @@
 import React, { useEffect } from 'react';
 import SearchForm from './SearchForm';
 import { motion } from 'framer-motion';
+import { getFallbackImageUrl } from '../utils/imageFallbacks';
+import ImageWithFallback from './ImageWithFallback';
 
 const Hero = () => {
   // Preload critical images
   useEffect(() => {
-    // This is more of a backup since we're already using link preload in the HTML
     const imagesToPreload = [
       'https://files.royaltransfer.eu/assets/mobileherotest.webp',
       'https://files.royaltransfer.eu/assets/newherotest.webp'
     ];
 
-    imagesToPreload.forEach(src => {
+    // Also prepare fallback images
+    const fallbackImagesToPreload = imagesToPreload.map(getFallbackImageUrl);
+    const allImages = [...new Set([...imagesToPreload, ...fallbackImagesToPreload])];
+
+    allImages.forEach(src => {
       const link = document.createElement('link');
       link.rel = 'preload';
       link.as = 'image';
       link.href = src;
-      link.type = 'image/webp';
+      link.type = src.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
       document.head.appendChild(link);
       
       // Clean up when component unmounts
@@ -36,13 +41,13 @@ const Hero = () => {
             media="(max-width: 767px)"
             srcSet="https://files.royaltransfer.eu/assets/mobileherotest.webp"
             type="image/webp"
-            fetchPriority="high"
+            fetchpriority="high"
           />
           <source
             media="(max-width: 767px)"
-            srcSet="https://files.royaltransfer.eu/assets/mobileherotest.png"
+            srcSet={getFallbackImageUrl("https://files.royaltransfer.eu/assets/mobileherotest.png")}
             type="image/png"
-            fetchPriority="high"
+            fetchpriority="high"
           />
           
           {/* Desktop Image */}
@@ -50,24 +55,24 @@ const Hero = () => {
             media="(min-width: 768px)"
             srcSet="https://files.royaltransfer.eu/assets/newherotest.webp"
             type="image/webp"
-            fetchPriority="high"
+            fetchpriority="high"
           />
           <source
             media="(min-width: 768px)"
-            srcSet="https://files.royaltransfer.eu/assets/newherotest.png"
+            srcSet={getFallbackImageUrl("https://files.royaltransfer.eu/assets/newherotest.png")}
             type="image/png"
-            fetchPriority="high"
+            fetchpriority="high"
           />
           
           {/* Fallback Image */}
-          <img
+          <ImageWithFallback
             src="https://files.royaltransfer.eu/assets/newherotest.png"
             alt="Luxury sedan transfer service by Royal Transfer EU - professional driver waiting by an elegant black car on a scenic European road"
             className="w-full h-full object-cover"
             fetchPriority="high"
             loading="eager"
-            width="1920"
-            height="1080"
+            width={1920}
+            height={1080}
           />
         </picture>
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
