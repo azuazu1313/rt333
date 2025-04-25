@@ -20,8 +20,8 @@ const destinations: Destination[] = [
     city: 'Rome',
     country: 'Italy',
     images: {
-      webp: 'https://i.imghippo.com/files/CFL9494KWE.webp',
-      fallback: 'https://i.imghippo.com/files/lTA7682kU.jpg'
+      webp: 'https://files.royaltransfer.eu/assets/rome327.webp',
+      fallback: 'https://files.royaltransfer.eu/assets/rome1280png.png'
     },
     rating: 4.9,
     reviews: '1.7k',
@@ -31,8 +31,8 @@ const destinations: Destination[] = [
     city: 'Paris',
     country: 'France',
     images: {
-      webp: 'https://i.imghippo.com/files/sLs3440odc.webp',
-      fallback: 'https://i.imghippo.com/files/IdwC2475VOg.jpg'
+      webp: 'https://files.royaltransfer.eu/assets/paris136.webp',
+      fallback: 'https://files.royaltransfer.eu/assets/paris1280png.png'
     },
     rating: 4.8,
     reviews: '2.2k',
@@ -42,8 +42,8 @@ const destinations: Destination[] = [
     city: 'Barcelona',
     country: 'Spain',
     images: {
-      webp: 'https://i.imghippo.com/files/iqAp5725KnQ.webp',
-      fallback: 'https://i.imghippo.com/files/IZqo3474CDQ.jpg'
+      webp: 'https://files.royaltransfer.eu/assets/barc255.webp',
+      fallback: 'https://files.royaltransfer.eu/assets/barca1280png.png'
     },
     rating: 4.9,
     reviews: '1.2k',
@@ -53,8 +53,8 @@ const destinations: Destination[] = [
     city: 'Milan',
     country: 'Italy',
     images: {
-      webp: 'https://i.imghippo.com/files/ZqBO3169ko.webp',
-      fallback: 'https://i.imghippo.com/files/rLX6532WHE.jpeg'
+      webp: 'https://files.royaltransfer.eu/assets/milano250.webp',
+      fallback: 'https://files.royaltransfer.eu/assets/milano1280png.png'
     },
     rating: 4.7,
     reviews: '2.3k',
