@@ -87,3 +87,17 @@ input[type="date"]::-webkit-datetime-edit-year-field {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Prevent hero image overflow */
+#booking-form .absolute.inset-0.z-0 {
+  overflow: hidden;
+}
+
+/* Ensure hero image fills container without overflowing */
+#booking-form .absolute.inset-0.z-0 img,
+#booking-form .absolute.inset-0.z-0 picture {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
