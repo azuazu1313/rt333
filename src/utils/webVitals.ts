@@ -35,6 +35,63 @@ export const reportWebVitals = () => {
           non_interaction: true // Prevents this from affecting bounce rate
         });
       }
+      
+      // You can also send to a custom endpoint for performance monitoring
+      sendToPerformanceAPI(metric);
     });
   }
+};
+
+// Send metrics to a custom API endpoint for more detailed tracking
+const sendToPerformanceAPI = (metric) => {
+  // This is a placeholder for a custom implementation
+  // You could send to your own API, a third-party service, etc.
+  if (import.meta.env.DEV) return; // Skip in development
+  
+  try {
+    // Example custom endpoint
+    // const endpoint = 'https://api.royaltransfer.eu/metrics';
+    
+    // const payload = {
+    //   name: metric.name,
+    //   value: metric.value,
+    //   rating: metric.rating,
+    //   id: metric.id,
+    //   path: window.location.pathname,
+    //   timestamp: new Date().toISOString(),
+    //   userAgent: navigator.userAgent,
+    //   deviceType: getDeviceType(),
+    //   connectionType: getConnectionType()
+    // };
+    
+    // You could send this data using fetch:
+    // fetch(endpoint, {
+    //   method: 'POST',
+    //   body: JSON.stringify(payload),
+    //   headers: {
+    //     'Content-Type': 'application/json'
+    //   }
+    // });
+  } catch (error) {
+    console.error('Error sending performance data:', error);
+  }
+};
+
+// Helper function to determine device type
+const getDeviceType = () => {
+  const ua = navigator.userAgent;
+  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
+    return 'tablet';
+  }
+  if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) {
+    return 'mobile';
+  }
+  return 'desktop';
+};
+
+// Helper function to determine connection type
+const getConnectionType = () => {
+  // @ts-ignore: Connection API not in all browsers
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  return connection ? connection.effectiveType : 'unknown';
 };

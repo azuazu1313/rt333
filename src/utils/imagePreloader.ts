@@ -11,7 +11,11 @@ type ImagePreloadStatus = {
   fallbackLoaded: boolean;
 };
 
+// Map to track the loading status of all images
 const imageStatuses = new Map<string, ImagePreloadStatus>();
+
+// Cache of fully loaded images (URL -> img element)
+const imageCache = new Map<string, HTMLImageElement>();
 
 /**
  * Preload critical images in the background
@@ -24,9 +28,19 @@ export const preloadImages = (
     useFallbacks?: boolean;
     onProgress?: (loaded: number, total: number) => void;
     onComplete?: () => void;
+    cacheImages?: boolean;
+    timeout?: number;
+    priority?: 'high' | 'low' | 'auto';
   } = {}
 ) => {
-  const { useFallbacks = true, onProgress, onComplete } = options;
+  const { 
+    useFallbacks = true, 
+    onProgress, 
+    onComplete, 
+    cacheImages = true,
+    timeout = 10000,
+    priority = 'auto'
+  } = options;
   
   // For tracking progress
   let loadedCount = 0;
@@ -38,12 +52,26 @@ export const preloadImages = (
     ? [...uniqueUrls, ...uniqueUrls.map(getFallbackImageUrl)]
     : uniqueUrls;
   
-  // Filter out duplicates that might have been introduced by the fallback mapping
-  const urlsToLoad = [...new Set(allUrls)];
+  // Filter out duplicates and already loaded images
+  const urlsToLoad = [...new Set(allUrls)].filter(url => {
+    const status = imageStatuses.get(url);
+    return !status || (!status.loaded && !status.fallbackLoaded);
+  });
+
+  if (urlsToLoad.length === 0) {
+    // All images already loaded
+    if (onComplete) {
+      onComplete();
+    }
+    return {
+      getProgress: () => ({ loaded: totalToLoad, total: totalToLoad }),
+      isComplete: () => true,
+    };
+  }
 
   // Start preloading all images
   urlsToLoad.forEach(url => {
-    // Skip if already loaded or in progress
+    // Skip if already loaded, but still count toward progress
     if (imageStatuses.has(url)) {
       const status = imageStatuses.get(url)!;
       if (status.loaded || status.fallbackLoaded) {
@@ -62,9 +90,39 @@ export const preloadImages = (
 
     const img = new Image();
     
+    // Set fetchpriority if supported
+    if (priority !== 'auto') {
+      img.setAttribute('fetchpriority', priority);
+    }
+    
+    // Set a timeout to prevent hanging on slow connections
+    const timeoutId = setTimeout(() => {
+      if (!imageStatuses.get(url)?.loaded) {
+        img.src = ''; // Cancel the request
+        
+        const status = imageStatuses.get(url) || { loaded: false, failed: false, fallbackLoaded: false };
+        imageStatuses.set(url, { ...status, failed: true });
+        
+        loadedCount++;
+        if (onProgress) {
+          onProgress(loadedCount, totalToLoad);
+        }
+        
+        if (loadedCount === urlsToLoad.length && onComplete) {
+          onComplete();
+        }
+      }
+    }, timeout);
+
     img.onload = () => {
+      clearTimeout(timeoutId);
+      
       const status = imageStatuses.get(url) || { loaded: false, failed: false, fallbackLoaded: false };
       imageStatuses.set(url, { ...status, loaded: true });
+      
+      if (cacheImages) {
+        imageCache.set(url, img);
+      }
       
       loadedCount++;
       if (onProgress) {
@@ -77,6 +135,8 @@ export const preloadImages = (
     };
     
     img.onerror = () => {
+      clearTimeout(timeoutId);
+      
       const status = imageStatuses.get(url) || { loaded: false, failed: false, fallbackLoaded: false };
       imageStatuses.set(url, { ...status, failed: true });
       
@@ -88,9 +148,37 @@ export const preloadImages = (
         if (fallbackUrl !== url) {
           const fallbackImg = new Image();
           
+          // Set fetchpriority if supported
+          if (priority !== 'auto') {
+            fallbackImg.setAttribute('fetchpriority', priority);
+          }
+          
+          // Set timeout for fallback image as well
+          const fallbackTimeoutId = setTimeout(() => {
+            if (!imageStatuses.get(url)?.fallbackLoaded) {
+              fallbackImg.src = ''; // Cancel the request
+              
+              loadedCount++;
+              if (onProgress) {
+                onProgress(loadedCount, totalToLoad);
+              }
+              
+              if (loadedCount === urlsToLoad.length && onComplete) {
+                onComplete();
+              }
+            }
+          }, timeout);
+          
           fallbackImg.onload = () => {
+            clearTimeout(fallbackTimeoutId);
+            
             const status = imageStatuses.get(url) || { loaded: false, failed: true, fallbackLoaded: false };
             imageStatuses.set(url, { ...status, fallbackLoaded: true });
+            
+            if (cacheImages) {
+              imageCache.set(url, fallbackImg); // Cache the fallback
+              imageCache.set(fallbackUrl, fallbackImg); // Also cache under fallback URL
+            }
             
             loadedCount++;
             if (onProgress) {
@@ -103,6 +191,8 @@ export const preloadImages = (
           };
           
           fallbackImg.onerror = () => {
+            clearTimeout(fallbackTimeoutId);
+            
             loadedCount++;
             if (onProgress) {
               onProgress(loadedCount, totalToLoad);
@@ -163,8 +253,31 @@ export const isImagePreloaded = (url: string): boolean => {
 };
 
 /**
- * Preload images for a specific route in advance
- * @param route The route to preload images for
+ * Get a cached image if available
+ * @param url The URL of the image
+ * @returns The cached image element or null if not cached
+ */
+export const getCachedImage = (url: string): HTMLImageElement | null => {
+  return imageCache.get(url) || null;
+};
+
+/**
+ * Clear the image cache to free up memory
+ * @param urls Optional list of specific URLs to clear, or clear all if not specified
+ */
+export const clearImageCache = (urls?: string[]): void => {
+  if (urls) {
+    urls.forEach(url => {
+      imageCache.delete(url);
+    });
+  } else {
+    imageCache.clear();
+  }
+};
+
+/**
+ * Preload route-specific images based on the current route
+ * @param route The current route path
  */
 export const preloadImagesForRoute = (route: string): void => {
   const routeMap: Record<string, string[]> = {
@@ -172,7 +285,11 @@ export const preloadImagesForRoute = (route: string): void => {
     '/': [
       'https://files.royaltransfer.eu/assets/rt-logo-black-950-500.webp',
       'https://files.royaltransfer.eu/assets/newherotest.webp',
-      'https://files.royaltransfer.eu/assets/mobileherotest.webp'
+      'https://files.royaltransfer.eu/assets/mobileherotest.webp',
+      // Add payment icons
+      'https://files.royaltransfer.eu/assets/Visa.png',
+      'https://files.royaltransfer.eu/assets/Mastercard-logo.svg',
+      'https://files.royaltransfer.eu/assets/Google_Pay_Logo.png'
     ],
     
     // Booking flow images
@@ -191,21 +308,40 @@ export const preloadImagesForRoute = (route: string): void => {
     // Services page
     '/services': [
       'https://files.royaltransfer.eu/assets/services-hero.webp'
+    ],
+    
+    // Blogs page
+    '/blogs': [
+      'https://files.royaltransfer.eu/assets/rome327.webp',
+      'https://files.royaltransfer.eu/assets/paris136.webp',
+      'https://files.royaltransfer.eu/assets/barc255.webp',
+      'https://files.royaltransfer.eu/assets/milano250.webp'
     ]
   };
 
   // Find matching route (exact or starts with)
-  const urls = Object.entries(routeMap).find(([key]) => 
-    route === key || route.startsWith(key + '/')
-  )?.[1] || [];
-
-  if (urls.length > 0) {
-    preloadImages(urls);
+  const exactRoute = routeMap[route];
+  if (exactRoute) {
+    preloadImages(exactRoute, { priority: 'high' });
+    return;
   }
+
+  // Try prefix matching
+  for (const [key, urls] of Object.entries(routeMap)) {
+    if (route.startsWith(key + '/')) {
+      preloadImages(urls, { priority: route === '/' ? 'high' : 'auto' });
+      return;
+    }
+  }
+  
+  // Default - no specific preloads
 };
 
+// Export a default object for module usage
 export default {
   preloadImages,
   isImagePreloaded,
+  getCachedImage,
+  clearImageCache,
   preloadImagesForRoute,
 };
