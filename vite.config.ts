@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
+import viteCompression from 'vite-plugin-compression';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -10,6 +11,17 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      // Brotli compression (better than gzip for modern browsers)
+      viteCompression({
+        algorithm: 'brotliCompress',
+        ext: '.br',
+      }),
+      // Regular gzip compression for older browsers
+      viteCompression({
+        algorithm: 'gzip',
+        ext: '.gz',
+      }),
+      // Bundle analyzer in analyze mode
       isAnalyze && visualizer({
         open: true,
         filename: 'stats.html',
@@ -67,9 +79,17 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
+      target: 'es2020', // Modern target for smaller bundles
       cssCodeSplit: true,
       chunkSizeWarningLimit: 1000,
       assetsInlineLimit: 4096, // 4kb - inline assets smaller than this
+      minify: 'terser', // Use terser for better minification
+      terserOptions: {
+        compress: {
+          drop_console: mode === 'production', // Remove console logs in production
+          drop_debugger: mode === 'production'
+        }
+      }
     },
     server: {
       port: 3000,
