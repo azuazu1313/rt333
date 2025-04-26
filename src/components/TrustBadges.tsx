@@ -1,7 +1,7 @@
 import React from 'react';
 import { Shield, CreditCard, Star, Banknote } from 'lucide-react';
 import { motion } from 'framer-motion';
-import LazyImage from './LazyImage';
+import ImageWithFallback from './ImageWithFallback';
 
 const TrustBadges = () => {
   return (
@@ -26,12 +26,12 @@ const TrustBadges = () => {
               transition={{ duration: 0.2 }}
             >
               <div className="h-12 md:h-16 mb-2 relative">
-                <LazyImage 
+                <ImageWithFallback 
                   src="https://files.royaltransfer.eu/assets/Tripadvisor-Logo.png" 
                   alt="Tripadvisor Rating and Reviews Logo - Royal Transfer EU is highly rated on Tripadvisor"
                   className="h-full w-auto object-contain"
-                  width={700}
-                  height={394}
+                  width={100}
+                  height={50}
                 />
               </div>
               <div className="flex items-center mb-2">
@@ -58,57 +58,59 @@ const TrustBadges = () => {
             <div className="flex flex-col space-y-6">
               <div className="grid grid-cols-3 md:flex md:justify-center items-center gap-4 md:space-x-6">
                 <div className="flex justify-center">
-                  <LazyImage 
+                  <ImageWithFallback 
                     src="https://files.royaltransfer.eu/assets/Visa.png" 
                     alt="Visa payment logo - Royal Transfer EU accepts Visa cards" 
                     className="h-6 md:h-8 w-auto"
-                    width={132}
-                    height={44}
+                    width={100}
+                    height={40}
                   />
                 </div>
                 <div className="flex justify-center">
-                  <LazyImage 
+                  <ImageWithFallback 
                     src="https://files.royaltransfer.eu/assets/Mastercard-logo.svg" 
                     alt="MasterCard payment logo - Royal Transfer EU accepts MasterCard" 
                     className="h-6 md:h-8 w-auto"
-                    width={118}
-                    height={75}
+                    width={100}
+                    height={40}
                   />
                 </div>
                 <div className="flex justify-center">
-                  <LazyImage 
+                  <ImageWithFallback 
                     src="https://files.royaltransfer.eu/assets/Google_Pay_Logo.png" 
                     alt="Google Pay logo - Royal Transfer EU accepts Google Pay" 
                     className="h-6 md:h-8 w-auto"
-                    width={128}
-                    height={50}
+                    width={100}
+                    height={40}
                   />
                 </div>
                 <div className="flex justify-center">
-                  <LazyImage 
+                  <ImageWithFallback 
                     src="https://files.royaltransfer.eu/assets/applepay.png" 
                     alt="Apple Pay logo - Royal Transfer EU accepts Apple Pay" 
                     className="h-6 md:h-8 w-auto"
-                    width={126}
-                    height={48}
+                    width={100}
+                    height={40}
                   />
                 </div>
                 <div className="flex justify-center">
-                  <LazyImage 
+                  <ImageWithFallback 
                     src="https://files.royaltransfer.eu/assets/American_Express_logo.png" 
                     alt="American Express payment logo - Royal Transfer EU accepts American Express cards" 
                     className="h-8 md:h-12 w-auto"
-                    width={1000}
-                    height={617}
+                    width={100}
+                    height={40}
+                    loading="lazy"
                   />
                 </div>
                 <div className="flex justify-center">
-                  <LazyImage
+                  <ImageWithFallback
                     src="https://files.royaltransfer.eu/assets/Stripe_Logo.png"
                     alt="Stripe secure payment processing logo - Royal Transfer EU uses Stripe for secure payments"
                     className="h-6 md:h-10 w-auto"
-                    width={512}
-                    height={214}
+                    width={100}
+                    height={40}
+                    loading="lazy"
                   />
                 </div>
               </div>
