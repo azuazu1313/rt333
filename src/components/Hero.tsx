@@ -34,7 +34,7 @@ const Hero = () => {
   return (
     <div id="booking-form" className="relative h-[800px] md:h-auto md:min-h-[700px]">
       {/* Background Image Container */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 overflow-hidden">
         <picture className="w-full h-full">
           {/* Mobile Image */}
           <source
@@ -65,14 +65,12 @@ const Hero = () => {
           />
           
           {/* Fallback Image */}
-          <ImageWithFallback
+          <img 
             src="https://files.royaltransfer.eu/assets/newherotest.png"
             alt="Luxury sedan transfer service by Royal Transfer EU - professional driver waiting by an elegant black car on a scenic European road"
             className="w-full h-full object-cover"
-            fetchPriority="high"
             loading="eager"
-            width={1920}
-            height={1080}
+            fetchpriority="high"
           />
         </picture>
         <div className="absolute inset-0 bg-black bg-opacity-50"></div>

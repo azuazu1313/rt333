@@ -137,9 +137,9 @@ const ImageWithFallback: React.FC<ImageWithFallbackProps> = ({
         />
       )}
       
-      {/* Show loading placeholder until image is loaded */}
+      {/* Show loading placeholder until image is loaded but with less aggressive animation */}
       {!isLoaded && !hasError && (
-        <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+        <div className="absolute inset-0 bg-gray-200" />
       )}
     </div>
   );
